@@ -32,8 +32,8 @@ Auto-OS/
 │       ├── test_timerfd.c
 │       └── ...
 │
-└── starry-os/                # Starry OS 内核（git submodule）
-    └── (cursor/exam-analysis-bb8f 分支，含所有修复)
+└── tgoskits/                 # rcore-os/tgoskits（git submodule）
+    └── os/StarryOS/          # Starry OS 内核源码
 ```
 
 ## 系统架构

@@ -1,3 +1,3 @@
-[submodule "starry-os"]
-	path = starry-os
-	url = https://github.com/yks23/StarryOS.git
+[submodule "tgoskits"]
+	path = tgoskits
+	url = https://github.com/rcore-os/tgoskits.git
