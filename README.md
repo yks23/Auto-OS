@@ -32,8 +32,8 @@ Auto-OS/
 │       ├── test_timerfd.c
 │       └── ...
 │
-└── tgoskits/                 # rcore-os/tgoskits（git submodule）
-    └── os/StarryOS/          # Starry OS 内核源码
+└── starry-os/                # Starry-OS/StarryOS（git submodule）
+    └── (upstream 官方仓库)
 ```
 
 ## 系统架构
