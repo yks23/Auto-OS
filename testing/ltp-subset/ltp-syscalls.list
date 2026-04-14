@@ -1,0 +1,150 @@
+# Auto-OS LTP 精选子集
+# 每行一个 LTP 测试用例名，# 开头为注释
+# 选取原则：Starry 已实现 syscall + oscomp 评测出现的用例
+
+# ── 文件 I/O ──
+read01
+read02
+write01
+write02
+writev01
+readv01
+open01
+openat01
+close01
+dup01
+dup201
+lseek01
+pread01
+pwrite01
+
+# ── 文件属性 ──
+fstat01
+stat01
+fstatat01
+statx01
+access01
+faccessat01
+chmod01
+fchmod01
+chown01
+fchown01
+
+# ── 目录操作 ──
+mkdir01
+rmdir01
+getdents01
+getcwd01
+chdir01
+link01
+unlink01
+symlink01
+readlink01
+rename01
+
+# ── 进程管理 ──
+fork01
+fork02
+vfork01
+clone01
+clone02
+execve01
+execve02
+exit01
+exit_group01
+wait01
+wait02
+waitpid01
+
+# ── 信号 ──
+kill01
+kill02
+rt_sigaction01
+rt_sigprocmask01
+rt_sigreturn01
+rt_sigsuspend01
+sigaltstack01
+
+# ── 内存管理 ──
+mmap01
+mmap02
+mmap03
+munmap01
+mprotect01
+brk01
+madvise01
+msync01
+mremap01
+mlock01
+
+# ── 同步 ──
+futex_wait01
+futex_wake01
+flock01
+flock02
+fcntl01
+fcntl02
+
+# ── 管道和 IPC ──
+pipe01
+pipe02
+eventfd01
+msgget01
+msgsnd01
+msgrcv01
+shmget01
+shmat01
+shmdt01
+
+# ── 网络 ──
+socket01
+bind01
+connect01
+accept01
+listen01
+send01
+recv01
+sendto01
+recvfrom01
+socketpair01
+shutdown01
+getsockname01
+getpeername01
+
+# ── 时间 ──
+clock_gettime01
+clock_getres01
+nanosleep01
+gettimeofday01
+timerfd_create01
+timerfd_settime01
+
+# ── 调度 ──
+sched_yield01
+sched_getaffinity01
+sched_setaffinity01
+sched_getscheduler01
+getpriority01
+
+# ── 系统信息 ──
+uname01
+sysinfo01
+getpid01
+getppid01
+gettid01
+getuid01
+setuid01
+getgid01
+setgid01
+getgroups01
+
+# ── I/O 多路复用 ──
+poll01
+ppoll01
+epoll_create01
+epoll_ctl01
+epoll_wait01
+select01
+
+# ── 来自 oscomp 评测的额外用例 ──
+setegid02

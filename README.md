@@ -32,6 +32,14 @@ Auto-OS/
 │       ├── test_timerfd.c
 │       └── ...
 │
+├── testing/                  # 四层测试体系
+│   ├── TESTING.md            # 测试体系设计文档
+│   ├── scripts/              # 编译 + 运行 + 报告脚本
+│   ├── ltp-subset/           # LTP 精选 120 个用例
+│   ├── integration/          # BusyBox / Shell / 网络集成测试
+│   ├── oscomp-testsuits/     # OS 竞赛官方测试（submodule）
+│   └── oscomp-autotest/      # OS 竞赛评测框架（submodule）
+│
 └── starry-os/                # Starry-OS/StarryOS（git submodule）
     └── (upstream 官方仓库)
 ```
