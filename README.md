@@ -40,8 +40,9 @@ Auto-OS/
 │   ├── oscomp-testsuits/     # OS 竞赛官方测试（submodule）
 │   └── oscomp-autotest/      # OS 竞赛评测框架（submodule）
 │
-└── starry-os/                # Starry-OS/StarryOS（git submodule）
-    └── (upstream 官方仓库)
+└── tgoskits/                 # rcore-os/tgoskits（git submodule, fixbug-based-dev 分支）
+    └── os/StarryOS/          # Starry OS 内核源码
+    提 PR 目标: https://github.com/rcore-os/tgoskits branch fixbug-based-dev
 ```
 
 ## 系统架构

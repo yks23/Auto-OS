@@ -1,9 +1,9 @@
-[submodule "starry-os"]
-	path = starry-os
-	url = https://github.com/Starry-OS/StarryOS.git
 [submodule "testing/oscomp-testsuits"]
 	path = testing/oscomp-testsuits
 	url = https://github.com/oscomp/testsuits-for-oskernel.git
 [submodule "testing/oscomp-autotest"]
 	path = testing/oscomp-autotest
 	url = https://github.com/oscomp/autotest-for-oskernel.git
+[submodule "tgoskits"]
+	path = tgoskits
+	url = https://github.com/rcore-os/tgoskits.git
