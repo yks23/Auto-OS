@@ -1,0 +1,13 @@
+{
+  "id": "issue-004",
+  "title": "`get_mempolicy` 仅做参数校验后始终报告 `MPOL_DEFAULT`，无真实 NUMA 策略",
+  "status": "open",
+  "severity": "medium",
+  "category": "parameter-validation-stub",
+  "affected_syscalls": ["get_mempolicy"],
+  "source_context": [
+    "kernel/src/syscall/mod.rs:459-465",
+    "kernel/src/syscall/task/ctl.rs:153-227"
+  ],
+  "suggested_fix": "引入与 Linux 一致的 per-task / per-VMA mempolicy 模型并在 `set_mempolicy`（若暴露）与缺页路径中生效；在单节点场景可继续返回 default，但应在文档与实现中明确限制，或返回 `EOPNOTSUPP` 给需要绑定节点的标志组合。"
+}

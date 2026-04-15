@@ -1,0 +1,16 @@
+{
+  "id": "issue-001",
+  "title": "占位型 anon_inode fd：`inotify_init1` / `fanotify_init` / `io_uring_setup` 的 Pollable 永不就绪",
+  "status": "open",
+  "severity": "high",
+  "category": "dummy-fd-class",
+  "affected_syscalls": ["inotify_init1", "fanotify_init", "io_uring_setup"],
+  "source_context": [
+    "kernel/src/syscall/mod.rs:681-682,686",
+    "kernel/src/syscall/fs/notify.rs:138-159",
+    "kernel/src/syscall/fs/io_uring.rs:49-90",
+    "kernel/src/file/inotify.rs:12-46,48-95",
+    "kernel/src/file/io_uring.rs:8-24"
+  ],
+  "suggested_fix": "`syscall/mod.rs` 中已无 `sys_dummy_fd` 分发，但上述 syscall 仍返回 `Pollable::poll` 恒为空的 fd，依赖 epoll/poll 就绪通知的程序会一直阻塞。应实现真实事件投递与 waker 唤醒，或在功能未完备前改为返回 `ENOSYS`/`EOPNOTSUPP` 并避免安装可用 fd。"
+}

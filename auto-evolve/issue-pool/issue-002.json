@@ -1,0 +1,20 @@
+{
+  "id": "issue-002",
+  "title": "`mlock` / `mlock2` 校验地址范围后恒返回成功，未真正锁定内存",
+  "status": "resolved",
+  "severity": "medium",
+  "category": "unimplemented-feature",
+  "affected_syscalls": [
+    "mlock",
+    "mlock2"
+  ],
+  "source_context": [
+    "kernel/src/syscall/mod.rs:401-402",
+    "kernel/src/syscall/mm/mmap.rs:526-551"
+  ],
+  "suggested_fix": "在 `AddrSpace` 或页面上记录 locked/wired 状态并参与换页/回收策略；若暂不支持，应返回 `EOPNOTSUPP` 或 `ENOSYS`，避免用户态误以为内存已钉扎。",
+  "branch": "fix/issue-002-mlock-stub",
+  "fix_summary": "实现 mlock/mlock2 地址校验和页面 populate，MLOCK_ONFAULT 仅校验映射存在",
+  "test_case": "mmap 匿名区域 → mlock → 验证页面可访问; mlock 未映射地址 → ENOMEM; mlock2 非法 flags → EINVAL",
+  "classification_note": "不是 bug。之前是未实现的 feature 返回占位 Ok(0)。"
+}

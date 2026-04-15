@@ -1,0 +1,16 @@
+{
+  "id": "issue-005",
+  "title": "`check_signals` 对 `SignalOSAction::Stop` 使用 `yield_now` 忙等而非可调度等待",
+  "status": "resolved",
+  "severity": "medium",
+  "category": "correctness",
+  "affected_syscalls": [],
+  "source_context": [
+    "kernel/src/task/signal.rs:11-61",
+    "kernel/src/syscall/mod.rs:500-537"
+  ],
+  "suggested_fix": "将停止状态与 `jobctl` 条件变量或 `axtask` 等待原语结合：进入停止时在等待队列上阻塞当前任务，`SIGCONT`/`Continue` 路径唤醒，避免多 CPU 下空转消耗；并保持与 `wait4`的 `WUNTRACED`/`WCONTINUED` 语义一致。",
+  "branch": "fix/issue-005-sigstop-busywait",
+  "fix_summary": "SIGSTOP 等待从 yield_now 忙等改为 WaitQueue 阻塞，SIGCONT 唤醒 WaitQueue",
+  "test_case": "fork → 子进程 pause → 父 SIGSTOP → waitpid(WUNTRACED) 确认停止 → 父 SIGCONT → 子恢复 → 父 SIGTERM → 子退出。修复前子进程忙等烧 CPU，修复后阻塞零 CPU。"
+}

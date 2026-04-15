@@ -1,0 +1,12 @@
+{
+  "id": "issue-006",
+  "title": "POSIX 间隔定时器：`timer_create` / `timer_settime` / `timer_gettime` / `timer_delete` 统一 `ENOSYS`",
+  "status": "open",
+  "severity": "medium",
+  "category": "missing-syscall",
+  "affected_syscalls": ["timer_create", "timer_settime", "timer_gettime", "timer_delete"],
+  "source_context": [
+    "kernel/src/syscall/mod.rs:693-695"
+  ],
+  "suggested_fix": "实现基于 `axhal::time` 与进程/线程定时器表的 POSIX timer 子系统，或与已存在的 `timerfd`/`setitimer` 路径共享时钟基础设施；在完成前保持 `Unsupported` 但应在发行说明中列出，以便 musl/glibc 探测逻辑选择替代 API。"
+}

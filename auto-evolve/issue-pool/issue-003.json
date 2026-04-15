@@ -1,0 +1,19 @@
+{
+  "id": "issue-003",
+  "title": "`syslog(2)`：`SYSLOG_ACTION_OPEN` / `SYSLOG_ACTION_CLOSE` 无 printk 环仍返回 Ok(0)",
+  "status": "resolved",
+  "severity": "low",
+  "category": "unimplemented-feature",
+  "affected_syscalls": [
+    "syslog"
+  ],
+  "source_context": [
+    "kernel/src/syscall/mod.rs:564",
+    "kernel/src/syscall/sys.rs:271-308"
+  ],
+  "suggested_fix": "实现最小 klog 缓冲区并维护 open/close 状态，或在无 klog 子系统时让 OPEN/CLOSE 与 READ 类动作一致返回 `ENOTSUP`/`EOPNOTSUPP`，避免用户态认为内核日志通道已建立。",
+  "branch": "fix/issue-003-syslog-stub",
+  "fix_summary": "实现 syslog(2) action 分发：READ 返回 0、CONSOLE 类返回 ENOSYS、非法 action 返回 EINVAL",
+  "test_case": "syslog(SIZE_BUFFER) → 0; syslog(CONSOLE_OFF) → ENOSYS; syslog(999) → EINVAL; syslog(READ, NULL) → EFAULT",
+  "classification_note": "不是 bug。之前是未实现的 feature 返回占位 Ok(0)。"
+}
