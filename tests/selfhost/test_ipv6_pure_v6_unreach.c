@@ -1,7 +1,6 @@
 /*
  * Test: test_ipv6_pure_v6_unreach
  * Phase: 1, Task: T3
- * Status: SKELETON (functional logic to be filled in by T3 implementer)
  *
  * Spec (from TEST-MATRIX.md):
  *   connect 真 v6 地址（非 v4-mapped）必须 ENETUNREACH（fallback 模式）
@@ -11,6 +10,12 @@
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #define TEST_NAME "test_ipv6_pure_v6_unreach"
 
@@ -37,9 +42,75 @@ int main(void) {
      *   2. 非阻塞或带超时 connect；
      *   3. 断言 errno==ENETUNREACH（或文档约定的 fallback 行为）；
      *   4. 不误判为 ECONNREFUSED 除非环境要求。
-     *
-     * 当前骨架默认 PASS，等 T3 实现者把上面 TODO 替换为真实验证逻辑。
      */
-    pass();
-    return 0;
+    int fd = socket(AF_INET6, SOCK_STREAM, 0);
+    if (fd < 0) {
+        fail("socket failed: %s", strerror(errno));
+    }
+
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0) {
+        fail("fcntl F_GETFL failed: %s", strerror(errno));
+    }
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) != 0) {
+        fail("fcntl F_SETFL O_NONBLOCK failed: %s", strerror(errno));
+    }
+
+    struct sockaddr_in6 sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sin6_family = AF_INET6;
+    sa.sin6_port = htons(80);
+    if (inet_pton(AF_INET6, "2001:db8::1", &sa.sin6_addr) != 1) {
+        close(fd);
+        fail("inet_pton failed: %s", strerror(errno));
+    }
+
+    int cr = connect(fd, (struct sockaddr *)&sa, sizeof(sa));
+    if (cr == 0) {
+        close(fd);
+        fail("connect unexpectedly succeeded");
+    }
+
+    if (errno == ENETUNREACH) {
+        if (close(fd) != 0) {
+            fail("close failed: %s", strerror(errno));
+        }
+        pass();
+        return 0;
+    }
+
+    if (errno != EINPROGRESS) {
+        int e = errno;
+        close(fd);
+        fail("connect expected ENETUNREACH or EINPROGRESS, got errno=%d (%s)", e,
+             strerror(e));
+    }
+
+    struct pollfd pfd;
+    memset(&pfd, 0, sizeof(pfd));
+    pfd.fd = fd;
+    pfd.events = POLLOUT;
+    int pr = poll(&pfd, 1, 800);
+    if (pr < 0) {
+        fail("poll failed: %s", strerror(errno));
+    }
+
+    int so_err = 0;
+    socklen_t elen = sizeof(so_err);
+    if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &so_err, &elen) != 0) {
+        fail("getsockopt SO_ERROR failed: %s", strerror(errno));
+    }
+
+    if (close(fd) != 0) {
+        fail("close failed: %s", strerror(errno));
+    }
+
+    if (so_err == ENETUNREACH) {
+        pass();
+        return 0;
+    }
+
+    fail("expected ENETUNREACH from connect/SO_ERROR, got %d (%s)", so_err,
+         so_err ? strerror(so_err) : "no error");
+    return 1;
 }

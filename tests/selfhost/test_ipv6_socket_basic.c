@@ -1,7 +1,6 @@
 /*
  * Test: test_ipv6_socket_basic
  * Phase: 1, Task: T3
- * Status: SKELETON (functional logic to be filled in by T3 implementer)
  *
  * Spec (from TEST-MATRIX.md):
  *   `socket(AF_INET6, SOCK_STREAM, 0)` ≥ 0
@@ -11,6 +10,8 @@
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <unistd.h>
+#include <sys/socket.h>
 
 #define TEST_NAME "test_ipv6_socket_basic"
 
@@ -36,9 +37,14 @@ int main(void) {
      *   1. 调用 socket(AF_INET6, SOCK_STREAM, 0)；
      *   2. 断言 fd>=0；
      *   3. close 套接字。
-     *
-     * 当前骨架默认 PASS，等 T3 实现者把上面 TODO 替换为真实验证逻辑。
      */
+    int fd = socket(AF_INET6, SOCK_STREAM, 0);
+    if (fd < 0) {
+        fail("socket failed: %s", strerror(errno));
+    }
+    if (close(fd) != 0) {
+        fail("close failed: %s", strerror(errno));
+    }
     pass();
     return 0;
 }
