@@ -12,27 +12,19 @@ testing/
 │   ├── inject-rootfs.sh    # 将测试程序注入 rootfs
 │   └── parse-results.py    # 解析测试输出，生成报告
 │
-├── unit-tests/             # L1: 自编 syscall 单元测试（C, musl 静态编译）
-│   └── (来自 auto-evolve/tests/ 的 31 个测试文件的符号链接)
-│
-├── ltp-subset/             # L2: LTP 精选子集（最关键的 syscall 用例）
-│   ├── README.md           # 子集选取说明
-│   └── ltp-syscalls.list   # 要运行的 LTP 测试用例列表
-│
-├── integration/            # L3: 真实应用集成测试
-│   ├── test-busybox.sh     # BusyBox 核心命令验证
-│   ├── test-shell.sh       # Shell 脚本功能验证
-│   └── test-network.sh     # 网络功能验证
-│
-├── oscomp-testsuits/       # L4: OS 竞赛官方测试（git submodule）
-│   └── (https://github.com/oscomp/testsuits-for-oskernel)
-│
-├── oscomp-autotest/        # L4: OS 竞赛自动评测框架（git submodule）
-│   └── (https://github.com/oscomp/autotest-for-oskernel)
-│
 └── results/                # 测试结果输出
     ├── latest.json         # 最近一次测试结果
     └── history/            # 历史结果
+
+test-cases/                 # 所有测试用例（按类别组织）
+├── custom/                 # L1: 自编 syscall 单元测试（C, musl 静态编译, 31 个）
+├── oscomp-basic/           # L1/L2: 基础系统调用测试生成器
+├── linux-compat/           # L1: Linux 兼容性测试（submodule: rcore-os/linux-compatible-testsuit）
+├── integration/            # L3: 真实应用集成测试（BusyBox/Shell/网络）
+├── ltp-subset/             # L2: LTP 精选列表
+└── oscomp/                 # L4: OS 竞赛官方测试
+    ├── testsuits/          #   submodule: oscomp/testsuits-for-oskernel
+    └── autotest/           #   submodule: oscomp/autotest-for-oskernel
 ```
 
 ---
@@ -41,7 +33,7 @@ testing/
 
 ### L1: Syscall 单元测试（自编）
 
-**来源**：auto-evolve/tests/ 中 debugger agent 自动生成的 C 测试程序。
+**来源**：test-cases/custom/ 中 debugger agent 自动生成的 C 测试程序。
 
 **特点**：
 - 每个文件测试一个 syscall 或一组相关 syscall
@@ -73,7 +65,7 @@ LTP 有 4000+ 测试用例，全跑不现实。我们精选与 Starry 已实现 
 2. 竞赛评测中出现的 LTP 用例（见 oscomp-autotest/kernel/judge/judge_ltp-musl.py）
 3. 高频 syscall 优先（read/write/mmap/fork/exec/wait/signal）
 
-**精选列表**（`ltp-subset/ltp-syscalls.list`）：
+**精选列表**（`test-cases/ltp-subset/ltp-syscalls.list`）：
 
 ```
 # 文件 I/O
@@ -142,7 +134,7 @@ make -j$(nproc) && make install
 
 验证真实 Linux 程序能否在 Starry 上运行。
 
-**BusyBox 核心命令**（`integration/test-busybox.sh`）：
+**BusyBox 核心命令**（`test-cases/integration/test-busybox.sh`）：
 ```bash
 # 文件操作
 ls / && ls -la /tmp && mkdir -p /tmp/test_dir && rm -rf /tmp/test_dir
@@ -166,7 +158,7 @@ ping -c 1 127.0.0.1
 wget -q -O /dev/null http://127.0.0.1/ 2>/dev/null || true
 ```
 
-**Shell 脚本功能**（`integration/test-shell.sh`）：
+**Shell 脚本功能**（`test-cases/integration/test-shell.sh`）：
 ```bash
 # 变量和算术
 A=42 && [ "$A" = "42" ] && echo "PASS: variable"
@@ -215,7 +207,7 @@ docker pull zhouzhouyi/os-contest:20260104
 docker run -it --rm -v $(pwd):/workspace -w /workspace zhouzhouyi/os-contest:20260104
 
 # 在容器中运行评测
-cd testing/oscomp-autotest
+cd test-cases/oscomp/autotest
 python3 -m kernel --arch riscv64 --kernel /workspace/starry-os
 ```
 

@@ -23,7 +23,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).parent
 WORKSPACE = BASE_DIR.parent
 ISSUE_POOL = BASE_DIR / "issue-pool"
-TESTS_DIR = BASE_DIR / "tests"
+TESTS_DIR = WORKSPACE / "test-cases" / "custom"
 MEMORY_DIR = BASE_DIR / "memory"
 SNAPSHOTS_DIR = BASE_DIR / "snapshots"
 STATE_FILE = BASE_DIR / "kernel-state.json"

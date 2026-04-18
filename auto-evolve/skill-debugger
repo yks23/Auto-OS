@@ -12,7 +12,7 @@ auto-evolve/
 │   ├── issue-001.json
 │   ├── issue-002.json
 │   └── ...
-├── tests/                   # 你产出的测试源码
+├── (tests written to test-cases/custom/)
 │   ├── test_timerfd.c
 │   ├── test_sigstop.c
 │   └── ...
@@ -148,7 +148,7 @@ int main(void) {
   },
 
   "test": {
-    "source_file": "auto-evolve/tests/test_timerfd.c",
+    "source_file": "test-cases/custom/test_timerfd.c",
     "build_command": "riscv64-linux-musl-gcc -static -o test_timerfd test_timerfd.c",
     "run_method": "将编译产物放入 rootfs 的 /bin/，启动 QEMU 后执行 /bin/test_timerfd",
     "expected_output_contains": "SUMMARY",
@@ -236,7 +236,7 @@ int main(void) {
 
 ## 约束
 
-- 你产出的文件只有三类：`issue-pool/issue-*.json`、`tests/test_*.c`、`memory/debugger-memory.md`
+- 你产出的文件只有三类：`issue-pool/issue-*.json`、`test-cases/custom/test_*.c`、`memory/debugger-memory.md`
 - 不要修改内核源码——那是 executor 的职责
 - 不要删除 issue JSON——只有 executor 在确认修复后才能标记 resolved，你来做最终 verified
 - 每个 issue 必须有可执行的测试用例，不接受纯描述性的问题报告

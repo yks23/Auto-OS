@@ -14,5 +14,9 @@ test-results/
 # 测试二进制（太大，用脚本重新生成）
 test-suites/ltp/riscv64/
 test-suites/libc-test/riscv64/
-test-suites/oscomp-basic/riscv64/
-test-suites/oscomp-basic/src/
+
+# test-cases 构建产物
+test-cases/oscomp-basic/riscv64/
+test-cases/oscomp-basic/aarch64/
+test-cases/oscomp-basic/loongarch64/
+test-cases/oscomp-basic/src/

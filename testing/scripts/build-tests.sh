@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# 批量交叉编译 auto-evolve/tests/ 下的 C 测试文件
+# 批量交叉编译 test-cases/custom/ 下的 C 测试文件
 # 用法: ./testing/scripts/build-tests.sh [ARCH]
 # ARCH 默认 riscv64
 
 set -e
 ARCH="${1:-riscv64}"
 DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-SRC="$DIR/auto-evolve/tests"
+SRC="$DIR/test-cases/custom"
 OUT="$DIR/testing/build/$ARCH/l1"
 
 GCC="${ARCH}-linux-musl-gcc"

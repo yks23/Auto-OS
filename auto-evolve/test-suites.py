@@ -161,11 +161,11 @@ setegid02 writev01
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Suite 4: 自编 (auto-evolve/tests/)
+# Suite 4: 自编 (test-cases/custom/)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def get_custom_tests():
-    return sorted([f.stem for f in (BASE / "tests").glob("test_*.c")])
+    return sorted([f.stem for f in (WORKSPACE / "test-cases" / "custom").glob("test_*.c")])
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -348,7 +348,7 @@ sudo umount /tmp/alpine
 ```
 
 ### 4. 自编测试 (已就绪)
-自动从 auto-evolve/tests/ 编译。
+自动从 test-cases/custom/ 编译。
 """)
 
     for d in [f"oscomp-basic/{args.arch}", f"libc-test/{args.arch}",

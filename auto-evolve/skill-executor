@@ -12,7 +12,7 @@ auto-evolve/
 │   ├── issue-001.json
 │   ├── issue-002.json
 │   └── ...
-├── tests/                   # debugger 产出的测试源码（你只读+编译运行）
+├── (debugger tests in test-cases/custom/)
 │   ├── test_timerfd.c
 │   ├── test_sigstop.c
 │   └── ...
@@ -123,7 +123,7 @@ git push -u origin fix/issue-NNN-简短描述
 3. **编译测试程序**：按 issue JSON 中 `test.build_command` 编译测试用例
 4. **构建内核**：`make ARCH=riscv64 build`
 5. **运行测试**：将测试程序注入 rootfs，在 QEMU 中运行，对照 `test.pass_criteria` 判定
-6. **回归检查**：运行 `auto-evolve/tests/` 下所有已有的测试，确保不破坏已修复的问题
+6. **回归检查**：运行 `test-cases/custom/` 下所有已有的测试，确保不破坏已修复的问题
 
 ### Phase 6: 标记结果
 
@@ -257,7 +257,7 @@ git push -u origin fix/issue-NNN-简短描述
 ## 约束
 
 - 你只修改 `kernel/src/` 下的内核源码和 `auto-evolve/` 下的 issue JSON + executor-memory
-- 不要修改测试源码（`auto-evolve/tests/`）——那是 debugger 的职责
+- 不要修改测试源码（`test-cases/custom/`）——那是 debugger 的职责
 - 不要删除 issue JSON 文件，只修改 `status` 字段
 - 每次只修复一个 issue，修复完成后再取下一个
 - 修复前必须先将 status 改为 `in-progress`，防止其他 executor 实例重复工作

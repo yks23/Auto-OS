@@ -16,9 +16,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent  # testing/
 PROJECT = ROOT.parent                          # Auto-OS/
-UNIT_TESTS = PROJECT / "auto-evolve" / "tests"
-LTP_LIST = ROOT / "ltp-subset" / "ltp-syscalls.list"
-INTEGRATION = ROOT / "integration"
+UNIT_TESTS = PROJECT / "test-cases" / "custom"
+LTP_LIST = PROJECT / "test-cases" / "ltp-subset" / "ltp-syscalls.list"
+INTEGRATION = PROJECT / "test-cases" / "integration"
 RESULTS_DIR = ROOT / "results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 

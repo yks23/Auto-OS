@@ -27,7 +27,7 @@ echo "── L1: 自编测试 ──"
 # ── L2: oscomp basic ──
 echo ""
 echo "── L2: oscomp basic ──"
-ARCH=$ARCH python3 "$DIR/oscomp-basic/gen-basic-tests.py"
+ARCH=$ARCH python3 "$ROOT/test-cases/oscomp-basic/gen-basic-tests.py"
 
 # ── L3: libc-test ──
 echo ""
@@ -82,7 +82,7 @@ echo ""
 echo "════════════════════════════════════════════"
 echo "  构建完成"
 echo "  L1 自编:      $(ls "$ROOT/auto-evolve/test-build/$ARCH/l1"/test_* 2>/dev/null | wc -l) 个"
-echo "  L2 basic:     $(ls "$DIR/oscomp-basic/$ARCH"/test_* 2>/dev/null | wc -l) 个"
+echo "  L2 basic:     $(ls "$ROOT/test-cases/oscomp-basic/$ARCH"/test_* 2>/dev/null | wc -l) 个"
 echo "  L3 libc-test: $(ls "$DIR/libc-test/$ARCH"/*.exe 2>/dev/null | wc -l) 个"
 echo "  L4 LTP:       $(ls "$DIR/ltp/$ARCH"/ 2>/dev/null | wc -l) 个"
 echo "════════════════════════════════════════════"

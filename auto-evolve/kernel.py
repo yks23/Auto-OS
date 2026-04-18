@@ -23,13 +23,13 @@ from typing import Optional
 BASE_DIR = Path(__file__).parent
 ISSUE_POOL = BASE_DIR / "issue-pool"
 ISSUE_ARCHIVE = BASE_DIR / "issue-archive"  # resolved/verified 归档
-TESTS_DIR = BASE_DIR / "tests"
 MEMORY_DIR = BASE_DIR / "memory"
 STATE_FILE = BASE_DIR / "kernel-state.json"
 MSG_QUEUE_DIR = BASE_DIR / "msg-queue"
 SKILL_DEBUGGER = BASE_DIR / "skill-debugger"
 SKILL_EXECUTOR = BASE_DIR / "skill-executor"
 WORKSPACE = BASE_DIR.parent
+TESTS_DIR = WORKSPACE / "test-cases" / "custom"
 
 AGENT_BIN = os.path.expanduser("~/.local/bin/agent")
 AGENT_API_KEY = os.environ.get("CURSOR_API_KEY", "")

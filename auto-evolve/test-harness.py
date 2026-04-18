@@ -28,7 +28,7 @@ from pathlib import Path
 
 BASE = Path(__file__).parent
 WORKSPACE = BASE.parent
-TESTS_SRC = BASE / "tests"
+TESTS_SRC = WORKSPACE / "test-cases" / "custom"
 BUILD_DIR = BASE / "test-build"
 RESULTS_DIR = BASE / "test-results"
 ROOTFS_IMG = None  # 动态确定
