@@ -1,22 +1,31 @@
 /*
  * Test: test_execve_multithread
  * Phase: 1, Task: T1
- * Status: SKELETON (functional logic to be filled in by T1 implementer)
  *
  * Spec (from TEST-MATRIX.md):
  *   主线程开 4 个子线程死循环，主线程 `execve` 必须成功，新映像 exit 0
  */
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <sched.h>
 
 #define TEST_NAME "test_execve_multithread"
+#define NWORK 4
 
-static void pass(void) {
-    printf("[TEST] %s PASS\n", TEST_NAME);
-    exit(0);
+static volatile int spin_go = 1;
+
+static void *worker(void *arg)
+{
+    (void)arg;
+    while (spin_go)
+        sched_yield();
+    return NULL;
 }
 
 static void fail(const char *fmt, ...) {
@@ -38,8 +47,31 @@ int main(void) {
      *   3. 确认 execve 成功且新进程退出码为 0；
      *   4. 验证多线程存在时 execve 不被错误阻塞或拒绝。
      *
-     * 当前骨架默认 PASS，等 T1 实现者把上面 TODO 替换为真实验证逻辑。
+     * 使用 /bin/sh -c 串联 echo 与 PASS 行，满足 harness 对 PASS 行的解析；
+     * 核心仍覆盖主线程在多线程进程中 execve 的路径。
      */
-    pass();
-    return 0;
+    pthread_t th[NWORK];
+    for (int i = 0; i < NWORK; i++) {
+        int rc = pthread_create(&th[i], NULL, worker, NULL);
+        if (rc != 0)
+            fail("pthread_create failed: %s", strerror(rc));
+    }
+
+    /* 给 worker 一点时间全部进入循环（无 sleep：依赖调度） */
+    for (volatile int j = 0; j < 100000; j++)
+        ;
+
+    char *const argv[] = {
+        "sh",
+        "-c",
+        "echo ok && printf '[TEST] test_execve_multithread PASS\\n'",
+        NULL,
+    };
+    char *const envp[] = { NULL };
+
+    execve("/bin/sh", argv, envp);
+    spin_go = 0;
+    for (int i = 0; i < NWORK; i++)
+        pthread_join(th[i], NULL);
+    fail("execve failed: %s", strerror(errno));
 }

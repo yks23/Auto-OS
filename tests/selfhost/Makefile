@@ -20,6 +20,9 @@ OUT := out-$(ARCH)
 
 CFLAGS := -static -O0 -Wall -Wextra -Wno-unused-parameter
 
+# Per-binary link flags (stem = basename without .c)
+EXTRA_test_execve_multithread := -pthread
+
 C_SRCS := \
 	test_execve_basic.c \
 	test_execve_multithread.c \
@@ -77,7 +80,7 @@ $(OUT):
 	mkdir -p "$(OUT)"
 
 $(OUT)/%: %.c
-	$(MUSL_CC) $(CFLAGS) -o "$@" "$<"
+	$(MUSL_CC) $(CFLAGS) $(EXTRA_$*) -o "$@" "$<"
 
 $(OUT)/%: %.sh
 	cp -f "$<" "$@"
