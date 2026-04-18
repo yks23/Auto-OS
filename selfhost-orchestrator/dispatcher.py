@@ -25,11 +25,41 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 TASKS_DIR = ROOT / "tasks"
 LOGS_DIR = ROOT / "logs"
+WORKTREES_DIR = ROOT.parent / ".worktrees"
 WORKSPACE = ROOT.parent
 TGOSKITS = WORKSPACE / "tgoskits"
 
+# 上游基线分支与集成分支
+UPSTREAM_REF = "upstream/dev"     # rcore-os/tgoskits dev
+INTEGRATION_BRANCH = "selfhost-dev"  # 在 yks23/tgoskits 上的集成分支
+
 AGENT_BIN = os.path.expanduser("~/.local/bin/cursor-agent")
 DEFAULT_MODEL = os.environ.get("DISPATCHER_MODEL", "")  # 空 = Auto
+ENV_FILE = Path(os.path.expanduser("~/.config/selfhost-orchestrator/env"))
+
+
+def load_local_env() -> None:
+    """从 ~/.config/selfhost-orchestrator/env 加载本地 export 形式 env。
+
+    文件格式举例（chmod 600）：
+        export CURSOR_API_KEY="crsr_xxx"
+    """
+    if not ENV_FILE.exists():
+        return
+    for raw in ENV_FILE.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):]
+        if "=" not in line:
+            continue
+        key, val = line.split("=", 1)
+        val = val.strip().strip('"').strip("'")
+        os.environ.setdefault(key.strip(), val)
+
+
+load_local_env()
 
 # 每个任务包对应 (id, 标题, 工作分支)
 TASKS = [
@@ -48,26 +78,82 @@ def find_task_file(task_id: str) -> Path:
     return matches[0]
 
 
-def build_prompt(task_id: str, branch: str) -> str:
+def worktree_path(task_id: str) -> Path:
+    return WORKTREES_DIR / task_id
+
+
+def ensure_worktree(task_id: str, branch: str) -> Path:
+    """为 task_id 创建/复用一个独立 git worktree。
+
+    每个 subagent 在自己的 worktree 内工作，互不干扰。
+    """
+    WORKTREES_DIR.mkdir(parents=True, exist_ok=True)
+    wt = worktree_path(task_id)
+
+    # 在主 tgoskits 仓内 fetch upstream/origin，确保 ref 是新的
+    subprocess.run(["git", "fetch", "upstream", "dev"], cwd=str(TGOSKITS), check=False)
+    subprocess.run(["git", "fetch", "origin"], cwd=str(TGOSKITS), check=False)
+
+    if wt.exists():
+        # 复用现有 worktree，但更新分支指针到最新 upstream/dev（如果还没有 commit）
+        return wt
+
+    cmd = ["git", "worktree", "add", "-B", branch, str(wt), UPSTREAM_REF]
+    r = subprocess.run(cmd, cwd=str(TGOSKITS), capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(f"git worktree add failed: {r.stderr}")
+    return wt
+
+
+def build_prompt(task_id: str, branch: str, worktree: Path) -> str:
     body = find_task_file(task_id).read_text(encoding="utf-8")
-    header = f"""你是 StarryOS self-hosting 计划的子工程师。
+    header = f"""你是 StarryOS self-hosting 计划的子工程师（subagent），由 Director 派发任务。
 
-工作目录：{TGOSKITS}（这是 git submodule，已经 checkout 到 dev 分支）。
-你需要在 {TGOSKITS} 内：
-  1. `git fetch origin && git checkout -B {branch} origin/dev`
-  2. 严格按下面"任务包"完成实现。
-  3. 自检 acceptance criteria 后，在 {TGOSKITS} 内 git add/commit，按 conventional commits 拆 commit。
-  4. `git push -u origin {branch}` 推送到 fork。
-  5. 用 gh CLI（已在环境中预装）或在 PR body 内写出完整内容，提 PR 到 `rcore-os/tgoskits` 的 `dev` 分支。
+## 你的工作环境
 
-完成后输出：
-  - 你创建的 commit SHA 列表
-  - 推送的分支名
-  - 创建/更新的 PR URL（如有）
-  - acceptance criteria 自检表（每条 ✅/⚠️/❌ 并附简短说明）
+- **工作目录**：`{worktree}`（这是一个独立的 git worktree，**只属于你**，可以放心改）
+- **当前分支**：`{branch}`（已经基于 `{UPSTREAM_REF}` 创建好）
+- **git remotes**：
+    - `origin` = `https://github.com/yks23/tgoskits`（你 push 到这里）
+    - `upstream` = `https://github.com/rcore-os/tgoskits`（只读基线）
+- **集成分支**：`{INTEGRATION_BRANCH}`（在 `origin/yks23` 上，由 Director 维护）
+- **PR 目标**：你的 PR 提到 `yks23/tgoskits` 的 `{INTEGRATION_BRANCH}` 分支（不是 upstream）
 
-如果中途遇到必须由总监决策的事（例如方案选择不明、上游 API 缺失）：**不要静默改方案**，
-请先在最终输出里清晰列出"待决策项"，再按你认为最稳的最低交付路径推进。
+## 你必须做的事（流程）
+
+1. `cd {worktree}`，确认 `git status` 干净、`git branch --show-current` == `{branch}`。
+2. 严格按下面"任务包"实现。**不要扩大范围**：只动任务包列出的文件，遇到必须改其他文件时先在输出里说明。
+3. 自检 acceptance criteria。
+4. `git add` + 按 conventional commits 拆 commit（每个独立改动一个 commit）。
+5. `git push -u origin {branch}` 推到 fork。
+   - 如果 push 失败 403：**停下来**，不要 retry，把错误原文输出给 Director。
+6. 用 `gh pr create --base {INTEGRATION_BRANCH} --head {branch} --repo yks23/tgoskits --title "..." --body "..."` 开 PR。
+   - PR body 必须包含本任务的 acceptance criteria 自检表。
+
+## 你必须返回给 Director 的产出
+
+完成后**最后一段输出**必须是 JSON（包在 ```json``` 代码块里），格式：
+
+```json
+{{
+  "task_id": "{task_id}",
+  "branch": "{branch}",
+  "commits": ["sha1", "sha2"],
+  "pr_url": "https://github.com/yks23/tgoskits/pull/N",
+  "acceptance_criteria": [
+    {{"item": "...", "status": "PASS|PARTIAL|FAIL|SKIP", "note": "..."}}
+  ],
+  "blocked_by": ["可选：列出阻塞你的事项"],
+  "decisions_needed": ["可选：必须 Director 决策的事"]
+}}
+```
+
+## 边界
+
+- **不得**直接 push 到 `{INTEGRATION_BRANCH}` 或 `dev`，只能 PR。
+- **不得**rebase/force-push 别的分支。
+- 如果 acceptance criteria 中有任何一条做不到，写明 PARTIAL/FAIL/SKIP 与原因，**不要假装完成**。
+- 如果方案有多种且任务包没明确，按最低交付路径走，并在 `decisions_needed` 里说明。
 
 ================ 以下是你的任务包 ================
 
@@ -76,8 +162,9 @@ def build_prompt(task_id: str, branch: str) -> str:
     return header
 
 
-def cmd_for(task_id: str, branch: str, model: str | None) -> list[str]:
-    prompt = build_prompt(task_id, branch)
+def cmd_for(task_id: str, branch: str, model: str | None,
+            worktree: Path) -> list[str]:
+    prompt = build_prompt(task_id, branch, worktree)
     cmd = [
         AGENT_BIN,
         "-p",
@@ -85,7 +172,7 @@ def cmd_for(task_id: str, branch: str, model: str | None) -> list[str]:
         "--stream-partial-output",
         "--force",
         "--trust",
-        "--workspace", str(WORKSPACE),
+        "--workspace", str(worktree),
     ]
     if model:
         cmd += ["--model", model]
@@ -108,11 +195,19 @@ def dispatch_one(task_id: str, branch: str, *, dry_run: bool, model: str | None)
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_path = LOGS_DIR / f"{task_id}_{ts}.log"
-    cmd = cmd_for(task_id, branch, model)
+
+    if dry_run:
+        # dry-run 只构造命令，不真创建 worktree
+        wt = worktree_path(task_id)
+    else:
+        wt = ensure_worktree(task_id, branch)
+
+    cmd = cmd_for(task_id, branch, model, wt)
 
     info = {
         "task": task_id,
         "branch": branch,
+        "worktree": str(wt),
         "log": str(log_path),
         "started_at": datetime.now().isoformat(timespec="seconds"),
         "cmd_preview": " ".join(shlex.quote(c) if i < len(cmd) - 1 else "<PROMPT>"
@@ -125,7 +220,8 @@ def dispatch_one(task_id: str, branch: str, *, dry_run: bool, model: str | None)
         return info
 
     log_fp = log_path.open("w", encoding="utf-8")
-    log_fp.write(f"# task={task_id} branch={branch} started={info['started_at']}\n")
+    log_fp.write(f"# task={task_id} branch={branch} worktree={wt}\n")
+    log_fp.write(f"# started={info['started_at']}\n")
     log_fp.write(f"# cmd: {info['cmd_preview']}\n")
     log_fp.flush()
 
@@ -133,7 +229,7 @@ def dispatch_one(task_id: str, branch: str, *, dry_run: bool, model: str | None)
         cmd,
         stdout=log_fp,
         stderr=subprocess.STDOUT,
-        cwd=str(WORKSPACE),
+        cwd=str(wt),
         env={**os.environ},
         start_new_session=True,
     )

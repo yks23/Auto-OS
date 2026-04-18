@@ -1,9 +1,10 @@
 # T4：mount 放开 ext4，添加 virtio-9p
 
 ## 目标仓库
-- **上游**：`https://github.com/rcore-os/tgoskits`
-- **基线分支**：`dev`
-- **PR 目标分支**：`dev`
+- **fork（你 push 到这里）**：`https://github.com/yks23/tgoskits`
+- **upstream（只读基线）**：`https://github.com/rcore-os/tgoskits`
+- **基线分支**：`upstream/dev`
+- **PR 目标**：`yks23/tgoskits` 的 `selfhost-dev` 分支
 - **你的工作分支**：`cursor/selfhost-mount-fs-7c9d`
 
 ## 当前缺陷
