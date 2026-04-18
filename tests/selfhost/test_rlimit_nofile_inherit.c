@@ -13,8 +13,6 @@
 #include <unistd.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
-#include <stdint.h>
-#include <string.h>
 
 #define TEST_NAME "test_rlimit_nofile_inherit"
 
