@@ -91,6 +91,10 @@ def current_branch() -> str:
     return r.stdout.strip() or "main"
 
 
+# 全局 base ref（可被 --base 覆盖）
+DISPATCH_BASE: str | None = None
+
+
 def find_task_file(task_id: str) -> Path:
     matches = list(TASKS_DIR.glob(f"{task_id}-*.md"))
     if not matches:
@@ -117,7 +121,7 @@ def ensure_worktree(task_id: str, branch: str) -> Path:
     if wt.exists():
         return wt
 
-    base = current_branch()
+    base = DISPATCH_BASE or current_branch()
     cmd = ["git", "worktree", "add", "-B", branch, str(wt), base]
     r = subprocess.run(cmd, cwd=str(WORKSPACE), capture_output=True, text=True)
     if r.returncode != 0:
@@ -319,7 +323,12 @@ def main() -> int:
     ap.add_argument("--model", default=DEFAULT_MODEL, help="cursor-agent --model 参数（默认 auto）")
     ap.add_argument("--foreground", action="store_true",
                     help="前台运行单个任务（必须配 --only Tn），实时把输出连到当前 terminal log")
+    ap.add_argument("--base", default=None,
+                    help="worktree 基于的 ref（默认是当前分支）。例如 origin/cursor/selfhost-test-skeletons-7c9d")
     args = ap.parse_args()
+
+    global DISPATCH_BASE
+    DISPATCH_BASE = args.base
 
     if not args.dry_run and not args.execute:
         ap.error("必须指定 --dry-run 或 --execute 之一")

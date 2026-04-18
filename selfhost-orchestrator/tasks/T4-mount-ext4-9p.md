@@ -72,3 +72,51 @@ PR 标题：`feat(starry/fs): expand sys_mount to ext4 + 9p for self-hosting`。
 
 - 不要破坏 `pseudofs` 的 `/dev`、`/tmp`、`/proc`、`/sys` 自动挂载流程。
 - `sys_mount` 的权限检查可以暂时不做（无 CAP_SYS_ADMIN）。
+
+---
+
+## 🧪 测试填充责任（强制）
+
+**重要更新（Director, 2026-04-18）**：本任务 PR #2 已经把测试**骨架**写好了
+（ 全部 main 默认 `pass()`，含 TODO Plan）。
+你必须在你的 PR 里**填满**与 T4 相关的所有骨架文件，让 main 真正
+验证对应 syscall 的行为。
+
+### 你必须填充的骨架文件
+
+见 `selfhost-orchestrator/DETAILED-TEST-MATRIX.md` 的 §T4：mount ext4 + bind 章节。
+
+**对每个测试**：
+1. 打开 `tests/selfhost/test_xxx.c`（或 .sh）
+2. 把 main 里 `/* TODO(T4): ... */` 注释保留作为 plan 文档
+3. **删掉** `pass(); return 0;` 占位
+4. 按 DETAILED-TEST-MATRIX 的 Action / Expected return / Expected errno / Side effect 四列实现真正的验证逻辑
+5. 用 `fail("...")` 在任意 assert 失败时立即 exit 1
+6. 全部 assert 通过才 `pass();`
+
+### 质量硬指标
+
+- 每个 syscall 调用都必须**检查返回值**，失败时 `fail("syscall_name failed: %s", strerror(errno))`
+- **errno 必须精确匹配**（不能用 `errno != 0` 这种宽松检查）
+- **所有创建的临时文件、子进程、fd 在 fail/pass 前必须清理**（不要污染下一个测试的环境）
+- 测试**幂等**：连续跑两次结果一致
+- 不要依赖测试间顺序，每个测试自己 setup 自己 teardown
+
+### Spec 引用
+
+骨架文件顶部已经从 TEST-MATRIX.md 复制了 Spec 注释。如果你的实现细节
+与 DETAILED-TEST-MATRIX 不一致（例如 errno 选择不同），**优先服从
+DETAILED-TEST-MATRIX**，并在 PR 描述里说明理由。
+
+### 测试与实现同 PR 提交
+
+测试代码与 patches/T4-*/ 内的实现代码必须在**同一个 PR** 内提交。
+review 时会要求测试 PASS 才合并。本机 `make ARCH=...` 编测试可能
+因 musl-gcc 缺失 SKIP，那就在 PR 里说明，CI 上验证。
+
+### Commit 拆分建议
+
+1. `feat(patches/T4): <实现>`
+2. `test(selfhost/T4): fill in skeleton test_<xxx>.c`（每填一组测试可以一个 commit）
+3. （可选）`docs(T4): note any deviation from DETAILED-TEST-MATRIX`
+
