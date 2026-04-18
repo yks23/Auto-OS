@@ -4,13 +4,20 @@
 
 ## 通用约定
 
-- 所有测试用例放在 `tgoskits/os/StarryOS/test-suit/starryos/selfhost/`。
+- 所有测试用例放在 **`tests/selfhost/`**（Auto-OS 仓内，不在 tgoskits 内），CI build 时随 selfhost 镜像一起打包进 guest /opt/tests。
 - 命名：`test_<feature>_<aspect>.c` 或 `.rs`。
 - C 测试 musl 静态编译：`<arch>-linux-musl-gcc -static -O0 test_x.c -o test_x`。
 - 每个测试 main 结尾 **必须** printf 一行 `[TEST] <name> PASS` 或 `[TEST] <name> FAIL: <reason>`，exit 0/1 跟随 PASS/FAIL。
 - CI 用正则 `\[TEST\] (\w+) (PASS|FAIL)` 解析报告。
 - 每个测试单文件、独立 main、不依赖 framework，方便快速增删。
 - 测试启动方式：`scripts/run-selfhost-tests.sh ARCH`，内部 BusyBox shell 顺序跑所有 `test_*` 二进制。
+
+## CI 触发模型
+
+- 每 PR：sanity-check + build + ci-test（Phase 1 acceptance test）
+- Nightly：S0 smoke（hello.c）
+- Weekly：S1 medium（BusyBox） + S2 cargo + S3 bootstrap
+- Manual：S4 reproducibility
 
 ---
 

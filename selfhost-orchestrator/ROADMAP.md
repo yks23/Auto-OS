@@ -1,295 +1,391 @@
 # StarryOS Self-Hosting 路线图（x86_64 + riscv64）
 
-**总开发师**：cursor cloud agent（"Director"）  
-**上游基线**：`https://github.com/rcore-os/tgoskits` 的 `dev` 分支  
-**fork**：`https://github.com/yks23/tgoskits`，集成分支 `selfhost-dev`（基于 upstream `dev`）  
-**工作模式**：4 个虚拟开发岗位（D1-D4） + 1 个总开发师，**所有开发岗位由 cursor-agent subagent 实例承担**，并发推进，每个 subagent 各自独立的 git worktree 与分支。  
+**总开发师**：Director（cursor cloud agent）  
+**所有工作发生在**：`yks23/Auto-OS` 这一个仓库  
+**对 tgoskits 的修改方式**：**patch 文件**，见 [`patches/README.md`](../patches/README.md)  
+**上游 pin**：`tgoskits @ c7e88fb3`（由 `PIN.toml` 锁定）
 
----
+## 0. 工作模式（重要！）
+
+```
++--------------------------------------+
+|  Auto-OS 仓（这个仓库，全部权限在内）   |
+|                                       |
+|  patches/         ← 真正的修改         |
+|  scripts/         ← apply / build / test
+|  tests/selfhost/  ← C 测试用例         |
+|  PIN.toml         ← tgoskits base     |
+|  tgoskits/        ← submodule, ro pin  |
+|     ↑                                  |
+|     └── 临时被 apply 出 patches 后用于 build/test
++--------------------------------------+
+```
+
+每个任务的产出是 `patches/Tn-slug/0001-*.patch …` 文件。CI 从干净 pin 出发 apply 所有 patch、跨架构 build、跑 ci-test。
+
+子 agent 永远不需要 push tgoskits；只需要 push Auto-OS 仓的任务分支并开 PR。
 
 ## 1. 终态目标（Definition of Done）
 
-在 guest 内（x86_64 与 riscv64 各一份），从源码出发：
-
-| 阶段目标 | 描述 | 衡量 |
+| 里程碑 | 描述 | 衡量 |
 |---|---|---|
-| **S0** | `cc hello.c -o hello && ./hello` | exit 0，stdout 含 hello |
-| **S1** | `make` 编译并链接出 BusyBox 等价规模 C 项目 | 全部 link 成功 |
-| **S2** | `cargo build --release` 出可在 guest 内执行的小型 Rust 程序 | exit 0 |
-| **S3** | guest 内 `cargo xtask starry build --arch <arch>` 重新编出 StarryOS kernel ELF | ELF 可以被 host QEMU 启动到 BusyBox shell |
-| **S4** | guest 内 build 出的 kernel ELF 与 host build 的字节相同（再现性） | sha256 匹配 |
+| **M0** | apply→build 流水线在 CI 上跑通 | `selfhost / build (riscv64)` 与 `(x86_64)` 双 ✅ |
+| **M1** | Phase 1 五个核心 PR 全部合入 | patches/T1-T5 都在 main，sanity-check 通过 |
+| **M2** | guest 内 `gcc hello.c -o hello && ./hello` 双架构成功 | CI smoke-test job 通过 |
+| **M3** | guest 内 `make` 编出 BusyBox 双架构成功 | CI medium-test job 通过 |
+| **M4** | guest 内 `cargo build` 一个简单 Rust 程序 | CI s2-cargo job 通过 |
+| **M5** | guest 内 `cargo xtask starry build` 重建 kernel ELF | host 用该 ELF 启动到 BusyBox shell |
+| **M6** | host build 与 guest build 字节相同 | sha256 一致（stretch） |
 
-**两架构都必须达到 S3，S4 是 stretch goal。**
+**M0-M5 必须达成，M6 列为 stretch goal。**
 
-## 2. 关键路径图（Critical Path）
+## 2. 关键路径
 
 ```
-            ┌───────────────────────────────────┐
-            │ Phase 0  基础设施（必须先做）       │
-            │  - GitHub App 写权限                │
-            │  - selfhost-dev 集成分支             │
-            │  - dispatcher worktree 隔离          │
-            └────────────────┬──────────────────┘
+                ┌───────────────────────────┐
+                │ Phase 0  基础设施          │
+                │  - patches workflow ✅     │
+                │  - CI selfhost.yml         │
+                │  - dispatcher worktree    │
+                │  - tests/selfhost 骨架    │
+                └────────────┬──────────────┘
                              │
         ┌────────────────────┼────────────────────┐
         ▼                    ▼                    ▼
  ┌────────────┐      ┌────────────┐      ┌────────────┐
  │ Phase 1     │      │ Phase 1     │      │ Phase 1     │
- │  D1-内核组  │      │  D2-资源组  │      │  D3-FS/IO组 │
+ │  D1 内核组  │      │  D2 资源组  │      │  D3 FS/IO  │
  │  T1 execve  │      │  T5 rlimit  │      │  T2 locks   │
+ │             │      │             │      │  T3 IPv6    │
  │             │      │             │      │  T4 mount   │
  └─────┬──────┘      └─────┬──────┘      └─────┬──────┘
-       │                    │                    │
-       └────────────────────┼────────────────────┘
-                            │
-        ┌───────────────────┼───────────────────┐
-        ▼                   ▼                   ▼
- ┌────────────┐     ┌────────────┐     ┌────────────┐
- │ Phase 2     │     │ Phase 2     │     │ Phase 2     │
- │  D1 ptrace  │     │  D2 工具链  │     │  D3 IPv6     │
- │             │     │  rootfs     │     │  T3          │
- └─────┬──────┘     └─────┬──────┘     └─────┬──────┘
-       │                   │                   │
-       └─────────────┬─────┴───────────────────┘
-                     ▼
-            ┌────────────────────────────┐
-            │ Phase 3  S0 自我编译验证      │
-            │   guest 内编 hello.c 通过    │
-            └─────────────┬──────────────┘
-                          │
-              ┌───────────┼───────────┐
-              ▼                       ▼
-       ┌───────────┐           ┌────────────┐
-       │ Phase 4    │           │ Phase 4     │
-       │  D1 vDSO   │           │ D4 CI 闸门  │
-       │  prctl     │           │ 测试矩阵    │
-       │  D3 9p     │           │             │
-       └─────┬─────┘           └──────┬──────┘
-             │                         │
-             └────────────┬────────────┘
-                          ▼
-            ┌────────────────────────────┐
-            │ Phase 5  S1/S2 中型自我编译   │
-            │   guest 内 BusyBox + cargo  │
-            └─────────────┬──────────────┘
-                          ▼
-            ┌────────────────────────────┐
-            │ Phase 6  S3/S4 完全自我编译   │
-            │   guest 内编 starry kernel  │
-            └────────────────────────────┘
+       │                   │                    │
+       └───────────────────┼────────────────────┘
+                           │
+                           ▼   ← M1 = Phase 1 结束
+                ┌───────────────────────────┐
+                │ Phase 2  补 syscall +     │
+                │  rootfs 工具链镜像        │
+                │ T6 ptrace, T7 prctl       │
+                │ T8 procfs, T9 misc        │
+                │ T10 rootfs-selfhost       │
+                └────────────┬──────────────┘
+                             │
+                             ▼   ← M2 = S0 自我编译冒烟
+                ┌───────────────────────────┐
+                │ Phase 3  S0 验证           │
+                │ T12 hello.c               │
+                │ T13 x86 vDSO              │
+                │ T14 AddrSpace 锁          │
+                └────────────┬──────────────┘
+                             │
+                             ▼   ← M3 = S1 BusyBox
+                ┌───────────────────────────┐
+                │ Phase 4  稳定性 + S1       │
+                │ T15-T20                    │
+                └────────────┬──────────────┘
+                             │
+                             ▼   ← M4 = S2 cargo
+                ┌───────────────────────────┐
+                │ Phase 5  cargo            │
+                │ T21-T23                    │
+                └────────────┬──────────────┘
+                             │
+                             ▼   ← M5 / M6 = S3/S4 自举
+                ┌───────────────────────────┐
+                │ Phase 6  完全自举          │
+                │ T24-T27                    │
+                └───────────────────────────┘
 ```
 
-## 3. 阶段详细计划
+## 3. Phase 详细计划与 Checkpoints
 
-### Phase 0：基础设施（**所有人都被它阻塞**）
-
-负责：总开发师 + 你（人，需要在 GitHub Web 端授权）。
-
-| 子项 | 状态 | 负责 | 验收 |
-|---|---|---|---|
-| `tgoskits` remote 改成 `origin=yks23/tgoskits`、`upstream=rcore-os/tgoskits` | ✅ | Director | `git remote -v` 验证 |
-| Cursor GitHub App 装到 `yks23/tgoskits` 仓库（**人，必须做**） | ⛔ 阻塞 | 你 | 在 https://github.com/apps/cursor-agent/installations/new 中授权该仓库 |
-| `selfhost-dev` 集成分支（基于 `upstream/dev`） | ⛔ 等权限 | Director | `git push -u origin selfhost-dev` 成功 |
-| dispatcher 给每个 subagent 独立 git worktree | 🔄 进行中 | Director | 5 个 worktree 互不干扰 |
-| 验收测试集骨架（`test-suit/selfhost/`） | 未开始 | D4 | 见 TEST-MATRIX.md |
-
-**Phase 0 出口标准**：5 个 subagent 任意 push 到 `yks23/tgoskits` 的对应分支都成功。
+每个 Phase 有 **Entry Criteria**（开干前提）、**Exit Criteria**（达成什么算完）、**Checkpoint Tests**（怎么自动验证完成）。
 
 ---
 
-### Phase 1：基线修复（5 任务并发，~1 周等价工作量）
+### Phase 0：基础设施
 
-每条独立 PR、独立分支，**互相不会冲突的代码区域**。
+**Entry Criteria**：cursor-agent CLI + CURSOR_API_KEY 就绪。
 
-| 任务 | Owner | 改动文件 | 估算行数 | 风险 |
+**任务**：
+
+| ID | 任务 | Owner | 状态 |
+|---|---|---|---|
+| P0.1 | patches workflow（apply/extract/sanity-check） | D0 | ✅ 已完成 |
+| P0.2 | `.github/workflows/selfhost.yml` CI | D0 | ✅ 已完成 |
+| P0.3 | `tests/selfhost/` 骨架 + sanity 测试 | D0 | ✅ 已完成 |
+| P0.4 | dispatcher worktree 隔离 + patch 提取集成 | D0 | 🔄 进行中 |
+| P0.5 | 主仓 PR #1 描述切到新工作模式 | D0 | 待做 |
+
+**Exit Criteria**：在 CI 上 `sanity` job 绿、`build (riscv64)` 与 `build (x86_64)` 都绿（即使 patches 为空）。
+
+**Checkpoint Tests**（CP-0）：
+1. `bash scripts/sanity-check.sh` 本地 ✅
+2. PR 触发 GitHub Actions selfhost workflow，3 个 job 都绿 ✅
+
+---
+
+### Phase 1：基线修复（5 个任务并行）
+
+**Entry Criteria**：CP-0 通过。
+
+**任务**：
+
+| ID | 任务 | Owner | 主写文件 | 估算 patch 行数 |
 |---|---|---|---|---|
-| **T1** 多线程 execve | D1 | `kernel/src/syscall/task/execve.rs`、`mod.rs` (+execveat) | 100-200 | 中（需要和 do_exit 同步） |
-| **T2** flock + fcntl 记录锁 | D3 | `kernel/src/file/{flock,record_lock}.rs`、`fd_ops.rs` | 500-700 | 中（fd close 路径） |
-| **T3** AF_INET6 socket | D3 | `kernel/src/syscall/net/{socket,addr,opt}.rs` | 100-300 | 低（v4-mapped fallback） |
-| **T4** mount ext4/9p | D3 | `kernel/src/syscall/fs/mount.rs`、`Cargo.toml` | 200-2000 | 高（9p 是大件） |
-| **T5** 资源限制 | D2 | `kernel/src/config/*.rs`、`syscall/task/rlimit.rs`、`Makefile` | 100-200 | 低 |
+| T1 | 多线程 execve + execveat | D1 | `kernel/src/syscall/task/execve.rs`, `mod.rs` | 100-200 |
+| T2 | flock + fcntl 记录锁 | D3 | `kernel/src/file/{flock,record_lock}.rs`, `fd_ops.rs` | 500-700 |
+| T3 | AF_INET6 socket | D3 | `kernel/src/syscall/net/{socket,addr,opt}.rs` | 100-300 |
+| T4 | mount ext4 + bind | D3 | `kernel/src/syscall/fs/mount.rs` | 200-400 |
+| T5 | 资源限制 + Makefile | D2 | `kernel/src/config/*.rs`, `Makefile`, 新增 `rlimit.rs` | 100-200 |
 
-**Phase 1 出口标准**：
-- 5 个 PR 全部合入 `yks23/tgoskits` 的 `selfhost-dev` 集成分支。
-- `make ARCH=riscv64 build && make ARCH=x86_64 build` 双架构 ✅。
-- `make ARCH=riscv64 ci-test && make ARCH=x86_64 ci-test` 双架构 ✅。
-- 每个任务的 acceptance test C 用例都通过（见 TEST-MATRIX.md Phase 1 部分）。
+**文件主权边界（核对过无重叠）**：见 §6。
+
+**Exit Criteria**（每任务，由 PR review 强制）：
+- `patches/Tn-slug/` 下至少 1 个 patch + META.toml + README.md
+- `tests/selfhost/` 下至少 1 个测试文件
+- CI `sanity` 与 `build` 双架构绿
+- PR 描述含 acceptance criteria 自检表
+
+**Checkpoint Tests**（CP-1，所有 T1-T5 合并后）：
+
+```sh
+# 在 main 分支上
+scripts/sanity-check.sh                                 # 全部 patch 不冲突
+scripts/build.sh ARCH=riscv64                           # build 通过
+scripts/build.sh ARCH=x86_64                            # build 通过
+scripts/build.sh ARCH=riscv64 TARGET=ci-test            # ci-test 通过
+scripts/build.sh ARCH=x86_64 TARGET=ci-test             # ci-test 通过
+```
+
+每个 T 的具体 acceptance test 见 [TEST-MATRIX.md](./TEST-MATRIX.md)。
 
 ---
 
 ### Phase 2：补齐工具链 & 关键 syscall
 
-| 任务 | Owner | 描述 | 估算 |
+**Entry Criteria**：CP-1 通过。
+
+**任务**：
+
+| ID | 任务 | Owner | 估算 |
 |---|---|---|---|
-| **T6** ptrace 子集 | D1 | TRACEME/ATTACH/DETACH/CONT/PEEKDATA/POKEDATA/GETREGS/SETREGS/SINGLESTEP/SYSCALL | 1500-2500 行，架构相关 |
-| **T7** prctl 完善 | D1 | PDEATHSIG/DUMPABLE/NO_NEW_PRIVS/KEEPCAPS/TID_ADDRESS/CHILD_SUBREAPER | 200-300 行 |
-| **T8** procfs 关键节点 | D2 | self/exe、cpuinfo、meminfo、sys/kernel/random/{boot_id,uuid} | 300-500 行 |
-| **T9** 缺失 syscall | D2 | execveat / waitid / openat2 / personality / setpriority(全PID) / getresuid | 400-600 行 |
-| **T10** rootfs-selfhost 镜像 | D2 | 基于 Alpine musl 打包 gcc/binutils/make/rust，每架构一份 | 镜像构建脚本 |
-| **T11** futex PI（可选） | D1 | LOCK_PI/UNLOCK_PI/TRYLOCK_PI | 300-500 行 |
+| T6 | ptrace 子集 | D1 | 1500-2500 行 |
+| T7 | prctl 完善（PDEATHSIG/DUMPABLE/NO_NEW_PRIVS/TID_ADDRESS/CHILD_SUBREAPER） | D1 | 200-300 |
+| T8 | procfs 关键节点（self/exe, cpuinfo, meminfo, random/uuid） | D2 | 300-500 |
+| T9 | 缺失 syscall（waitid, openat2, personality, setpriority(全PID), getresuid） | D2 | 400-600 |
+| T10 | rootfs-selfhost 镜像构建脚本（基于 Alpine musl） | D2 | 镜像构建脚本 + GitHub release |
+| T11 | （可选）futex PI | D1 | 300-500 |
 
-**Phase 2 出口标准**：
-- 上述任务每条独立 PR 合入 `selfhost-dev`。
-- `rootfs-selfhost-{x86_64,riscv64}.img.xz` 在 GitHub releases 发布。
-- `strace /bin/ls` 在 guest 内能正常输出。
-- guest 内 `cat /proc/cpuinfo /proc/meminfo` 输出合理。
+**Exit Criteria**：
+- `patches/T6..T10` 全部进 main
+- `rootfs-selfhost-{x86_64,riscv64}.img.xz` 在 GitHub Releases 发布
+- CI 加 job：`selfhost-toolchain-image-{arch}` 验证镜像里有 gcc/ld/make
 
----
-
-### Phase 3：S0 自我编译冒烟（小里程碑）
-
-| 任务 | Owner | 描述 |
-|---|---|---|
-| **T12** S0 测试 harness | D4 | guest 内编 hello.c → 运行；CI workflow 跑 |
-| **T13** x86_64 vDSO 最小集 | D1 | `__vdso_clock_gettime`、`__vdso_getcpu`，glibc 不爆 |
-| **T14** AddrSpace 锁优化 | D1 | Mutex → RwLock，并发 page fault 不串行 |
-
-**Phase 3 出口标准**：guest 内 `gcc hello.c -o hello && ./hello` 双架构 ✅。CI 中加 `selfhost-smoke-{arch}` job。
+**Checkpoint Tests**（CP-2）：
+- `strace /bin/ls` 输出含 execve/openat/exit_group
+- `cat /proc/cpuinfo`、`/proc/meminfo` 输出合理
+- `wget <release-url>/rootfs-selfhost-x86_64.img.xz` 下载，解压挂载后 `ls /opt/toolchain/bin` 看到 gcc
 
 ---
 
-### Phase 4：补齐稳定性 + CI 闸门
+### Phase 3：S0 自我编译冒烟
 
-| 任务 | Owner | 描述 |
-|---|---|---|
-| **T15** 信号 per-thread | D1 | `BLOCK_NEXT_SIGNAL_CHECK` → Thread 字段 |
-| **T16** mremap 真实 remap | D1 | 替换 mmap+memcpy 实现 |
-| **T17** madvise 真实生效 | D1 | DONTNEED/FREE/REMOVE |
-| **T18** virtio-9p 完整版 | D3 | 实现 9p2000.L 协议；host 源码直通 |
-| **T19** sysfs cpu 节点 | D2 | nproc 用 |
-| **T20** S1 中型测试 | D4 | guest 内编 BusyBox 全套 |
+**Entry Criteria**：CP-2 通过 + rootfs-selfhost 镜像可用。
 
-**Phase 4 出口标准**：guest 内能完整编出 BusyBox 并执行。
+**任务**：
 
----
+| ID | 任务 | Owner | 估算 |
+|---|---|---|---|
+| T12 | S0 测试 harness（guest 内编 hello.c） | D4 | CI workflow + scripts/selfhost-smoke.sh |
+| T13 | x86_64 vDSO 最小集（clock_gettime, getcpu） | D1 | 600-800 行（含汇编） |
+| T14 | AddrSpace Mutex → RwLock | D1 | 200-400 行 |
 
-### Phase 5：S2 cargo 自我编译
+**Exit Criteria**：CI 新 job `selfhost-smoke-{arch}` 双架构绿。
 
-| 任务 | Owner | 描述 |
-|---|---|---|
-| **T21** rootfs 加 rust 工具链 | D2 | rustc + cargo musl 静态版 |
-| **T22** AF_INET6 完整栈 | D3 | smoltcp v6，不再 fallback；保证 cargo 真能下 crate（或离线 mirror） |
-| **T23** S2 cargo 测试 | D4 | guest 内 `cargo new && cargo build` |
-
-**Phase 5 出口标准**：guest 内 `cargo build` 一个 100 行 Rust 程序双架构 ✅。
-
----
-
-### Phase 6：S3/S4 自举
-
-| 任务 | Owner | 描述 |
-|---|---|---|
-| **T24** xtask guest 兼容 | D2 | `cargo xtask starry build` 在 guest 内不假设 host 路径 |
-| **T25** 调大 swap / disk | D2 | guest 内编 LLVM/rustc 的内存峰值需要 ≥ 8 GiB |
-| **T26** S3 测试 | D4 | guest 内 build 出的 kernel ELF 用 host QEMU 启动到 BusyBox |
-| **T27** S4 reproducibility | D4 | host build 与 guest build 字节对比 |
-
-**Phase 6 出口标准**：guest 内重建 kernel ELF，能被 host QEMU 启动到 BusyBox shell。
-
----
-
-## 4. 4 人小组分工概览
-
-| 角色 | 简称 | 阶段 1 主任务 | 阶段 2 主任务 | 详情 |
-|---|---|---|---|---|
-| Kernel Core | **D1** | T1 execve | T6 ptrace、T7 prctl、T11 futex | 见 ROLES.md |
-| Resource & Build | **D2** | T5 rlimit | T8 procfs、T9 syscall、T10 rootfs | 见 ROLES.md |
-| FS & Net | **D3** | T2 locks、T3 IPv6、T4 mount | T18 9p | 见 ROLES.md |
-| Test & CI | **D4** | （等 Phase 1 PR）准备测试 harness | T12/T20/T23/T26/T27 测试矩阵 + CI | 见 ROLES.md |
-
-## 5. 协作规则（多人并发开发的硬约束）
-
-### 5.1 分支模型
-
-```
-upstream/dev   ←  PR  ←  yks23/tgoskits/selfhost-dev   ←  PR  ←  cursor/selfhost-<task>-7c9d
-       (rcore-os/tgoskits)         (集成分支)                          (子任务分支)
+**Checkpoint Tests**（CP-3 = M2）：
+```sh
+# guest 内（CI 自动跑）
+mount /dev/vdb /opt/toolchain
+export PATH=/opt/toolchain/bin:$PATH
+cat > /tmp/hello.c << 'EOF'
+#include <stdio.h>
+int main(){ puts("self-host hello"); return 0; }
+EOF
+gcc -static /tmp/hello.c -o /tmp/hello
+/tmp/hello       # 期望: self-host hello
+echo $?          # 期望: 0
 ```
 
-- **每个子任务（T1-T27）一个独立分支**，命名 `cursor/selfhost-<slug>-7c9d`。
-- **每个子任务一个独立 PR**，目标先合入 `yks23/tgoskits` 的 `selfhost-dev`。
-- 每周一次（或每个阶段结束），由 Director 把 `selfhost-dev` 整个 rebase/merge 后开 PR 到 `rcore-os/tgoskits` 的 `dev`。
-- **任何任务都基于最新的 `upstream/dev`**，不基于 `selfhost-dev`，避免子任务互相依赖。
+---
 
-### 5.2 文件级隔离
+### Phase 4：稳定性 + S1 BusyBox
 
-每个 subagent **必须在独立的 git worktree** 中工作，路径由 dispatcher 自动准备：
+**Entry Criteria**：CP-3 通过。
+
+**任务**：
+
+| ID | 任务 | Owner | 估算 |
+|---|---|---|---|
+| T15 | 信号 per-thread skip-flag | D1 | 50-100 |
+| T16 | mremap 真实页表 remap | D1 | 300-500 |
+| T17 | madvise 真实生效（DONTNEED/FREE/REMOVE） | D1 | 200-300 |
+| T18 | virtio-9p 完整版（host 源码直通） | D3 | 1500-2500 |
+| T19 | sysfs cpu 节点 | D2 | 100-200 |
+| T20 | S1 中型测试（guest 内编 BusyBox） | D4 | CI workflow + 镜像内放 BusyBox 源 |
+
+**Exit Criteria**：CI 新 job `selfhost-medium-{arch}` 通过。
+
+**Checkpoint Tests**（CP-4 = M3）：
+```sh
+guest$ tar xf /opt/sources/busybox-1.36.tar.gz -C /tmp
+guest$ cd /tmp/busybox-1.36 && make defconfig && make -j$(nproc)
+guest$ ls -lh busybox    # 期望: 静态 ELF, ~1MB
+```
+
+---
+
+### Phase 5：S2 cargo
+
+**Entry Criteria**：CP-4 通过 + rust 工具链已打包到 selfhost 镜像。
+
+**任务**：
+
+| ID | 任务 | Owner | 估算 |
+|---|---|---|---|
+| T21 | rootfs 加 rust 工具链（musl 静态 rustc/cargo） | D2 | 镜像构建脚本扩展 |
+| T22 | AF_INET6 完整栈（smoltcp v6） | D3 | 800-1500 |
+| T23 | S2 cargo 测试 | D4 | CI workflow |
+
+**Exit Criteria**：CI 新 job `selfhost-cargo-{arch}` 通过。
+
+**Checkpoint Tests**（CP-5 = M4）：
+```sh
+guest$ rustc --version
+guest$ cargo new /tmp/foo && cd /tmp/foo
+guest$ cargo build --release
+guest$ ./target/release/foo    # 期望: Hello, world!
+```
+
+---
+
+### Phase 6：S3/S4 完全自举
+
+**Entry Criteria**：CP-5 通过。
+
+**任务**：
+
+| ID | 任务 | Owner | 估算 |
+|---|---|---|---|
+| T24 | xtask guest 兼容（不假设 host 路径） | D2 | 100-300 |
+| T25 | guest 大磁盘 + swap | D2 | QEMU 配置 + 镜像 + swapon 实现 |
+| T26 | S3 测试（guest 编出 kernel ELF，host 用 QEMU 启动） | D4 | CI workflow |
+| T27 | S4 reproducibility（guest sha256 == host sha256） | D4 | SOURCE_DATE_EPOCH + 固定 seed |
+
+**Exit Criteria**：CI `selfhost-bootstrap-{arch}` 周 build 通过。
+
+**Checkpoint Tests**（CP-6 = M5/M6）：
+```sh
+# host 上记录基线
+host$ scripts/build.sh ARCH=x86_64
+host$ HOST_SHA=$(sha256sum tgoskits/os/StarryOS/target/.../starryos.elf)
+
+# guest 内重建
+guest$ git clone https://github.com/yks23/Auto-OS
+guest$ cd Auto-OS && scripts/apply-patches.sh --reset
+guest$ scripts/build.sh ARCH=x86_64
+guest$ scp ... guest-built.elf host:
+host$ qemu-system-x86_64 -kernel guest-built.elf ...   # 启动到 BusyBox shell == M5
+
+# 可选 M6
+host$ sha256sum guest-built.elf == HOST_SHA
+```
+
+## 4. 4 人小组分工总览
+
+| 角色 | Phase 1 主任务 | Phase 2-6 主任务 |
+|---|---|---|
+| **D1 Kernel Core** | T1 execve | T6 ptrace, T7 prctl, T11 futex, T13 vDSO, T14 RwLock, T15 信号, T16 mremap, T17 madvise |
+| **D2 Resource & Build** | T5 rlimit | T8 procfs, T9 misc syscall, T10 rootfs, T19 sysfs, T21 rust 工具链, T24 xtask, T25 大磁盘 |
+| **D3 FS & Net** | T2 locks, T3 IPv6, T4 mount | T18 9p, T22 v6 完整栈 |
+| **D4 Test & CI** | （等 T1-T5 PR）准备 acceptance test | T12 S0, T20 S1, T23 S2, T26 S3, T27 S4，所有 CI workflow 维护 |
+
+## 5. 协作硬约束（多人并发开发）
+
+### 5.1 分支与 PR 模型（Auto-OS 仓内全闭环）
 
 ```
-/workspace/tgoskits                       # Director 主 worktree（dev）
-/workspace/.worktrees/T1-execve-mt        # D1 在这里干活
-/workspace/.worktrees/T2-file-locks       # D3 在这里干活
-...
+main                                 ← Director merge here
+  ↑ PR
+cursor/selfhost-T1-execve-mt-7c9d   ← D1 工作分支（Auto-OS 仓）
+cursor/selfhost-T2-file-locks-7c9d  ← D3
+cursor/selfhost-T3-ipv6-7c9d        ← D3
+cursor/selfhost-T4-mount-fs-7c9d    ← D3
+cursor/selfhost-T5-rlimit-7c9d      ← D2
 ```
 
-worktree 由 dispatcher 启动 subagent 前 `git worktree add` 创建，结束后 `git worktree remove`。
+每个任务一个分支、一个 PR、一个 `patches/Tn-slug/` 子目录。
 
-### 5.3 文件冲突预防
+### 5.2 worktree 隔离
 
-按"文件主权"分配，5 个 Phase 1 任务的写文件区不重叠（**经过预先核对**）：
+每个 subagent 跑在 `/workspace/.worktrees/Tn-slug/` 独立 worktree（包含 Auto-OS 完整副本，自带子模块）。互不干扰。
 
-| 任务 | 主写文件 |
-|---|---|
-| T1 | `kernel/src/syscall/task/execve.rs`、`kernel/src/syscall/mod.rs`（仅加 `execveat` arm） |
-| T2 | 新增 `kernel/src/file/{flock,record_lock}.rs`，改 `kernel/src/syscall/fs/fd_ops.rs`、`kernel/src/file/mod.rs` |
-| T3 | `kernel/src/syscall/net/{socket,addr,opt}.rs` |
-| T4 | `kernel/src/syscall/fs/mount.rs` |
-| T5 | `kernel/src/config/{x86_64,riscv64,aarch64,loongarch64}.rs`、`Makefile`、`make/qemu.mk`、新增 `kernel/src/syscall/task/rlimit.rs` |
+### 5.3 文件主权（Phase 1 已核对）
 
-⚠️ **唯一可能冲突点**：T1 与 T2 都会动 `kernel/src/syscall/mod.rs`（T1 加 execveat、T2 不会动）；T2 改 `kernel/src/file/mod.rs`（注册新模块）、T1 不动；这两条**无实际冲突**。
+每个 Phase 1 任务的写文件区无重叠：
+
+| 任务 | tgoskits 内主写 | Auto-OS 内主写 |
+|---|---|---|
+| T1 | `kernel/src/syscall/task/execve.rs`、`syscall/mod.rs`（仅加 execveat arm） | `patches/T1-execve-mt/`、`tests/selfhost/test_execve_*.c` |
+| T2 | 新增 `kernel/src/file/{flock,record_lock}.rs`、`fd_ops.rs`、`file/mod.rs` | `patches/T2-file-locks/`、`tests/selfhost/test_flock_*.c`、`test_fcntl_*.c` |
+| T3 | `kernel/src/syscall/net/{socket,addr,opt}.rs` | `patches/T3-ipv6/`、`tests/selfhost/test_ipv6_*.c` |
+| T4 | `kernel/src/syscall/fs/mount.rs` | `patches/T4-mount-fs/`、`tests/selfhost/test_mount_*.{c,sh}` |
+| T5 | `kernel/src/config/*.rs`、`Makefile`、`make/qemu.mk`、新增 `kernel/src/syscall/task/rlimit.rs` | `patches/T5-rlimit/`、`tests/selfhost/test_rlimit_*.c` |
+
+唯一可能交叉点：T1 与 T5 都改 `kernel/src/syscall/task/mod.rs`（加新子模块声明）。Director 在合并时手动解决（一行 `mod xxx;` 加在末尾）。
 
 ### 5.4 Commit 与 PR 约定
 
-- **Conventional Commits**：`<type>(<scope>): <subject>`，例如 `feat(starry/syscall): real flock implementation`。
-- 每条 commit 一个独立小改动，不批量。
-- 每个 PR 有完整的 acceptance criteria 自检表（参见任务包模板）。
-- PR 描述链回本路线图与对应任务包。
-- PR 在所有 CI 通过、Director review 后，由 Director 合入。
+- **Conventional Commits**：`feat(starry/syscall): real flock implementation` 等。
+- 每个 commit 一个独立改动，**不批量**。
+- patches 提取后 Auto-OS 仓的 commit 用 `feat(patches/Tn): <description>` 格式。
+- PR 描述必须含 acceptance criteria 自检表（每条 ✅/⚠️/❌/🚧 + 简短说明）。
+- PR 必须 link 到对应 `selfhost-orchestrator/tasks/Tn-*.md`。
 
 ### 5.5 同步与冲突处理
 
-- **每天**（或每个 subagent 结束时）Director rebase `selfhost-dev` 上的最新 PR；冲突由相关 subagent 在自己分支 rebase 解决。
-- **不允许**任何 subagent 直接 push 到 `selfhost-dev` 或 `dev`；只能 PR。
-- **依赖关系**：T6 (ptrace) 依赖 T7 (prctl) 中的 `PR_SET_PTRACER`，但 prctl 可以先合入；并发开发但 review 顺序 T7→T6。
-- **共享 PR**：T22 (smoltcp v6) 可能要改 axnet 子树，需要先和上游 axnet 维护者沟通；这种"跨项目"任务由 Director 决策是否拆。
+- 每个任务独立基于 `PIN_COMMIT`，不互相依赖。
+- 如果 sanity-check 报告 patches 之间冲突，Director 协调后冲突方在自己分支解决并重新 extract。
+- PIN 升级独立 PR（`chore(pin): bump tgoskits to <sha>`），可能要求所有未合并的任务 rebase。
 
 ### 5.6 测试纪律
 
-- 每个 PR **必须**附带至少 1 个 C/Rust 测试用例，放在 `tgoskits/test-suit/starryos/selfhost/`。
-- 测试用例命名 `test_<feature>_<aspect>.c`。
-- 必须 musl 静态编译；输出统一 `[TEST] <name> PASS|FAIL` 格式。
-- 见 TEST-MATRIX.md。
+- 每 PR ≥ 1 个 C/Sh 测试用例。
+- 测试输出统一 `[TEST] <name> PASS|FAIL` 格式。
+- CI 用正则解析。
 
-## 6. 时间预估（不按日历，按"任务点"）
+## 6. 风险登记册
 
-| Phase | 任务点 | 关键路径长度 |
-|---|---|---|
-| Phase 0 | 4 项 | 1（取决于人授权） |
-| Phase 1 | 5 项并发 | 1 任务点 |
-| Phase 2 | 6 项，可分 2 批 | 2 任务点 |
-| Phase 3 | 3 项，T13/T14 并发 | 1.5 任务点 |
-| Phase 4 | 6 项，可分 2 批 | 2 任务点 |
-| Phase 5 | 3 项，可分 2 批 | 1.5 任务点 |
-| Phase 6 | 4 项 | 2 任务点 |
+| 风险 | 概率 | 影响 | 缓解 |
+|---|---|---|---|
+| patch 之间冲突 | 中 | sanity-check fail | §5.3 文件主权 + sanity-check 强制 |
+| PIN 升级时 patch 全 rebase 失败 | 中 | 一次性返工 | PIN 升级走独立 PR，逐个验 |
+| CI build 时间过长 | 中 | feedback 慢 | 缓存 musl toolchain + rootfs |
+| 9p 实现工作量超估 | 高 | T18 阻塞 | M3 用第二块 ext4 镜像也能跑，9p 列 stretch |
+| ptrace 改 trap 路径搞崩 | 中 | T6 阻塞 | T6 独立 PR，CI ci-test 兜底 |
+| token 额度不够 | 低 | dispatcher fan-out 部分失败 | dispatcher 支持 `--only` 串行 fallback |
+| subagent 输出质量参差 | 中 | 修复不全 | Director review + CI ci-test 强制 |
+| upstream 大 rebase 同期发生 | 低 | PIN 升级密集 | 频率 ≤ 1 次/周 |
 
-总计关键路径 ≈ **11 任务点**，并发度 4-5。
+## 7. 文档索引
 
-## 7. 风险登记册（Risk Register）
-
-| 风险 | 影响 | 缓解 |
-|---|---|---|
-| Cursor App 没有 `yks23/tgoskits` 写权限 | Phase 0 阻塞，整个流程跑不动 | **你必须授权**（Phase 0 出口） |
-| 并发 subagent 互相踩踏文件 | merge conflict 失控 | dispatcher worktree 隔离 + 5.3 文件主权 |
-| API token 额度爆掉 | 任务卡到一半 | dispatcher 可 `--only` 单跑、串行 fallback |
-| 9p 实现工作量超估 | T4/T18 阻塞自我编译 | 9p 列为 stretch；S0-S2 只用 ext4 第二块磁盘也能跑 |
-| ptrace 改 trap 路径风险高 | T6 把内核搞崩 | T6 隔离在独立 PR，先在测试套验证再合入 |
-| 子 agent 输出质量参差 | 修复后还是 broken | Director 每个 PR 强制 review；T12/T20/T23/T26 CI 闸门兜底 |
-
-## 8. 文档索引
-
-- `README.md` — orchestrator 总览
+- `README.md` — orchestrator 入口
 - `ROADMAP.md` ← 本文件
-- `ROLES.md` — 4 个开发岗位的职责
-- `TEST-MATRIX.md` — 验收测试用例矩阵
+- `ROLES.md` — 4 个开发岗位
+- `TEST-MATRIX.md` — 验收测试矩阵
 - `PROCESS-LOG.md` — 实时开发日志
-- `tasks/T*.md` — 27 个任务包 prompt
+- `tasks/T*.md` — 任务包 prompt
+- `../patches/README.md` — patches 工作流详解
+- `../scripts/*.sh` — 工具脚本
+- `../PIN.toml` — tgoskits base commit

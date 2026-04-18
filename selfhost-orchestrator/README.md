@@ -31,11 +31,15 @@ selfhost-orchestrator/
 └── logs/                 # 每个任务 run 的输出（不入 git）
 ```
 
-## 调度模型
+## 工作模式（patches-in-Auto-OS）
 
-总监 → Dispatcher → 每个任务在独立的 git worktree + 独立的 cursor-agent session 并发执行，
-各自向 `yks23/tgoskits` 的 `selfhost-dev` 集成分支提 PR；Director 周期性把 `selfhost-dev`
-整体 PR 到 `rcore-os/tgoskits` 的 `dev`。
+**所有工作发生在 `yks23/Auto-OS` 这一个仓里**。tgoskits 子模块永远 read-only，
+pin 在 `PIN.toml` 指定的上游 commit；所有内核改动以 patch 文件存在 `patches/Tn-slug/` 目录。
+
+子 agent 工作流：在自己的 git worktree 内修改 tgoskits → `git format-patch` 提取 →
+patch 文件 commit 到 Auto-OS 任务分支 → push → 在 Auto-OS 仓开 PR 到 main。
+
+完整规则见 [`../patches/README.md`](../patches/README.md) 与 ROADMAP §0。
 
 ```
                       Dispatcher
@@ -47,11 +51,10 @@ selfhost-orchestrator/
    (D1)    (D3)        (D3)       (D3)   (D2)
         │      │          │          │      │
         ▼      ▼          ▼          ▼      ▼
-       PR     PR         PR         PR     PR  →  yks23/tgoskits selfhost-dev
-                                                      │
-                                                  Director 周期 PR
-                                                      ▼
-                                            rcore-os/tgoskits dev
+   patch文件 + 测试用例    →   Auto-OS PR  →  main
+                                  │
+                              CI selfhost.yml
+                              sanity + build(rv,x86) + ci-test
 ```
 
 ## 用法

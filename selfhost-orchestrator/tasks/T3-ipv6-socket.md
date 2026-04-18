@@ -1,10 +1,10 @@
 # T3：AF_INET6 socket 支持
 
 ## 目标仓库
-- **fork（你 push 到这里）**：`https://github.com/yks23/tgoskits`
-- **upstream（只读基线）**：`https://github.com/rcore-os/tgoskits`
-- **基线分支**：`upstream/dev`
-- **PR 目标**：`yks23/tgoskits` 的 `selfhost-dev` 分支
+- **工作仓**：`https://github.com/yks23/Auto-OS`（你 push 到这里）
+- **tgoskits 子模块**：只读，pin 在 PIN.toml 指定的 commit；**不 push tgoskits**
+- **PR 目标**：`yks23/Auto-OS` 的 `main` 分支
+- **交付物**：`patches/Tn-slug/*.patch` + `tests/selfhost/test_*.c`
 - **你的工作分支**：`cursor/selfhost-ipv6-7c9d`
 
 ## 当前缺陷
@@ -55,7 +55,7 @@
 1. `feat(starry/net): add AF_INET6 socket with v4-mapped fallback`
 2. `test(starry/net): add IPv6 socket test cases`
 
-PR 标题：`feat(starry/net): basic AF_INET6 socket support (v4-mapped fallback)`，目标 `yks23/tgoskits` 的 `selfhost-dev` 分支。
+PR 标题：`feat(starry/net): basic AF_INET6 socket support (v4-mapped fallback)`，目标 `yks23/Auto-OS` 的 `main` 分支。
 
 ## 备注
 
