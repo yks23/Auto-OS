@@ -36,7 +36,7 @@ static void fail(const char *fmt, ...) {
 
 static void teardown(void) {
     umount2(MNT_POINT, MNT_DETACH | MNT_FORCE);
-    rmdir(MNT_POINT);
+    (void)rmdir(MNT_POINT);
 }
 
 int main(void) {
