@@ -1,0 +1,23 @@
+# StarryOS self-hosting 工作流：tgoskits 上游基线 pin
+#
+# 所有 patches/ 下的 patch 都基于这个 commit。
+# subagent 干活时，dispatcher 会先 reset tgoskits 子模块到这个 commit、
+# 再 apply 已有 patches，最后切到任务分支开始新改动。
+#
+# 升级 pin 流程：
+#   1. cd tgoskits && git fetch upstream dev
+#   2. 修改本文件 commit / branch
+#   3. 重新 apply 所有 patches，解决冲突，更新 patches/ 下的文件
+#   4. 提交一个 PR 标题 "chore(pin): bump tgoskits to <new-sha>"
+
+[upstream]
+repo = "https://github.com/rcore-os/tgoskits"
+branch = "dev"
+commit = "c7e88fb3d1313eff6bccd72bf28b6c1e8fae4d94"
+short  = "c7e88fb3"
+date   = "2026-04-17"
+note   = "test+fix(starry): add ioctl FIONBIO test and fix int parsing bug (#255)"
+
+[fork]
+repo = "https://github.com/yks23/tgoskits"
+note = "可选：将 patches 整合后 push 到 fork、再向 upstream 开 PR"
