@@ -1,7 +1,6 @@
 /*
  * Test: test_rlimit_stack_default
  * Phase: 1, Task: T5
- * Status: SKELETON (functional logic to be filled in by T5 implementer)
  *
  * Spec (from TEST-MATRIX.md):
  *   `getrlimit(RLIMIT_STACK).rlim_cur >= 8*1024*1024`
@@ -11,6 +10,8 @@
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <limits.h>
+#include <sys/resource.h>
 
 #define TEST_NAME "test_rlimit_stack_default"
 
@@ -36,9 +37,15 @@ int main(void) {
      *   1. getrlimit(RLIMIT_STACK, &rl)；
      *   2. 比较 rlim_cur 是否 >= 8MiB；
      *   3. 不满足则 fail 打印当前值。
-     *
-     * 当前骨架默认 PASS，等 T5 实现者把上面 TODO 替换为真实验证逻辑。
      */
+    struct rlimit rl;
+    if (getrlimit(RLIMIT_STACK, &rl) != 0) {
+        fail("getrlimit failed: %s", strerror(errno));
+    }
+    const rlim_t need = (rlim_t)8 * 1024 * 1024;
+    if (rl.rlim_cur < need) {
+        fail("RLIMIT_STACK rlim_cur=%llu < 8MiB", (unsigned long long)rl.rlim_cur);
+    }
     pass();
     return 0;
 }
