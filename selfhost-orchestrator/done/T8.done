@@ -1,0 +1,28 @@
+{
+  "task_id": "T8",
+  "status": "PARTIAL",
+  "patches": [
+    "patches/T8/0001-feat-starry-add-real-procfs-cpuinfo-meminfo-mounts-a.patch"
+  ],
+  "tests": [
+    "tests/selfhost/test_proc_self_exe.c",
+    "tests/selfhost/test_proc_cpuinfo.sh",
+    "tests/selfhost/test_proc_meminfo.sh",
+    "tests/selfhost/test_proc_random_uuid.sh",
+    "tests/selfhost/test_proc_loadavg.sh"
+  ],
+  "auto_os_branch": "cursor/t8-procfs-7c9d",
+  "auto_os_commits": [
+    "f3888f89a45fbd7d4ef615c5daad4676e1678904"
+  ],
+  "build_riscv64": "PASS",
+  "build_x86_64": "PASS",
+  "tests_in_guest": "0/5 SKIP",
+  "sanity_check": "FAIL",
+  "sanity_note": "T8 standalone apply OK; combined git am fails at T2 vs T1 (execve.rs / task/ops.rs), unrelated to T8",
+  "pr_url": "",
+  "blocked_by": [],
+  "decisions_needed": [
+    "gh pr create failed (Resource not accessible by integration); open PR manually for branch cursor/t8-procfs-7c9d"
+  ]
+}
