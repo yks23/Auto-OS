@@ -85,6 +85,12 @@ TASKS = [
     ("M1.5",   "guest-validation","cursor/m15-guest-validation-7c9d"),
     ("F-alpha","fork-exec-deadlock", "cursor/falpha-fork-exec-deadlock-7c9d"),
     ("F-beta", "console-rx",     "cursor/fbeta-console-rx-7c9d"),
+    ("F-gamma","pipe-dup2-race", "cursor/fgamma-pipe-race-7c9d"),
+    ("T6",     "ptrace",         "cursor/t6-ptrace-7c9d"),
+    ("T7",     "prctl",          "cursor/t7-prctl-7c9d"),
+    ("T8",     "procfs",         "cursor/t8-procfs-7c9d"),
+    ("T9",     "missing-syscalls","cursor/t9-missing-syscalls-7c9d"),
+    ("T10",    "selfhost-rootfs","cursor/t10-selfhost-rootfs-7c9d"),
 ]
 
 
