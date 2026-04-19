@@ -26,6 +26,9 @@ for arg in "$@"; do
 done
 ARCH="${ARCH:-riscv64}"
 
+# 整段（QEMU 引导 + 串口交互 + 31×guest 单测 timeout 30s）共享同一上限；默认 TIMEOUT=300 不够。
+GUEST_RUN_TIMEOUT=$((TIMEOUT + 31 * 35 + 300))
+
 case "$ARCH" in
     riscv64)
         ROOTFS_URL="https://github.com/Starry-OS/rootfs/releases/download/20260214/rootfs-riscv64.img.xz"
@@ -46,7 +49,16 @@ KERNEL_ELF="$TGOSKITS/target/$RUST_TARGET/release/starryos"
 TESTS_OUT="$ROOT/tests/selfhost/out-$ARCH"
 [[ -d "$TESTS_OUT" ]] || die "tests not built: $TESTS_OUT (run 'make ARCH=$ARCH' under tests/selfhost first)"
 
-# 1. 准备一个工作目录
+# 1. 准备一个工作目录（避免历史上 `sudo bash` 整脚本导致 .guest-runs 属主为 root、后续无法 mkdir）
+if [[ ! -w "$ROOT/.guest-runs" && -d "$ROOT/.guest-runs" ]]; then
+    log "fixing permissions on $ROOT/.guest-runs..."
+    if [[ "$(id -u)" -eq 0 && -n "${SUDO_UID:-}" ]]; then
+        chown -R "$SUDO_UID:$SUDO_GID" "$ROOT/.guest-runs"
+    else
+        sudo chown -R "$(id -u):$(id -g)" "$ROOT/.guest-runs"
+    fi
+fi
+mkdir -p "$ROOT/.guest-runs"
 WORK="$ROOT/.guest-runs/$ARCH"
 mkdir -p "$WORK"
 ROOTFS_RAW="$WORK/rootfs.img"
@@ -73,26 +85,55 @@ sudo chmod +x "$MNT/opt/selfhost-tests/"*
 # 写 run-tests.sh
 cat > "$WORK/run-tests.sh" << 'EOF'
 #!/bin/sh
-# Self-host Phase 1 test runner (runs inside guest BusyBox).
+# Self-host Phase 1 test runner (runs inside guest BusyBox / starry).
 echo "===SELFHOST-TEST-RUN-START==="
 TOTAL=0
 PASS=0
 FAIL=0
 SKIP=0
+HANG=0
 for t in /opt/selfhost-tests/test_*; do
     TOTAL=$((TOTAL+1))
     name="${t##*/}"
-    out="$(timeout 30 "$t" 2>&1)"
-    rc=$?
-    echo "$out" | grep -E '^\[TEST\]' || echo "[TEST] $name FAIL: no [TEST] line (rc=$rc)"
-    case "$out" in
-        *"PASS (SKIP"*|*"PASS (skipped"*) SKIP=$((SKIP+1)) ;;
-        *"PASS"*) PASS=$((PASS+1)) ;;
-        *) FAIL=$((FAIL+1)) ;;
-    esac
+    echo "===RUNNING $name==="
+    # 用 & + sleep + kill 实现"软超时"，starry 可能没 timeout(1)
+    "$t" > /tmp/_tout 2>&1 &
+    pid=$!
+    waited=0
+    while [ $waited -lt 30 ]; do
+        if ! kill -0 $pid 2>/dev/null; then
+            break
+        fi
+        sleep 1
+        waited=$((waited+1))
+    done
+    if kill -0 $pid 2>/dev/null; then
+        kill -9 $pid 2>/dev/null
+        wait $pid 2>/dev/null
+        echo "[TEST] $name FAIL: HANG (>30s)"
+        HANG=$((HANG+1))
+        FAIL=$((FAIL+1))
+    else
+        wait $pid
+        rc=$?
+        out="$(cat /tmp/_tout)"
+        line="$(echo "$out" | grep -E '^\[TEST\]' | head -1)"
+        if [ -n "$line" ]; then
+            echo "$line"
+        else
+            echo "[TEST] $name FAIL: no [TEST] line (rc=$rc)"
+            echo "  ---tail---"
+            echo "$out" | tail -3 | sed 's/^/  /'
+        fi
+        case "$out" in
+            *"PASS (SKIP"*|*"PASS (skipped"*) SKIP=$((SKIP+1)) ;;
+            *"PASS"*) PASS=$((PASS+1)) ;;
+            *) FAIL=$((FAIL+1)) ;;
+        esac
+    fi
 done
 echo "===SELFHOST-TEST-RUN-END==="
-echo "===SELFHOST-SUMMARY total=$TOTAL pass=$PASS fail=$FAIL skip=$SKIP==="
+echo "===SELFHOST-SUMMARY total=$TOTAL pass=$PASS fail=$FAIL skip=$SKIP hang=$HANG==="
 EOF
 sudo cp "$WORK/run-tests.sh" "$MNT/opt/run-tests.sh"
 sudo chmod +x "$MNT/opt/run-tests.sh"
@@ -102,9 +143,9 @@ trap - EXIT
 
 # 3. 启动 QEMU 在后台
 LOG="$WORK/qemu.log"
-log "starting QEMU (log: $LOG)..."
+log "starting QEMU (log: $LOG, guest_run_timeout=${GUEST_RUN_TIMEOUT}s)..."
 bash "$SCRIPT_DIR/qemu-run-kernel.sh" \
-    ARCH="$ARCH" KERNEL="$KERNEL_ELF" DISK="$ROOTFS_RAW" TIMEOUT="$TIMEOUT" \
+    ARCH="$ARCH" KERNEL="$KERNEL_ELF" DISK="$ROOTFS_RAW" TIMEOUT="$GUEST_RUN_TIMEOUT" \
     > "$LOG" 2>&1 &
 QEMU_PID=$!
 
@@ -129,20 +170,20 @@ for i in $(seq 1 30); do
     fi
 done
 
-# 5. 用 python 接进去，等 prompt → 发命令 → 收集结果
+# 5. 接进串口被动收集（init.sh 会自动跑 /opt/run-tests.sh，不需要 stdin 交互）
+# starry kernel 的 console RX 路径暂未工作，所以我们走「不需要 stdin」的方案：
+# init.sh 的修改 hook（feat(starry/init): auto-run /opt/run-tests.sh hook）
+# 在 boot 完成后会自动 exec /opt/run-tests.sh，跑完打 ===SELFHOST-DONE===。
 RESULT="$WORK/results.txt"
 python3 << PY > "$RESULT" 2>&1
-import socket, re, sys, time
-PROMPT = "starry:~#"
-TIMEOUT_TOTAL = $TIMEOUT
+import socket, sys, time
+TIMEOUT_TOTAL = $GUEST_RUN_TIMEOUT
 START = time.monotonic()
 
 s = socket.create_connection(("localhost", 4444), timeout=10)
 s.settimeout(5)
 buf = ""
-sent_run = False
-sent_exit = False
-seen_summary = False
+seen_done = False
 while True:
     if time.monotonic() - START > TIMEOUT_TOTAL:
         print("===TIMEOUT===")
@@ -158,14 +199,9 @@ while True:
         break
     sys.stdout.write(b); sys.stdout.flush()
     buf += b
-    if PROMPT in buf and not sent_run:
-        s.sendall(b"sh /opt/run-tests.sh\n")
-        sent_run = True
-    if "===SELFHOST-SUMMARY" in buf and not seen_summary:
-        seen_summary = True
-        s.sendall(b"exit\n")
-        sent_exit = True
-        # 再读一会让 exit 行刷出来
+    if "===SELFHOST-DONE===" in buf and not seen_done:
+        seen_done = True
+        # 再读一会让 buffer 排空
         time.sleep(2)
         break
 PY

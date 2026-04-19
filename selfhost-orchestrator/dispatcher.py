@@ -83,6 +83,8 @@ TASKS = [
     ("T4",     "mount-ext4-9p",   "cursor/selfhost-mount-fs-7c9d"),
     ("T5",     "resource-limits", "cursor/selfhost-resource-limits-7c9d"),
     ("M1.5",   "guest-validation","cursor/m15-guest-validation-7c9d"),
+    ("F-alpha","fork-exec-deadlock", "cursor/falpha-fork-exec-deadlock-7c9d"),
+    ("F-beta", "console-rx",     "cursor/fbeta-console-rx-7c9d"),
 ]
 
 

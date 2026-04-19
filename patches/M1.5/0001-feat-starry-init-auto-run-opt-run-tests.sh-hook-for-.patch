@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Director <director@cursor.local>
+Date: Sun, 19 Apr 2026 11:25:31 +0000
+Subject: [PATCH] feat(starry/init): auto-run /opt/run-tests.sh hook for
+ self-host validation
+
+
+diff --git a/os/StarryOS/starryos/src/init.sh b/os/StarryOS/starryos/src/init.sh
+index 1f1ea3d7..913680c0 100644
+--- a/os/StarryOS/starryos/src/init.sh
++++ b/os/StarryOS/starryos/src/init.sh
+@@ -15,4 +15,13 @@ echo
+ 
+ cd "$HOME" || cd /
+ export PS1='${USER}@${HOSTNAME}:${PWD} # '
++
++# Self-host test hook: 如果 rootfs 注入了 /opt/run-tests.sh，自动跑测试
++# 不依赖 stdin，跑完后 echo SELFHOST-DONE 然后退出。
++if [ -x /opt/run-tests.sh ]; then
++    /opt/run-tests.sh
++    echo "===SELFHOST-DONE==="
++    exit 0
++fi
++
+ exec /bin/sh -i
