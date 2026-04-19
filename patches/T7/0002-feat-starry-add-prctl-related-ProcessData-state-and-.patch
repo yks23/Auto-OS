@@ -1,0 +1,123 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sun, 19 Apr 2026 17:10:14 +0000
+Subject: [PATCH] feat(starry): add prctl-related ProcessData state and
+ fork/exec inheritance
+
+Made-with: Cursor
+
+diff --git a/os/StarryOS/kernel/src/syscall/task/clone.rs b/os/StarryOS/kernel/src/syscall/task/clone.rs
+index 2fc39edd..28ef66e2 100644
+--- a/os/StarryOS/kernel/src/syscall/task/clone.rs
++++ b/os/StarryOS/kernel/src/syscall/task/clone.rs
+@@ -228,6 +228,7 @@ impl CloneArgs {
+             );
+             proc_data.set_umask(old_proc_data.umask());
+             proc_data.set_heap_top(old_proc_data.get_heap_top());
++            proc_data.copy_prctl_from(&old_proc_data);
+ 
+             {
+                 let mut scope = proc_data.scope.write();
+diff --git a/os/StarryOS/kernel/src/syscall/task/execve.rs b/os/StarryOS/kernel/src/syscall/task/execve.rs
+index 614d3d40..11934594 100644
+--- a/os/StarryOS/kernel/src/syscall/task/execve.rs
++++ b/os/StarryOS/kernel/src/syscall/task/execve.rs
+@@ -71,6 +71,9 @@ pub fn sys_execve(
+     // Clear set_child_tid after exec since the original address is no longer valid
+     curr.as_thread().set_clear_child_tid(0);
+ 
++    // Linux clears PR_SET_PDEATHSIG across execve(2)
++    proc_data.set_pdeath_signal(0);
++
+     // Close CLOEXEC file descriptors
+     let mut fd_table = FD_TABLE.write();
+     let cloexec_fds = fd_table
+diff --git a/os/StarryOS/kernel/src/task/mod.rs b/os/StarryOS/kernel/src/task/mod.rs
+index c26f907e..f1f70a88 100644
+--- a/os/StarryOS/kernel/src/task/mod.rs
++++ b/os/StarryOS/kernel/src/task/mod.rs
+@@ -233,6 +233,15 @@ pub struct ProcessData {
+ 
+     /// The default mask for file permissions.
+     umask: AtomicU32,
++
++    /// Parent-death signal (Linux `PR_SET_PDEATHSIG`); `0` means disabled.
++    pdeath_signal: AtomicI32,
++    /// Core dump policy (`PR_GET/SET_DUMPABLE`); default `1`.
++    dumpable: AtomicU32,
++    /// `PR_SET_NO_NEW_PRIVS` sticky bit.
++    no_new_privs: AtomicBool,
++    /// `PR_SET_KEEPCAPS` (capabilities bookkeeping; treated as a stored flag).
++    keep_caps: AtomicBool,
+ }
+ 
+ impl ProcessData {
+@@ -267,9 +276,30 @@ impl ProcessData {
+             futex_table: Arc::new(FutexTable::new()),
+ 
+             umask: AtomicU32::new(0o022),
++
++            pdeath_signal: AtomicI32::new(0),
++            dumpable: AtomicU32::new(1),
++            no_new_privs: AtomicBool::new(false),
++            keep_caps: AtomicBool::new(false),
+         })
+     }
+ 
++    /// Copy prctl-related fields from another [`ProcessData`] (e.g. on `fork`).
++    pub fn copy_prctl_from(&self, other: &ProcessData) {
++        self.pdeath_signal.store(
++            other.pdeath_signal.load(Ordering::Relaxed),
++            Ordering::Relaxed,
++        );
++        self.dumpable
++            .store(other.dumpable.load(Ordering::Relaxed), Ordering::Relaxed);
++        self.no_new_privs.store(
++            other.no_new_privs.load(Ordering::Relaxed),
++            Ordering::Relaxed,
++        );
++        self.keep_caps
++            .store(other.keep_caps.load(Ordering::Relaxed), Ordering::Relaxed);
++    }
++
+     /// Get the top address of the user heap.
+     pub fn get_heap_top(&self) -> usize {
+         self.heap_top.load(Ordering::Acquire)
+@@ -300,4 +330,37 @@ impl ProcessData {
+     pub fn replace_umask(&self, umask: u32) -> u32 {
+         self.umask.swap(umask, Ordering::SeqCst)
+     }
++
++    /// Raw parent-death signal number (`0` = disabled).
++    pub fn pdeath_signal(&self) -> i32 {
++        self.pdeath_signal.load(Ordering::Relaxed)
++    }
++
++    pub fn set_pdeath_signal(&self, sig: i32) {
++        self.pdeath_signal.store(sig, Ordering::Relaxed);
++    }
++
++    pub fn dumpable(&self) -> u32 {
++        self.dumpable.load(Ordering::Relaxed)
++    }
++
++    pub fn set_dumpable(&self, v: u32) {
++        self.dumpable.store(v, Ordering::Relaxed);
++    }
++
++    pub fn no_new_privs(&self) -> bool {
++        self.no_new_privs.load(Ordering::Relaxed)
++    }
++
++    pub fn set_no_new_privs(&self) {
++        self.no_new_privs.store(true, Ordering::Relaxed);
++    }
++
++    pub fn keep_caps(&self) -> bool {
++        self.keep_caps.load(Ordering::Relaxed)
++    }
++
++    pub fn set_keep_caps(&self, v: bool) {
++        self.keep_caps.store(v, Ordering::Relaxed);
++    }
+ }
