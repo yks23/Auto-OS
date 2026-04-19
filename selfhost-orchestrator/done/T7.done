@@ -1,0 +1,28 @@
+{
+  "task_id": "T7",
+  "status": "PARTIAL",
+  "patches": [
+    "patches/T7/0001-feat-starry-process-reparent-orphans-to-nearest-chil.patch",
+    "patches/T7/0002-feat-starry-add-prctl-related-ProcessData-state-and-.patch",
+    "patches/T7/0003-feat-starry-extend-sys_prctl-and-deliver-parent-deat.patch"
+  ],
+  "tests": [
+    "tests/selfhost/test_prctl_pdeathsig.c",
+    "tests/selfhost/test_prctl_dumpable.c",
+    "tests/selfhost/test_prctl_no_new_privs.c",
+    "tests/selfhost/test_prctl_keepcaps.c",
+    "tests/selfhost/test_prctl_get_tid_address.c"
+  ],
+  "auto_os_branch": "cursor/t7-prctl-7c9d",
+  "auto_os_commits": [
+    "48c62090067f60d57ffb89df87ad449af5149cba"
+  ],
+  "build_riscv64": "PASS",
+  "build_x86_64": "PASS",
+  "tests_in_guest": "0/5 PASS (guest not run; host gcc compile of tests only)",
+  "pr_url": "",
+  "blocked_by": [
+    "scripts/sanity-check.sh combined patch apply fails even when patches/T7 is absent (pre-existing stack conflict). T7 standalone apply succeeds."
+  ],
+  "decisions_needed": []
+}
