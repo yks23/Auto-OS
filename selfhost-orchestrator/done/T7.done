@@ -1,33 +1,27 @@
 {
   "task_id": "T7",
   "status": "PARTIAL",
+  "what_done": [
+    "已在 tgoskits 实现并导出为 patches/T7：sys_prctl 扩展（PDEATHSIG、GET/SET_DUMPABLE、GET/SET_KEEPCAPS、NO_NEW_PRIVS、CHILD_SUBREAPER、GET_TID_ADDRESS、THP disable/get 占位）、ProcessData 状态与 fork 继承、exec 后清除 PDEATHSIG、do_exit 末线程在 process.exit 前对子进程投递 parent-death 信号",
+    "starry-process：child subreaper 标志与 Process::exit 时孤儿改挂最近 subreaper 祖先否则 init",
+    "patches/T7/ 下 3 个 format-patch 文件与 META.toml 已在 Auto-OS 仓中",
+    "tests/selfhost/ 下 5 个 test_prctl_*.c 已在 Auto-OS 仓中",
+    "此前在本 worktree 运行过 scripts/build.sh ARCH=riscv64 与 ARCH=x86_64 均成功",
+    "分支 cursor/t7-prctl-7c9d 已推送到 origin（含功能提交与若干 chore sentinel 提交）"
+  ],
+  "what_not_done": [
+    "未在 QEMU guest 内执行 5 个自测二进制（仅宿主机侧可编译性验证，若有）",
+    "scripts/sanity-check.sh 的「ALL patches together」步骤在仓库当前 patch 集合上失败；临时移除 patches/T7 后仍失败，属既有合并栈问题，本次未改其他任务 patch",
+    "未能通过 gh pr create 自动开 PR（GraphQL：Resource not accessible by integration），需人工在 GitHub 从该分支开 PR"
+  ],
+  "blockers": [
+    "合并 apply 的 sanity-check 在 PIN+全 patch 顺序 apply 下失败（与 T7 单独 apply 成功并存）",
+    "CI/集成所用 GitHub token 对 createPullRequest 不可用（或等价权限限制）"
+  ],
   "patches": [
     "patches/T7/0001-feat-starry-process-reparent-orphans-to-nearest-chil.patch",
     "patches/T7/0002-feat-starry-add-prctl-related-ProcessData-state-and-.patch",
     "patches/T7/0003-feat-starry-extend-sys_prctl-and-deliver-parent-deat.patch"
   ],
-  "tests": [
-    "tests/selfhost/test_prctl_pdeathsig.c",
-    "tests/selfhost/test_prctl_dumpable.c",
-    "tests/selfhost/test_prctl_no_new_privs.c",
-    "tests/selfhost/test_prctl_keepcaps.c",
-    "tests/selfhost/test_prctl_get_tid_address.c"
-  ],
-  "auto_os_branch": "cursor/t7-prctl-7c9d",
-  "auto_os_commits": [
-    "48c62090067f60d57ffb89df87ad449af5149cba",
-    "abd22d43ef5aadb50f9f21ebde4814e50d4dca4a",
-    "5a8aa7172bf5af68f1d40aa2c3e253073c333824",
-    "1b59adced32a71580861030926927cf39e38b744",
-    "5fc4706cd8a24641bde7292244074f40d1ef220c"
-  ],
-  "build_riscv64": "PASS",
-  "build_x86_64": "PASS",
-  "tests_in_guest": "0/5 PASS (guest not run; host gcc compile of tests only)",
-  "pr_url": "",
-  "blocked_by": [
-    "scripts/sanity-check.sh combined patch apply fails even when patches/T7 is absent (pre-existing stack conflict). Per-task standalone apply including T7 succeeds.",
-    "gh pr create failed: GraphQL Resource not accessible by integration — open PR manually from branch cursor/t7-prctl-7c9d."
-  ],
-  "decisions_needed": []
+  "guest_verified": false
 }
