@@ -77,8 +77,9 @@ mkdir -p "$MNT"
 sudo mount -o loop "$ROOTFS_RAW" "$MNT"
 trap 'sudo umount "$MNT" 2>/dev/null; true' EXIT
 
+sudo rm -rf "$MNT/opt/selfhost-tests"
 sudo mkdir -p "$MNT/opt/selfhost-tests"
-# 拷 test 二进制
+# 拷 test 二进制（先清空，避免上次留下的 bisect 等污染）
 sudo cp "$TESTS_OUT"/test_* "$MNT/opt/selfhost-tests/"
 sudo chmod +x "$MNT/opt/selfhost-tests/"*
 
@@ -86,54 +87,17 @@ sudo chmod +x "$MNT/opt/selfhost-tests/"*
 cat > "$WORK/run-tests.sh" << 'EOF'
 #!/bin/sh
 # Self-host Phase 1 test runner (runs inside guest BusyBox / starry).
+# 极简版：每个测试跑前 echo RUNNING name，跑后 echo DONE name。
+# 死锁时 host 看到 RUNNING name 没有 DONE，知道它 hang。
 echo "===SELFHOST-TEST-RUN-START==="
-TOTAL=0
-PASS=0
-FAIL=0
-SKIP=0
-HANG=0
 for t in /opt/selfhost-tests/test_*; do
-    TOTAL=$((TOTAL+1))
     name="${t##*/}"
     echo "===RUNNING $name==="
-    # 用 & + sleep + kill 实现"软超时"，starry 可能没 timeout(1)
-    "$t" > /tmp/_tout 2>&1 &
-    pid=$!
-    waited=0
-    while [ $waited -lt 30 ]; do
-        if ! kill -0 $pid 2>/dev/null; then
-            break
-        fi
-        sleep 1
-        waited=$((waited+1))
-    done
-    if kill -0 $pid 2>/dev/null; then
-        kill -9 $pid 2>/dev/null
-        wait $pid 2>/dev/null
-        echo "[TEST] $name FAIL: HANG (>30s)"
-        HANG=$((HANG+1))
-        FAIL=$((FAIL+1))
-    else
-        wait $pid
-        rc=$?
-        out="$(cat /tmp/_tout)"
-        line="$(echo "$out" | grep -E '^\[TEST\]' | head -1)"
-        if [ -n "$line" ]; then
-            echo "$line"
-        else
-            echo "[TEST] $name FAIL: no [TEST] line (rc=$rc)"
-            echo "  ---tail---"
-            echo "$out" | tail -3 | sed 's/^/  /'
-        fi
-        case "$out" in
-            *"PASS (SKIP"*|*"PASS (skipped"*) SKIP=$((SKIP+1)) ;;
-            *"PASS"*) PASS=$((PASS+1)) ;;
-            *) FAIL=$((FAIL+1)) ;;
-        esac
-    fi
+    "$t"
+    echo "===DONE $name==="
 done
 echo "===SELFHOST-TEST-RUN-END==="
-echo "===SELFHOST-SUMMARY total=$TOTAL pass=$PASS fail=$FAIL skip=$SKIP hang=$HANG==="
+echo "===SELFHOST-SUMMARY done==="
 EOF
 sudo cp "$WORK/run-tests.sh" "$MNT/opt/run-tests.sh"
 sudo chmod +x "$MNT/opt/run-tests.sh"

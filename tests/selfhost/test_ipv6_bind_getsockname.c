@@ -1,7 +1,6 @@
 /*
  * Test: test_ipv6_bind_getsockname
  * Phase: 1, Task: T3
- * Status: SKELETON (functional logic to be filled in by T3 implementer)
  *
  * Spec (from TEST-MATRIX.md):
  *   bind `[::]:0` 后 `getsockname` family == AF_INET6
@@ -11,6 +10,9 @@
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #define TEST_NAME "test_ipv6_bind_getsockname"
 
@@ -37,9 +39,41 @@ int main(void) {
      *   2. bind 全零地址端口 0；
      *   3. getsockname 填充 sockaddr_storage；
      *   4. 校验 ss_family==AF_INET6 且端口非 0。
-     *
-     * 当前骨架默认 PASS，等 T3 实现者把上面 TODO 替换为真实验证逻辑。
      */
+    int fd = socket(AF_INET6, SOCK_STREAM, 0);
+    if (fd < 0) {
+        fail("socket failed: %s", strerror(errno));
+    }
+
+    struct sockaddr_in6 bind_addr;
+    memset(&bind_addr, 0, sizeof(bind_addr));
+    bind_addr.sin6_family = AF_INET6;
+    bind_addr.sin6_port = htons(0);
+    bind_addr.sin6_addr = in6addr_any;
+
+    if (bind(fd, (struct sockaddr *)&bind_addr, sizeof(bind_addr)) != 0) {
+        fail("bind failed: %s", strerror(errno));
+    }
+
+    struct sockaddr_storage ss;
+    socklen_t sslen = sizeof(ss);
+    memset(&ss, 0, sizeof(ss));
+    if (getsockname(fd, (struct sockaddr *)&ss, &sslen) != 0) {
+        fail("getsockname failed: %s", strerror(errno));
+    }
+
+    if (ss.ss_family != AF_INET6) {
+        fail("expected ss_family AF_INET6, got %d", (int)ss.ss_family);
+    }
+
+    struct sockaddr_in6 *out = (struct sockaddr_in6 *)&ss;
+    if (ntohs(out->sin6_port) == 0) {
+        fail("expected ephemeral port != 0 after bind");
+    }
+
+    if (close(fd) != 0) {
+        fail("close failed: %s", strerror(errno));
+    }
     pass();
     return 0;
 }
