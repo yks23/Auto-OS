@@ -17,7 +17,8 @@
     "tests/selfhost/test_getresuid_basic.c"
   ],
   "auto_os_commits": [
-    "2a0a3c978f0148bec9c30e21649bf2e2387dc35a"
+    "2a0a3c978f0148bec9c30e21649bf2e2387dc35a",
+    "94d5b2638362d36e6412c0320602ba8f5d0ba2cb"
   ],
   "pr_url": "",
   "sanity_check": "FAIL",
