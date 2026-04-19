@@ -25,6 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 TASKS_DIR = ROOT / "tasks"
 LOGS_DIR = ROOT / "logs"
+SESSIONS_DIR = ROOT / "sessions"
 WORKTREES_DIR = ROOT.parent / ".worktrees"
 WORKSPACE = ROOT.parent
 TGOSKITS = WORKSPACE / "tgoskits"
@@ -81,6 +82,7 @@ TASKS = [
     ("T3",     "ipv6-socket",     "cursor/selfhost-ipv6-7c9d"),
     ("T4",     "mount-ext4-9p",   "cursor/selfhost-mount-fs-7c9d"),
     ("T5",     "resource-limits", "cursor/selfhost-resource-limits-7c9d"),
+    ("M1.5",   "guest-validation","cursor/m15-guest-validation-7c9d"),
 ]
 
 
@@ -218,8 +220,17 @@ def build_prompt(task_id: str, branch: str, worktree: Path) -> str:
 
 
 def cmd_for(task_id: str, branch: str, model: str | None,
-            worktree: Path) -> list[str]:
-    prompt = build_prompt(task_id, branch, worktree)
+            worktree: Path, session_id: str | None = None,
+            extra_prompt: str | None = None) -> list[str]:
+    """
+    构建 cursor-agent CLI 调用：
+    - session_id != None：用 --resume <id>，prompt 当作"接着干"的 followup
+    - session_id == None：新建 session
+    """
+    if extra_prompt is not None:
+        prompt = extra_prompt
+    else:
+        prompt = build_prompt(task_id, branch, worktree)
     cmd = [
         AGENT_BIN,
         "-p",
@@ -229,10 +240,56 @@ def cmd_for(task_id: str, branch: str, model: str | None,
         "--trust",
         "--workspace", str(worktree),
     ]
+    if session_id:
+        cmd += ["--resume", session_id]
     if model:
         cmd += ["--model", model]
     cmd.append(prompt)
     return cmd
+
+
+def session_file(task_id: str) -> Path:
+    SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    return SESSIONS_DIR / f"{task_id}.session"
+
+
+def load_session_id(task_id: str) -> str | None:
+    sf = session_file(task_id)
+    if sf.exists():
+        return sf.read_text().strip() or None
+    return None
+
+
+def save_session_id(task_id: str, sid: str) -> None:
+    session_file(task_id).write_text(sid)
+
+
+def create_chat() -> str:
+    """调用 cursor-agent create-chat 拿 session ID。"""
+    r = subprocess.run([AGENT_BIN, "create-chat"],
+                       capture_output=True, text=True, timeout=60)
+    if r.returncode != 0:
+        raise RuntimeError(f"create-chat failed: {r.stderr}")
+    return r.stdout.strip().splitlines()[-1].strip()
+
+
+def extract_session_id_from_log(log_path: Path) -> str | None:
+    """从 stream-json log 中提取 session_id（任意一个 event 上都有）。"""
+    if not log_path.exists():
+        return None
+    try:
+        with open(log_path) as f:
+            for line in f:
+                try:
+                    obj = json.loads(line)
+                except Exception:
+                    continue
+                sid = obj.get("session_id")
+                if sid:
+                    return sid
+    except Exception:
+        pass
+    return None
 
 
 def env_check() -> tuple[bool, str]:
@@ -247,24 +304,43 @@ def env_check() -> tuple[bool, str]:
 
 
 def dispatch_one(task_id: str, branch: str, *, dry_run: bool, model: str | None,
-                 foreground: bool = False) -> dict:
+                 foreground: bool = False, resume: bool = False,
+                 followup_prompt: str | None = None) -> dict:
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_path = LOGS_DIR / f"{task_id}_{ts}.log"
 
     if dry_run:
-        # dry-run 只构造命令，不真创建 worktree
         wt = worktree_path(task_id)
     else:
         wt = ensure_worktree(task_id, branch)
 
-    cmd = cmd_for(task_id, branch, model, wt)
+    sid = None
+    if resume:
+        sid = load_session_id(task_id)
+        if not sid:
+            raise RuntimeError(f"--resume requested but no session for {task_id}; run without --resume first")
+    else:
+        # 新 session：尝试 create-chat 拿 ID，存盘后用 --resume 启动
+        # 这样后续可以接着干
+        if not dry_run:
+            try:
+                sid = create_chat()
+                save_session_id(task_id, sid)
+            except Exception as e:
+                # 不致命：第一次跑也可以不带 --resume，session_id 会出现在 stream-json log 里
+                print(f"  [warn] create-chat failed ({e}); will extract sid from log", file=sys.stderr)
+
+    cmd = cmd_for(task_id, branch, model, wt, session_id=sid,
+                  extra_prompt=followup_prompt)
 
     info = {
         "task": task_id,
         "branch": branch,
         "worktree": str(wt),
         "log": str(log_path),
+        "session_id": sid,
+        "resumed": resume,
         "started_at": datetime.now().isoformat(timespec="seconds"),
         "cmd_preview": " ".join(shlex.quote(c) if i < len(cmd) - 1 else "<PROMPT>"
                                 for i, c in enumerate(cmd)),
@@ -284,7 +360,6 @@ def dispatch_one(task_id: str, branch: str, *, dry_run: bool, model: str | None,
     if foreground:
         info["mode"] = "foreground"
         log_fp.close()
-        # 前台运行：output 同时写文件和 stdout（subagent 可能很久）
         with open(log_path, "ab", buffering=0) as f:
             proc = subprocess.Popen(
                 cmd,
@@ -300,6 +375,12 @@ def dispatch_one(task_id: str, branch: str, *, dry_run: bool, model: str | None,
                 sys.stdout.buffer.flush()
             rc = proc.wait()
         info["returncode"] = rc
+        # 如果 create-chat 之前没成功，从 log 里捞 sid
+        if not sid:
+            extracted = extract_session_id_from_log(log_path)
+            if extracted:
+                save_session_id(task_id, extracted)
+                info["session_id"] = extracted
         return info
 
     proc = subprocess.Popen(
@@ -324,7 +405,11 @@ def main() -> int:
     ap.add_argument("--foreground", action="store_true",
                     help="前台运行单个任务（必须配 --only Tn），实时把输出连到当前 terminal log")
     ap.add_argument("--base", default=None,
-                    help="worktree 基于的 ref（默认是当前分支）。例如 origin/cursor/selfhost-test-skeletons-7c9d")
+                    help="worktree 基于的 ref（默认是当前分支）")
+    ap.add_argument("--resume", action="store_true",
+                    help="resume 已有 session（必须配 --only + --followup）")
+    ap.add_argument("--followup", default=None,
+                    help="发给已有 session 的 followup prompt（必须配 --resume）")
     args = ap.parse_args()
 
     global DISPATCH_BASE
@@ -354,10 +439,17 @@ def main() -> int:
     print(f"准备派发 {len(selected)} 个任务："
           f" {', '.join(tid for tid, _, _ in selected)}")
 
+    if args.resume and not args.followup:
+        ap.error("--resume 必须配 --followup")
+    if args.followup and not args.resume:
+        ap.error("--followup 必须配 --resume")
+
     results: list[dict] = []
     for tid, name, br in selected:
         info = dispatch_one(tid, br, dry_run=args.dry_run, model=args.model or None,
-                            foreground=args.foreground)
+                            foreground=args.foreground,
+                            resume=args.resume,
+                            followup_prompt=args.followup)
         results.append(info)
         if args.dry_run:
             print(f"  [{tid}/{name}] dry-run, prompt={info['prompt_chars']} chars,"
