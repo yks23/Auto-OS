@@ -85,26 +85,55 @@ sudo chmod +x "$MNT/opt/selfhost-tests/"*
 # 写 run-tests.sh
 cat > "$WORK/run-tests.sh" << 'EOF'
 #!/bin/sh
-# Self-host Phase 1 test runner (runs inside guest BusyBox).
+# Self-host Phase 1 test runner (runs inside guest BusyBox / starry).
 echo "===SELFHOST-TEST-RUN-START==="
 TOTAL=0
 PASS=0
 FAIL=0
 SKIP=0
+HANG=0
 for t in /opt/selfhost-tests/test_*; do
     TOTAL=$((TOTAL+1))
     name="${t##*/}"
-    out="$(timeout 30 "$t" 2>&1)"
-    rc=$?
-    echo "$out" | grep -E '^\[TEST\]' || echo "[TEST] $name FAIL: no [TEST] line (rc=$rc)"
-    case "$out" in
-        *"PASS (SKIP"*|*"PASS (skipped"*) SKIP=$((SKIP+1)) ;;
-        *"PASS"*) PASS=$((PASS+1)) ;;
-        *) FAIL=$((FAIL+1)) ;;
-    esac
+    echo "===RUNNING $name==="
+    # 用 & + sleep + kill 实现"软超时"，starry 可能没 timeout(1)
+    "$t" > /tmp/_tout 2>&1 &
+    pid=$!
+    waited=0
+    while [ $waited -lt 30 ]; do
+        if ! kill -0 $pid 2>/dev/null; then
+            break
+        fi
+        sleep 1
+        waited=$((waited+1))
+    done
+    if kill -0 $pid 2>/dev/null; then
+        kill -9 $pid 2>/dev/null
+        wait $pid 2>/dev/null
+        echo "[TEST] $name FAIL: HANG (>30s)"
+        HANG=$((HANG+1))
+        FAIL=$((FAIL+1))
+    else
+        wait $pid
+        rc=$?
+        out="$(cat /tmp/_tout)"
+        line="$(echo "$out" | grep -E '^\[TEST\]' | head -1)"
+        if [ -n "$line" ]; then
+            echo "$line"
+        else
+            echo "[TEST] $name FAIL: no [TEST] line (rc=$rc)"
+            echo "  ---tail---"
+            echo "$out" | tail -3 | sed 's/^/  /'
+        fi
+        case "$out" in
+            *"PASS (SKIP"*|*"PASS (skipped"*) SKIP=$((SKIP+1)) ;;
+            *"PASS"*) PASS=$((PASS+1)) ;;
+            *) FAIL=$((FAIL+1)) ;;
+        esac
+    fi
 done
 echo "===SELFHOST-TEST-RUN-END==="
-echo "===SELFHOST-SUMMARY total=$TOTAL pass=$PASS fail=$FAIL skip=$SKIP==="
+echo "===SELFHOST-SUMMARY total=$TOTAL pass=$PASS fail=$FAIL skip=$SKIP hang=$HANG==="
 EOF
 sudo cp "$WORK/run-tests.sh" "$MNT/opt/run-tests.sh"
 sudo chmod +x "$MNT/opt/run-tests.sh"
@@ -141,21 +170,20 @@ for i in $(seq 1 30); do
     fi
 done
 
-# 5. 用 python 接进去，等 prompt → 发命令 → 收集结果
+# 5. 接进串口被动收集（init.sh 会自动跑 /opt/run-tests.sh，不需要 stdin 交互）
+# starry kernel 的 console RX 路径暂未工作，所以我们走「不需要 stdin」的方案：
+# init.sh 的修改 hook（feat(starry/init): auto-run /opt/run-tests.sh hook）
+# 在 boot 完成后会自动 exec /opt/run-tests.sh，跑完打 ===SELFHOST-DONE===。
 RESULT="$WORK/results.txt"
 python3 << PY > "$RESULT" 2>&1
-import socket, re, sys, time
-# BusyBox 默认 PS1 常为 root@starry:...#；旧文档里也有 starry:~#
-PROMPT = re.compile(r"(starry:~#|root@starry:[^\r\n]*#)")
+import socket, sys, time
 TIMEOUT_TOTAL = $GUEST_RUN_TIMEOUT
 START = time.monotonic()
 
 s = socket.create_connection(("localhost", 4444), timeout=10)
 s.settimeout(5)
 buf = ""
-sent_run = False
-sent_exit = False
-seen_summary = False
+seen_done = False
 while True:
     if time.monotonic() - START > TIMEOUT_TOTAL:
         print("===TIMEOUT===")
@@ -171,18 +199,9 @@ while True:
         break
     sys.stdout.write(b); sys.stdout.flush()
     buf += b
-    if PROMPT.search(buf) and not sent_run:
-        # ash 在 TERM=linux 下会发 CPR（\x1b[6n），与串口输入交错；dumb 可关闭这类控制序列。
-        time.sleep(0.5)
-        s.sendall(b"export TERM=dumb PS1='# '\r\n")
-        time.sleep(0.6)
-        s.sendall(b"sh /opt/run-tests.sh\r\n")
-        sent_run = True
-    if "===SELFHOST-SUMMARY" in buf and not seen_summary:
-        seen_summary = True
-        s.sendall(b"exit\r\n")
-        sent_exit = True
-        # 再读一会让 exit 行刷出来
+    if "===SELFHOST-DONE===" in buf and not seen_done:
+        seen_done = True
+        # 再读一会让 buffer 排空
         time.sleep(2)
         break
 PY

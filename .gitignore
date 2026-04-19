@@ -1,2 +1,4 @@
 .worktrees/
 selfhost-orchestrator/logs/
+.guest-runs/
+tests/selfhost/out-*/
