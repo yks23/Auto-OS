@@ -1,0 +1,120 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sun, 19 Apr 2026 17:13:33 +0000
+Subject: [PATCH] feat(starry): add ProcessData personality, nice, and saved
+ ids
+
+Made-with: Cursor
+
+diff --git a/os/StarryOS/kernel/src/syscall/task/clone.rs b/os/StarryOS/kernel/src/syscall/task/clone.rs
+index 2fc39edd..af2059f0 100644
+--- a/os/StarryOS/kernel/src/syscall/task/clone.rs
++++ b/os/StarryOS/kernel/src/syscall/task/clone.rs
+@@ -228,6 +228,12 @@ impl CloneArgs {
+             );
+             proc_data.set_umask(old_proc_data.umask());
+             proc_data.set_heap_top(old_proc_data.get_heap_top());
++            proc_data.store_personality(old_proc_data.personality());
++            proc_data.store_proc_nice(old_proc_data.proc_nice());
++            let (r, e, s) = old_proc_data.res_uids();
++            proc_data.set_res_uids(r, e, s);
++            let (r, e, s) = old_proc_data.res_gids();
++            proc_data.set_res_gids(r, e, s);
+ 
+             {
+                 let mut scope = proc_data.scope.write();
+diff --git a/os/StarryOS/kernel/src/task/mod.rs b/os/StarryOS/kernel/src/task/mod.rs
+index c26f907e..811dba5f 100644
+--- a/os/StarryOS/kernel/src/task/mod.rs
++++ b/os/StarryOS/kernel/src/task/mod.rs
+@@ -233,6 +233,17 @@ pub struct ProcessData {
+ 
+     /// The default mask for file permissions.
+     umask: AtomicU32,
++
++    /// Linux `personality(2)` domain; default `PER_LINUX` (0).
++    personality: AtomicU32,
++    /// Process nice value (`setpriority` / `getpriority` semantics), default 0.
++    proc_nice: AtomicI32,
++    ruid: AtomicU32,
++    euid: AtomicU32,
++    suid: AtomicU32,
++    rgid: AtomicU32,
++    egid: AtomicU32,
++    sgid: AtomicU32,
+ }
+ 
+ impl ProcessData {
+@@ -267,6 +278,15 @@ impl ProcessData {
+             futex_table: Arc::new(FutexTable::new()),
+ 
+             umask: AtomicU32::new(0o022),
++
++            personality: AtomicU32::new(0),
++            proc_nice: AtomicI32::new(0),
++            ruid: AtomicU32::new(0),
++            euid: AtomicU32::new(0),
++            suid: AtomicU32::new(0),
++            rgid: AtomicU32::new(0),
++            egid: AtomicU32::new(0),
++            sgid: AtomicU32::new(0),
+         })
+     }
+ 
+@@ -300,4 +320,56 @@ impl ProcessData {
+     pub fn replace_umask(&self, umask: u32) -> u32 {
+         self.umask.swap(umask, Ordering::SeqCst)
+     }
++
++    pub fn personality(&self) -> u32 {
++        self.personality.load(Ordering::Relaxed)
++    }
++
++    pub fn set_personality(&self, value: u32) -> u32 {
++        self.personality.swap(value, Ordering::Relaxed)
++    }
++
++    pub fn store_personality(&self, value: u32) {
++        self.personality.store(value, Ordering::Relaxed);
++    }
++
++    pub fn proc_nice(&self) -> i32 {
++        self.proc_nice.load(Ordering::Relaxed)
++    }
++
++    pub fn set_proc_nice(&self, nice: i32) -> i32 {
++        self.proc_nice.swap(nice, Ordering::Relaxed)
++    }
++
++    pub fn store_proc_nice(&self, nice: i32) {
++        self.proc_nice.store(nice, Ordering::Relaxed);
++    }
++
++    pub fn res_uids(&self) -> (u32, u32, u32) {
++        (
++            self.ruid.load(Ordering::Relaxed),
++            self.euid.load(Ordering::Relaxed),
++            self.suid.load(Ordering::Relaxed),
++        )
++    }
++
++    pub fn set_res_uids(&self, ruid: u32, euid: u32, suid: u32) {
++        self.ruid.store(ruid, Ordering::Relaxed);
++        self.euid.store(euid, Ordering::Relaxed);
++        self.suid.store(suid, Ordering::Relaxed);
++    }
++
++    pub fn res_gids(&self) -> (u32, u32, u32) {
++        (
++            self.rgid.load(Ordering::Relaxed),
++            self.egid.load(Ordering::Relaxed),
++            self.sgid.load(Ordering::Relaxed),
++        )
++    }
++
++    pub fn set_res_gids(&self, rgid: u32, egid: u32, sgid: u32) {
++        self.rgid.store(rgid, Ordering::Relaxed);
++        self.egid.store(egid, Ordering::Relaxed);
++        self.sgid.store(sgid, Ordering::Relaxed);
++    }
+ }
