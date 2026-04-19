@@ -1,0 +1,468 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sat, 18 Apr 2026 19:18:43 +0000
+Subject: [PATCH] feat(starry/syscall): make prlimit64 actually enforce
+ RLIMIT_{STACK,AS,DATA,NOFILE,NPROC}
+
+Wire rlimits into brk, mmap, clone fork inheritance, exec stack mapping, and fix prlimit64 set semantics.
+
+Made-with: Cursor
+
+diff --git a/os/StarryOS/kernel/src/entry.rs b/os/StarryOS/kernel/src/entry.rs
+index 52407d89..dd040d73 100644
+--- a/os/StarryOS/kernel/src/entry.rs
++++ b/os/StarryOS/kernel/src/entry.rs
+@@ -37,8 +37,14 @@ pub fn init(args: &[String], envs: &[String]) {
+         })
+         .expect("Failed to create user address space");
+ 
+-    let (entry_vaddr, ustack_top) = load_user_app(&mut uspace, None, args, envs)
+-        .unwrap_or_else(|e| panic!("Failed to load user app: {}", e));
++    let (entry_vaddr, ustack_top) = load_user_app(
++        &mut uspace,
++        None,
++        args,
++        envs,
++        crate::config::USER_STACK_SIZE,
++    )
++    .unwrap_or_else(|e| panic!("Failed to load user app: {}", e));
+ 
+     let uctx = UserContext::new(entry_vaddr.into(), ustack_top, 0);
+     let mut task = new_user_task(name, uctx, 0);
+diff --git a/os/StarryOS/kernel/src/mm/aspace/mod.rs b/os/StarryOS/kernel/src/mm/aspace/mod.rs
+index 7318e55e..9deea036 100644
+--- a/os/StarryOS/kernel/src/mm/aspace/mod.rs
++++ b/os/StarryOS/kernel/src/mm/aspace/mod.rs
+@@ -377,6 +377,11 @@ impl AddrSpace {
+     pub fn areas(&self) -> impl Iterator<Item = &MemoryArea<Backend>> {
+         self.areas.iter()
+     }
++
++    /// Total virtual size of all mapped areas (for `RLIMIT_AS` checks).
++    pub fn mapped_virtual_bytes(&self) -> usize {
++        self.areas().map(|a| a.size()).sum()
++    }
+ }
+ 
+ impl fmt::Debug for AddrSpace {
+diff --git a/os/StarryOS/kernel/src/mm/loader.rs b/os/StarryOS/kernel/src/mm/loader.rs
+index dc391c0d..2940c995 100644
+--- a/os/StarryOS/kernel/src/mm/loader.rs
++++ b/os/StarryOS/kernel/src/mm/loader.rs
+@@ -283,6 +283,7 @@ pub fn load_user_app(
+     path: Option<&str>,
+     args: &[String],
+     envs: &[String],
++    user_stack_size: usize,
+ ) -> AxResult<(VirtAddr, VirtAddr)> {
+     let path = path
+         .or_else(|| args.first().map(String::as_str))
+@@ -293,7 +294,7 @@ pub fn load_user_app(
+         let new_args: Vec<String> = iter::once("/bin/sh".to_owned())
+             .chain(args.iter().cloned())
+             .collect();
+-        return load_user_app(uspace, None, &new_args, envs);
++        return load_user_app(uspace, None, &new_args, envs, user_stack_size);
+     }
+ 
+     let (entry, auxv) = match { ELF_LOADER.lock().load(uspace, path)? } {
+@@ -311,14 +312,16 @@ pub fn load_user_app(
+                     .chain(iter::once(path.to_owned()))
+                     .chain(args.iter().skip(1).cloned())
+                     .collect();
+-                return load_user_app(uspace, None, &new_args, envs);
++                return load_user_app(uspace, None, &new_args, envs, user_stack_size);
+             }
+             return Err(AxError::InvalidExecutable);
+         }
+     };
+ 
+     let ustack_top = VirtAddr::from_usize(crate::config::USER_STACK_TOP);
+-    let ustack_size = crate::config::USER_STACK_SIZE;
++    let ustack_size = user_stack_size
++        .max(PAGE_SIZE_4K * 4)
++        .next_multiple_of(PAGE_SIZE_4K);
+     let ustack_start = ustack_top - ustack_size;
+     debug!("Mapping user stack: {ustack_start:#x?} -> {ustack_top:#x?}");
+ 
+diff --git a/os/StarryOS/kernel/src/syscall/mm/brk.rs b/os/StarryOS/kernel/src/syscall/mm/brk.rs
+index ec50b5df..c6ec09cf 100644
+--- a/os/StarryOS/kernel/src/syscall/mm/brk.rs
++++ b/os/StarryOS/kernel/src/syscall/mm/brk.rs
+@@ -1,26 +1,40 @@
+-use ax_errno::AxResult;
++use ax_errno::{AxError, AxResult};
+ use ax_hal::paging::{MappingFlags, PageSize};
+ use ax_memory_addr::{VirtAddr, align_up_4k};
+ use ax_task::current;
++use linux_raw_sys::general::RLIMIT_DATA;
+ 
+ use crate::{
+     config::{USER_HEAP_BASE, USER_HEAP_SIZE, USER_HEAP_SIZE_MAX},
+     mm::Backend,
+-    task::AsThread,
++    task::{AsThread, rlim_is_infinite},
+ };
+ 
++fn effective_heap_limit(proc_data: &crate::task::ProcessData) -> usize {
++    let d = proc_data.rlim.read()[RLIMIT_DATA].current;
++    let cap = if rlim_is_infinite(d) {
++        USER_HEAP_SIZE_MAX
++    } else {
++        (d as usize).min(USER_HEAP_SIZE_MAX)
++    };
++    USER_HEAP_BASE.saturating_add(cap)
++}
++
+ pub fn sys_brk(addr: usize) -> AxResult<isize> {
+     let curr = current();
+     let proc_data = &curr.as_thread().proc_data;
+     let current_top = proc_data.get_heap_top() as usize;
+-    let heap_limit = USER_HEAP_BASE + USER_HEAP_SIZE_MAX;
++    let heap_limit = effective_heap_limit(proc_data);
+ 
+     if addr == 0 {
+         return Ok(current_top as isize);
+     }
+ 
+-    if addr < USER_HEAP_BASE || addr > heap_limit {
+-        return Ok(current_top as isize);
++    if addr < USER_HEAP_BASE {
++        return Err(AxError::InvalidInput);
++    }
++    if addr > heap_limit {
++        return Err(AxError::NoMemory);
+     }
+ 
+     let new_top_aligned = align_up_4k(addr);
+@@ -34,34 +48,25 @@ pub fn sys_brk(addr: usize) -> AxResult<isize> {
+         let expand_start = VirtAddr::from(initial_heap_end.max(current_top_aligned));
+         let expand_size = new_top_aligned.saturating_sub(expand_start.as_usize());
+ 
+-        if expand_size > 0
+-            && proc_data
+-                .aspace
+-                .lock()
+-                .map(
+-                    expand_start,
+-                    expand_size,
+-                    MappingFlags::READ | MappingFlags::WRITE | MappingFlags::USER,
+-                    false,
+-                    Backend::new_alloc(expand_start, PageSize::Size4K),
+-                )
+-                .is_err()
+-        {
+-            return Ok(current_top as isize);
++        if expand_size > 0 {
++            proc_data.aspace.lock().map(
++                expand_start,
++                expand_size,
++                MappingFlags::READ | MappingFlags::WRITE | MappingFlags::USER,
++                false,
++                Backend::new_alloc(expand_start, PageSize::Size4K),
++            )?;
+         }
+     } else if new_top_aligned < current_top_aligned {
+         // Only unmap pages beyond the initially mapped heap region.
+         let shrink_start = VirtAddr::from(initial_heap_end.max(new_top_aligned));
+         let shrink_size = current_top_aligned.saturating_sub(shrink_start.as_usize());
+ 
+-        if shrink_size > 0
+-            && proc_data
++        if shrink_size > 0 {
++            proc_data
+                 .aspace
+                 .lock()
+-                .unmap(shrink_start, shrink_size)
+-                .is_err()
+-        {
+-            return Ok(current_top as isize);
++                .unmap(shrink_start, shrink_size)?;
+         }
+     }
+ 
+diff --git a/os/StarryOS/kernel/src/syscall/mm/mmap.rs b/os/StarryOS/kernel/src/syscall/mm/mmap.rs
+index 704e6212..68b0daad 100644
+--- a/os/StarryOS/kernel/src/syscall/mm/mmap.rs
++++ b/os/StarryOS/kernel/src/syscall/mm/mmap.rs
+@@ -12,7 +12,7 @@ use crate::{
+     file::get_file_like,
+     mm::{Backend, SharedPages},
+     pseudofs::{Device, DeviceMmap},
+-    task::AsThread,
++    task::{AsThread, rlim_is_infinite},
+ };
+ 
+ bitflags::bitflags! {
+@@ -264,6 +264,15 @@ pub fn sys_mmap(
+         _ => return Err(AxError::InvalidInput),
+     };
+ 
++    let as_cur = curr.as_thread().proc_data.rlim.read()[RLIMIT_AS].current;
++    if !rlim_is_infinite(as_cur) {
++        let mapped = aspace.mapped_virtual_bytes();
++        let need = (mapped as u128).saturating_add(length as u128);
++        if need > as_cur as u128 {
++            return Err(AxError::NoMemory);
++        }
++    }
++
+     let populate = map_flags.contains(MmapFlags::POPULATE);
+     aspace.map(start, length, permission_flags.into(), populate, backend)?;
+ 
+diff --git a/os/StarryOS/kernel/src/syscall/resources.rs b/os/StarryOS/kernel/src/syscall/resources.rs
+index a9a145c2..9038f24d 100644
+--- a/os/StarryOS/kernel/src/syscall/resources.rs
++++ b/os/StarryOS/kernel/src/syscall/resources.rs
+@@ -1,12 +1,16 @@
+ use ax_errno::{AxError, AxResult};
+ use ax_hal::time::TimeValue;
+ use ax_task::current;
+-use linux_raw_sys::general::{__kernel_old_timeval, RLIM_NLIMITS, rlimit64, rusage};
++use linux_raw_sys::general::{
++    __kernel_old_timeval, RLIM64_INFINITY, RLIM_NLIMITS, RLIMIT_NOFILE, rlimit64, rusage,
++};
+ use starry_process::Pid;
+ use starry_vm::{VmMutPtr, VmPtr};
+ 
+ use crate::{
+-    task::{AsThread, Thread, get_process_data, get_task},
++    task::{
++        AsThread, Thread, AX_FILE_LIMIT, get_process_data, get_task, rlim_is_infinite,
++    },
+     time::TimeValueLike,
+ };
+ 
+@@ -20,7 +24,13 @@ pub fn sys_prlimit64(
+         return Err(AxError::InvalidInput);
+     }
+ 
+-    let proc_data = get_process_data(pid)?;
++    let self_pid = current().as_thread().proc_data.proc.pid();
++    let target_pid = if pid == 0 { self_pid } else { pid };
++    if target_pid != self_pid {
++        return Err(AxError::OperationNotPermitted);
++    }
++
++    let proc_data = get_process_data(target_pid)?;
+     if let Some(old_limit) = old_limit.nullable() {
+         let limit = &proc_data.rlim.read()[resource];
+         old_limit.vm_write(rlimit64 {
+@@ -30,22 +40,49 @@ pub fn sys_prlimit64(
+     }
+ 
+     if let Some(new_limit) = new_limit.nullable() {
+-        // FIXME: AnyBitPattern
+         let new_limit = unsafe { new_limit.vm_read_uninit()?.assume_init() };
+-        if new_limit.rlim_cur > new_limit.rlim_max {
++        if !rlim_is_infinite(new_limit.rlim_cur)
++            && !rlim_is_infinite(new_limit.rlim_max)
++            && new_limit.rlim_cur > new_limit.rlim_max
++        {
+             return Err(AxError::InvalidInput);
+         }
+ 
+-        let limit = &mut proc_data.rlim.write()[resource];
+-        if new_limit.rlim_max <= limit.max {
+-            limit.max = new_limit.rlim_max;
++        let hard_cap = if resource == RLIMIT_NOFILE as u32 {
++            AX_FILE_LIMIT as u64
+         } else {
+-            // TODO: patch resources
+-            // return Err(AxError::OperationNotPermitted);
+-            return Ok(0);
+-        }
++            RLIM64_INFINITY
++        };
++
++        let mut rlim = proc_data.rlim.write();
++        let ent = &mut rlim[resource];
+ 
+-        limit.current = new_limit.rlim_cur;
++        let new_max = if rlim_is_infinite(new_limit.rlim_max) {
++            if resource == RLIMIT_NOFILE as u32 {
++                hard_cap
++            } else {
++                RLIM64_INFINITY
++            }
++        } else {
++            let capped = if rlim_is_infinite(hard_cap) {
++                new_limit.rlim_max
++            } else {
++                new_limit.rlim_max.min(hard_cap)
++            };
++            capped
++        };
++
++        ent.max = new_max;
++
++        let new_cur = if rlim_is_infinite(new_limit.rlim_cur) {
++            ent.max
++        } else {
++            new_limit.rlim_cur.min(ent.max)
++        };
++        ent.current = new_cur;
++        if ent.current > ent.max {
++            ent.current = ent.max;
++        }
+     }
+ 
+     Ok(0)
+diff --git a/os/StarryOS/kernel/src/syscall/task/clone.rs b/os/StarryOS/kernel/src/syscall/task/clone.rs
+index 2fc39edd..952e2228 100644
+--- a/os/StarryOS/kernel/src/syscall/task/clone.rs
++++ b/os/StarryOS/kernel/src/syscall/task/clone.rs
+@@ -14,7 +14,10 @@ use starry_vm::VmMutPtr;
+ use crate::{
+     file::{FD_TABLE, FileLike, PidFd, close_file_like},
+     mm::copy_from_kernel,
+-    task::{AsThread, ProcessData, Thread, add_task_to_table, new_user_task},
++    task::{
++        AsThread, ProcessData, Thread, add_task_to_table, new_user_task, processes,
++        rlim_is_infinite,
++    },
+ };
+ 
+ bitflags! {
+@@ -191,6 +194,11 @@ impl CloneArgs {
+                 .set_page_table_root(old_proc_data.aspace.lock().page_table_root());
+             old_proc_data.clone()
+         } else {
++            let nproc = old_proc_data.rlim.read()[RLIMIT_NPROC].current;
++            if !rlim_is_infinite(nproc) && (processes().len() as u64) >= nproc {
++                return Err(AxError::WouldBlock);
++            }
++
+             let proc = if flags.contains(CloneFlags::PARENT) {
+                 old_proc_data.proc.parent().ok_or(AxError::InvalidInput)?
+             } else {
+@@ -226,6 +234,7 @@ impl CloneArgs {
+                 signal_actions,
+                 exit_signal,
+             );
++            *proc_data.rlim.write() = old_proc_data.rlim.read().clone();
+             proc_data.set_umask(old_proc_data.umask());
+             proc_data.set_heap_top(old_proc_data.get_heap_top());
+ 
+diff --git a/os/StarryOS/kernel/src/syscall/task/execve.rs b/os/StarryOS/kernel/src/syscall/task/execve.rs
+index 614d3d40..51ba633e 100644
+--- a/os/StarryOS/kernel/src/syscall/task/execve.rs
++++ b/os/StarryOS/kernel/src/syscall/task/execve.rs
+@@ -7,11 +7,13 @@ use ax_hal::uspace::UserContext;
+ use ax_task::current;
+ use starry_vm::vm_load_until_nul;
+ 
++use linux_raw_sys::general::RLIMIT_STACK;
++
+ use crate::{
+-    config::USER_HEAP_BASE,
++    config::{USER_HEAP_BASE, USER_STACK_SIZE},
+     file::FD_TABLE,
+     mm::{load_user_app, vm_load_string},
+-    task::AsThread,
++    task::{AsThread, rlim_is_infinite},
+ };
+ 
+ pub fn sys_execve(
+@@ -53,9 +55,19 @@ pub fn sys_execve(
+         return Err(AxError::WouldBlock);
+     }
+ 
++    let stack_bytes = {
++        let r = proc_data.rlim.read();
++        let sz = r[RLIMIT_STACK].current;
++        if rlim_is_infinite(sz) {
++            USER_STACK_SIZE
++        } else {
++            (sz as usize).max(ax_memory_addr::PAGE_SIZE_4K)
++        }
++    };
++
+     let mut aspace = proc_data.aspace.lock();
+     let (entry_point, user_stack_base) =
+-        load_user_app(&mut aspace, Some(path.as_str()), &args, &envs)?;
++        load_user_app(&mut aspace, Some(path.as_str()), &args, &envs, stack_bytes)?;
+     drop(aspace);
+ 
+     let loc = FS_CONTEXT.lock().resolve(&path)?;
+diff --git a/os/StarryOS/kernel/src/task/resources.rs b/os/StarryOS/kernel/src/task/resources.rs
+index 0742d10b..513f879e 100644
+--- a/os/StarryOS/kernel/src/task/resources.rs
++++ b/os/StarryOS/kernel/src/task/resources.rs
+@@ -2,13 +2,19 @@
+ 
+ use core::ops::{Index, IndexMut};
+ 
+-use linux_raw_sys::general::{RLIM_NLIMITS, RLIMIT_NOFILE, RLIMIT_STACK};
++use linux_raw_sys::general::{
++    RLIM64_INFINITY, RLIM_NLIMITS, RLIMIT_AS, RLIMIT_DATA, RLIMIT_NOFILE, RLIMIT_NPROC,
++    RLIMIT_STACK,
++};
+ 
+-/// The maximum number of open files
+-pub const AX_FILE_LIMIT: usize = 1024;
++/// Maximum FD slots in the per-process table (RLIMIT_NOFILE hard cap).
++pub const AX_FILE_LIMIT: usize = 8192;
++
++/// Default soft limit for open file descriptors.
++pub const AX_FILE_LIMIT_SOFT: u64 = 4096;
+ 
+ /// The limit for a specific resource
+-#[derive(Default)]
++#[derive(Debug, Clone, Copy)]
+ pub struct Rlimit {
+     /// The current limit for the resource (soft)
+     pub current: u64,
+@@ -16,6 +22,15 @@ pub struct Rlimit {
+     pub max: u64,
+ }
+ 
++impl Default for Rlimit {
++    fn default() -> Self {
++        Self {
++            current: 0,
++            max: 0,
++        }
++    }
++}
++
+ impl Rlimit {
+     /// Creates a new `Rlimit` with the specified soft and hard limits.
+     pub fn new(soft: u64, hard: u64) -> Self {
+@@ -36,13 +51,23 @@ impl From<u64> for Rlimit {
+ }
+ 
+ /// Process resource limits
++#[derive(Clone)]
+ pub struct Rlimits([Rlimit; RLIM_NLIMITS as usize]);
+ 
+ impl Default for Rlimits {
+     fn default() -> Self {
+-        let mut result = Self(Default::default());
+-        result[RLIMIT_STACK] = (crate::config::USER_STACK_SIZE as u64).into();
+-        result[RLIMIT_NOFILE] = (AX_FILE_LIMIT as u64).into();
++        let mut result = Self(core::array::from_fn(|_| Rlimit::default()));
++        let stack = crate::config::USER_STACK_SIZE as u64;
++        result[RLIMIT_STACK] = Rlimit::new(stack, stack);
++        result[RLIMIT_NOFILE] = Rlimit::new(
++            AX_FILE_LIMIT_SOFT,
++            AX_FILE_LIMIT as u64,
++        );
++        let as_bytes = crate::config::USER_SPACE_SIZE as u64;
++        result[RLIMIT_AS] = Rlimit::new(as_bytes, as_bytes);
++        let data_bytes = crate::config::USER_HEAP_SIZE_MAX as u64;
++        result[RLIMIT_DATA] = Rlimit::new(data_bytes, data_bytes);
++        result[RLIMIT_NPROC] = Rlimit::new(4096, 4096);
+         result
+     }
+ }
+@@ -60,3 +85,9 @@ impl IndexMut<u32> for Rlimits {
+         &mut self.0[index as usize]
+     }
+ }
++
++/// `true` if `v` means unlimited for rlimit64 values.
++#[inline]
++pub fn rlim_is_infinite(v: u64) -> bool {
++    v == RLIM64_INFINITY || v == u64::MAX
++}

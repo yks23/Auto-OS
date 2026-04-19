@@ -1,0 +1,34 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sat, 18 Apr 2026 19:18:39 +0000
+Subject: [PATCH] chore(starry/build): default QEMU mem=4G smp=4 and add
+ selfhost target
+
+Made-with: Cursor
+
+diff --git a/os/StarryOS/Makefile b/os/StarryOS/Makefile
+index c521c439..15267dff 100644
+--- a/os/StarryOS/Makefile
++++ b/os/StarryOS/Makefile
+@@ -8,7 +8,9 @@ export MEMTRACK := n
+ export BLK := y
+ export NET := y
+ export VSOCK := n
+-export MEM := 1G
++# Guest RAM (rollback: MEM := 1G)
++export MEM := 4G
++export SMP ?= 4
+ export ICOUNT := n
+ 
+ # Generated Options
+@@ -47,6 +49,10 @@ build run debug disasm: defconfig
+ ci-test:
+ 	./scripts/ci-test.py $(ARCH)
+ 
++.PHONY: selfhost
++selfhost: rootfs
++	@$(MAKE) -C make run APP_FEATURES=qemu,smp MEM=8G SMP=8
++
+ # Aliases
+ rv:
+ 	$(MAKE) ARCH=riscv64 run

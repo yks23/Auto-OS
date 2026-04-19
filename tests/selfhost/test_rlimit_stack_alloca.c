@@ -1,7 +1,6 @@
 /*
  * Test: test_rlimit_stack_alloca
  * Phase: 1, Task: T5
- * Status: SKELETON (functional logic to be filled in by T5 implementer)
  *
  * Spec (from TEST-MATRIX.md):
  *   递归 alloca 4 MiB 不爆栈
@@ -11,6 +10,10 @@
 #include <string.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <alloca.h>
+#include <stdint.h>
+#include <limits.h>
+#include <sys/resource.h>
 
 #define TEST_NAME "test_rlimit_stack_alloca"
 
@@ -29,6 +32,12 @@ static void fail(const char *fmt, ...) {
     exit(1);
 }
 
+static void touch_stack(volatile char *p, size_t n) {
+    for (size_t i = 0; i < n; i += 4096) {
+        p[i] = (char)(i & 0xff);
+    }
+}
+
 int main(void) {
     /* TODO(T5): implement actual test
      *
@@ -37,10 +46,20 @@ int main(void) {
      *   2. 递归函数每层 alloca(4MiB) 或分摊到多层累计 4MiB；
      *   3. 触碰页面确保映射；
      *   4. 正常返回不 SIGSEGV；
-     *   5. 深度与大小可按栈上限调整。
-     *
-     * 当前骨架默认 PASS，等 T5 实现者把上面 TODO 替换为真实验证逻辑。
      */
+    struct rlimit rl;
+    if (getrlimit(RLIMIT_STACK, &rl) != 0) {
+        fail("getrlimit failed: %s", strerror(errno));
+    }
+    const size_t need = 4u * 1024u * 1024u;
+    if (rl.rlim_cur != RLIM_INFINITY
+        && (rlim_t)need + (rlim_t)(64 * 1024) > rl.rlim_cur) {
+        fail("RLIMIT_STACK rlim_cur=%llu too small for 4MiB alloca",
+             (unsigned long long)rl.rlim_cur);
+    }
+
+    volatile char *p = (volatile char *)alloca(need);
+    touch_stack(p, need);
     pass();
     return 0;
 }
