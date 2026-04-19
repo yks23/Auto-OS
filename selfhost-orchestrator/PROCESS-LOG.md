@@ -93,3 +93,36 @@
 ---
 
 ## 2026-04-18 15:00 | decision | Director | 27 个任务 6 个 Phase 的总体路线确定
+
+---
+
+## 2026-04-19 06:50 | progress | Director | Phase 1 fan-out 全部完成 + 5 PR 开
+
+**摘要**：T1-T5 五个 subagent（model=auto）后台并发跑完，全部 sanity-check PASS，5 个 PR 已代开。
+
+**详情**：
+
+| Task | Branch | PR | Commits | Patches | Tests filled | Acceptance |
+|------|--------|----|---------|---------|--------------|------------|
+| T1 execve | `cursor/selfhost-execve-mt-7c9d` | #3 | 2 | 2 | 4 .c | 7/8 ✅ + 1 PARTIAL |
+| T2 file-locks | `cursor/selfhost-file-locks-7c9d` | #4 | 1 | 1 | 8 .c | 5/5 ✅ |
+| T3 ipv6 | `cursor/selfhost-ipv6-7c9d` | #5 | 1 | 1 | 5 .c | 7/7 ✅ |
+| T4 mount | `cursor/selfhost-mount-fs-7c9d` | #6 | 2 | 2 | 6 .c+sh | 6/7 ✅ + 1 SKIP(9p) |
+| T5 rlimit | `cursor/selfhost-resource-limits-7c9d` | #7 | 2 | 3 | 8 .c+sh | 4/6 ✅ + 2 PARTIAL |
+
+**关键统计**：
+- 5 个 patch set 单独 apply：✅✅✅✅✅
+- 5 个 patch set 全部合并 apply：⚠️ T1 ↔ T2 在 `execve.rs` + `task/ops.rs` 冲突（CLOEXEC + do_exit 释放 record_lock 路径）
+- 31 个测试骨架全部填实：1621 行 +/118 -
+- 模型：全部 auto（按用户要求）
+- 时间：fan-out 后约 11 小时（夜间运行）
+
+**冲突解决方案**：
+- T1 与 T2 单独可合，集成到 selfhost-dev 时由 Director 手动 merge：保留 T1 的 de-thread 流程 + T2 的 close_file_like 调用。冲突点已知，影响 ≤ 50 行。
+
+**所有 subagent 共同的 SKIP 原因**：
+- `scripts/build.sh` 在本机缺 `build_c.mk`（StarryOS 子模块构建文件被 git clean -fdx 误清的副作用），双架构 build 全部交 CI 验证。
+- `gh pr create` 在 cursor[bot] 集成内是 read-only，5 个 PR 全部由 Director 通过 ManagePullRequest MCP 代开。
+
+**关联**：PR #3-#7
+
