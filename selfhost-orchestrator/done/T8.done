@@ -13,9 +13,7 @@
     "tests/selfhost/test_proc_loadavg.sh"
   ],
   "auto_os_commits": [
-    "f3888f89a45fbd7d4ef615c5daad4676e1678904",
-    "55fc617f9e4360ac9143cbab16bb3a8b68ec31af",
-    "ed2cbe7a4b3fd5d0880bde1c17aad25197bc18f8"
+    "f3888f89a45fbd7d4ef615c5daad4676e1678904"
   ],
   "pr_url": "",
   "sanity_check": "FAIL",
