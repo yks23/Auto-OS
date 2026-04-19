@@ -46,7 +46,8 @@ C_SRCS := \
 	test_rlimit_nofile_set.c \
 	test_rlimit_nofile_inherit.c \
 	test_rlimit_as_set.c \
-	test_rlimit_data_brk.c
+	test_rlimit_data_brk.c \
+	test_proc_self_exe.c
 
 C_BINS := $(patsubst %.c,$(OUT)/%,$(C_SRCS))
 
@@ -55,7 +56,11 @@ SH_SRCS := \
 	test_mount_bind_dir.sh \
 	test_mount_9p_optional.sh \
 	test_qemu_mem.sh \
-	test_qemu_smp.sh
+	test_qemu_smp.sh \
+	test_proc_cpuinfo.sh \
+	test_proc_meminfo.sh \
+	test_proc_random_uuid.sh \
+	test_proc_loadavg.sh
 
 SH_OUT := $(patsubst %.sh,$(OUT)/%,$(SH_SRCS))
 
