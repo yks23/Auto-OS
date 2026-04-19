@@ -186,22 +186,25 @@ def build_prompt(task_id: str, branch: str, worktree: Path) -> str:
 
 ### 完成信号（最重要）
 
-完成所有工作后，**最后一步必须**：
+完成所有工作后，**最后一步必须**写 sentinel 文件：
 
-```bash
-mkdir -p selfhost-orchestrator/done
-cat > selfhost-orchestrator/done/{task_id}.done <<'EOF'
-{ ... 你的 final JSON summary ... }
-EOF
-```
+  路径：`selfhost-orchestrator/done/{patch_dir_name}.done`
+  内容：你的 final JSON summary（与下面终端输出的 JSON 完全一致）
+
+写法（在 worktree 内执行）：
+
+  mkdir -p selfhost-orchestrator/done
+  echo '<JSON>' > selfhost-orchestrator/done/{patch_dir_name}.done
 
 Director 通过监听这个 sentinel 文件知道你完成了，**不写 sentinel = Director 不知道你完成**，会一直挂等。
 
-如果你卡住或失败了也要写 sentinel，把 status 写成 FAIL/BLOCKED + 原因。**任何情况都必须写**。
+如果你卡住或失败了也要写 sentinel，把 status 写成 FAIL 或 BLOCKED + 原因。**任何情况都必须写**。
+
+git 时必须把 sentinel 文件也 add 进去。
 
 ### 同时也要在终端输出 JSON
 
-最后一段输出**也必须是 JSON**（包在 ```json``` fenced block 里），与 sentinel 内容一致，格式：
+最后一段输出**也必须是 JSON**（包在 fenced code block 里），与 sentinel 内容一致，格式：
 
 ```json
 {{
