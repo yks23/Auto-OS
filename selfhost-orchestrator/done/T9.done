@@ -1,0 +1,62 @@
+{
+  "task_id": "T9",
+  "auto_os_branch": "cursor/t9-missing-syscalls-7c9d",
+  "tgoskits_local_branch": "cursor/selfhost-t9-7c9d",
+  "patches": [
+    "patches/T9/0001-feat-starry-add-ProcessData-personality-nice-and-sav.patch",
+    "patches/T9/0002-feat-starry-implement-waitid-and-share-wait-path-wit.patch",
+    "patches/T9/0003-feat-starry-add-openat2-with-RESOLVE_BENEATH-path-gu.patch",
+    "patches/T9/0004-feat-starry-add-personality-getresuid-gid-setpriorit.patch",
+    "patches/T9/0005-feat-starry-wire-waitid-openat2-personality-getresui.patch"
+  ],
+  "tests": [
+    "tests/selfhost/test_waitid_pexited.c",
+    "tests/selfhost/test_openat2_basic.c",
+    "tests/selfhost/test_personality_get.c",
+    "tests/selfhost/test_setpriority_other_pid.c",
+    "tests/selfhost/test_getresuid_basic.c"
+  ],
+  "auto_os_commits": [
+    "2a0a3c978f0148bec9c30e21649bf2e2387dc35a"
+  ],
+  "pr_url": "",
+  "sanity_check": "FAIL",
+  "build_riscv64": "PASS",
+  "build_x86_64": "PASS",
+  "acceptance_criteria": [
+    {
+      "item": "T9 patches standalone apply on PIN",
+      "status": "PASS",
+      "note": "sanity-check: ✓ T9 apply ok"
+    },
+    {
+      "item": "sanity-check combined apply all patch sets",
+      "status": "FAIL",
+      "note": "pre-existing conflict T2 flock vs T1 (task/ops.rs, execve.rs)"
+    },
+    {
+      "item": "scripts/build.sh ARCH=x86_64",
+      "status": "PASS",
+      "note": "starryos_x86-pc.elf built"
+    },
+    {
+      "item": "scripts/build.sh ARCH=riscv64",
+      "status": "PASS",
+      "note": "starryos_riscv64-qemu-virt.elf built"
+    },
+    {
+      "item": "5 selfhost tests in guest",
+      "status": "SKIP",
+      "note": "not executed in QEMU this run"
+    },
+    {
+      "item": "gh pr create to yks23/Auto-OS",
+      "status": "FAIL",
+      "note": "GraphQL: Resource not accessible by integration"
+    }
+  ],
+  "blocked_by": [],
+  "decisions_needed": [
+    "Manually open PR from branch cursor/t9-missing-syscalls-7c9d (gh token could not createPullRequest)."
+  ]
+}
