@@ -46,7 +46,8 @@ C_SRCS := \
 	test_rlimit_nofile_set.c \
 	test_rlimit_nofile_inherit.c \
 	test_rlimit_as_set.c \
-	test_rlimit_data_brk.c
+	test_rlimit_data_brk.c \
+	test_stdin_byte.c
 
 C_BINS := $(patsubst %.c,$(OUT)/%,$(C_SRCS))
 
