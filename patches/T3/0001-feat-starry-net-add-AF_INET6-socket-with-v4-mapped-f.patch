@@ -1,0 +1,392 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sat, 18 Apr 2026 19:17:41 +0000
+Subject: [PATCH] feat(starry/net): add AF_INET6 socket with v4-mapped fallback
+
+Support AF_INET6 TCP/UDP sockets backed by the v4-only stack: normalize
+::/::1/::ffff:x.x.x.x for bind/connect, map v4 endpoints back to IPv6
+sockaddrs on getsockname/getpeername/recvfrom when the fd was created as
+INET6, add IPV6_V6ONLY no-op get/set, track socket domain on the kernel
+Socket wrapper, and fix accept() to report the peer address.
+
+Made-with: Cursor
+
+diff --git a/os/StarryOS/kernel/src/file/net.rs b/os/StarryOS/kernel/src/file/net.rs
+index a4bc6e76..05e0763b 100644
+--- a/os/StarryOS/kernel/src/file/net.rs
++++ b/os/StarryOS/kernel/src/file/net.rs
+@@ -12,13 +12,31 @@ use linux_raw_sys::general::S_IFSOCK;
+ use super::{FileLike, Kstat};
+ use crate::file::{IoDst, IoSrc, get_file_like};
+ 
+-pub struct Socket(pub SocketInner);
++/// Kernel-side socket wrapper. `ip_domain` is `AF_INET` / `AF_INET6` for IP sockets and
++/// ignored for Unix/vsock; it controls how addresses are presented on `getsockname` /
++/// `getpeername` (v4-mapped IPv6 when `AF_INET6`).
++pub struct Socket {
++    pub inner: SocketInner,
++    pub ip_domain: u32,
++}
++
++impl Socket {
++    pub fn new(inner: SocketInner, ip_domain: u32) -> Self {
++        Self { inner, ip_domain }
++    }
++
++    /// Address family passed to `socket()` for this fd (`AF_INET` or `AF_INET6`).
++    #[inline]
++    pub fn ip_domain(&self) -> u32 {
++        self.ip_domain
++    }
++}
+ 
+ impl Deref for Socket {
+     type Target = SocketInner;
+ 
+     fn deref(&self) -> &Self::Target {
+-        &self.0
++        &self.inner
+     }
+ }
+ 
+@@ -48,7 +66,7 @@ impl FileLike for Socket {
+     }
+ 
+     fn set_nonblocking(&self, nonblocking: bool) -> AxResult<()> {
+-        self.0
++        self.inner
+             .set_option(SetSocketOption::NonBlocking(&nonblocking))
+     }
+ 
+@@ -67,10 +85,10 @@ impl FileLike for Socket {
+ }
+ impl Pollable for Socket {
+     fn poll(&self) -> IoEvents {
+-        self.0.poll()
++        self.inner.poll()
+     }
+ 
+     fn register(&self, context: &mut Context<'_>, events: IoEvents) {
+-        self.0.register(context, events);
++        self.inner.register(context, events);
+     }
+ }
+diff --git a/os/StarryOS/kernel/src/syscall/net/addr.rs b/os/StarryOS/kernel/src/syscall/net/addr.rs
+index 8902dd22..c2481dce 100644
+--- a/os/StarryOS/kernel/src/syscall/net/addr.rs
++++ b/os/StarryOS/kernel/src/syscall/net/addr.rs
+@@ -15,6 +15,73 @@ use linux_raw_sys::net::*;
+ 
+ use crate::mm::{UserConstPtr, UserPtr};
+ 
++/// `IPPROTO_IPV6` (Linux), for IPv6 socket options.
++pub const IPPROTO_IPV6: u32 = 41;
++/// `IPV6_V6ONLY` (Linux).
++pub const IPV6_V6ONLY: u32 = 26;
++
++/// Read a `sockaddr_in6` from user space (thin wrapper around [`SocketAddrV6::read_from_user`]).
++pub fn from_sockaddr_in6(addr: UserConstPtr<sockaddr>, addrlen: socklen_t) -> AxResult<SocketAddrV6> {
++    SocketAddrV6::read_from_user(addr, addrlen)
++}
++
++/// Serialize `sockaddr_in6` to user space.
++pub fn to_sockaddr_in6(
++    addr: &SocketAddrV6,
++    dst: UserPtr<sockaddr>,
++    addrlen: &mut socklen_t,
++) -> AxResult<()> {
++    addr.write_to_user(dst, addrlen)
++}
++
++/// Map an IPv4 loopback / any / concrete address into IPv4 for the v4-only stack from an IPv6
++/// socket address (`::`, `::1`, `::ffff:x.x.x.x`, or a non-mappable IPv6 address).
++pub fn normalize_socket_addr_ex_for_ip_stack(addr: SocketAddrEx, is_bind: bool) -> AxResult<SocketAddrEx> {
++    match addr {
++        SocketAddrEx::Ip(SocketAddr::V4(_)) => Ok(addr),
++        SocketAddrEx::Ip(SocketAddr::V6(v6)) => {
++            let ip = *v6.ip();
++            let v4 = if let Some(v4) = ip.to_ipv4_mapped() {
++                v4
++            } else if ip.is_unspecified() {
++                if !is_bind {
++                    return Err(AxError::from(LinuxError::EINVAL));
++                }
++                Ipv4Addr::UNSPECIFIED
++            } else if ip == Ipv6Addr::LOCALHOST {
++                Ipv4Addr::LOCALHOST
++            } else if is_bind {
++                return Err(AxError::from(LinuxError::EADDRNOTAVAIL));
++            } else {
++                return Err(AxError::from(LinuxError::ENETUNREACH));
++            };
++            Ok(SocketAddrEx::Ip(SocketAddr::V4(SocketAddrV4::new(v4, v6.port()))))
++        }
++        SocketAddrEx::Unix(_) => Ok(addr),
++        #[cfg(feature = "vsock")]
++        SocketAddrEx::Vsock(_) => Ok(addr),
++    }
++}
++
++/// Present `SocketAddrEx` for `getsockname` / `getpeername` / `recvfrom`: IPv6 sockets see
++/// IPv4-mapped IPv6 addresses.
++pub fn socket_addr_ex_for_user_name(domain: u32, addr: SocketAddrEx) -> AxResult<SocketAddrEx> {
++    if domain as u32 != AF_INET6 {
++        return Ok(addr);
++    }
++    match addr {
++        SocketAddrEx::Ip(SocketAddr::V4(v4)) => Ok(SocketAddrEx::Ip(SocketAddr::V6(
++            socket_addr_v4_to_mapped_v6(&v4),
++        ))),
++        _ => Ok(addr),
++    }
++}
++
++/// Convert an IPv4 socket address to IPv4-mapped IPv6 (`::ffff:a.b.c.d`).
++pub fn socket_addr_v4_to_mapped_v6(v4: &SocketAddrV4) -> SocketAddrV6 {
++    SocketAddrV6::new(v4.ip().to_ipv6_mapped(), v4.port(), 0, 0)
++}
++
+ /// Trait to extend [`SocketAddr`] and its variants with methods for reading
+ /// from and writing to user space.
+ pub trait SocketAddrExt: Sized {
+@@ -263,6 +330,14 @@ impl SocketAddrExt for SocketAddrEx {
+     }
+ 
+     fn family(&self) -> u16 {
+-        AF_INET as u16
++        match self {
++            SocketAddrEx::Ip(ip) => match ip {
++                SocketAddr::V4(_) => AF_INET as u16,
++                SocketAddr::V6(_) => AF_INET6 as u16,
++            },
++            SocketAddrEx::Unix(_) => AF_UNIX as u16,
++            #[cfg(feature = "vsock")]
++            SocketAddrEx::Vsock(_) => AF_VSOCK as u16,
++        }
+     }
+ }
+diff --git a/os/StarryOS/kernel/src/syscall/net/io.rs b/os/StarryOS/kernel/src/syscall/net/io.rs
+index b2353401..5e45f6a1 100644
+--- a/os/StarryOS/kernel/src/syscall/net/io.rs
++++ b/os/StarryOS/kernel/src/syscall/net/io.rs
+@@ -8,7 +8,7 @@ use linux_raw_sys::net::{
+     MSG_PEEK, MSG_TRUNC, SCM_RIGHTS, SOL_SOCKET, cmsghdr, msghdr, sockaddr, socklen_t,
+ };
+ 
+-use super::addr::SocketAddrExt;
++use super::addr::{SocketAddrExt, normalize_socket_addr_ex_for_ip_stack, socket_addr_ex_for_user_name};
+ use crate::{
+     file::{FileLike, Socket, add_file_like},
+     mm::{IoVec, IoVectorBuf, UserConstPtr, UserPtr, VmBytes, VmBytesMut},
+@@ -26,7 +26,10 @@ fn send_impl(
+     let addr = if addr.is_null() || addrlen == 0 {
+         None
+     } else {
+-        Some(SocketAddrEx::read_from_user(addr, addrlen)?)
++        Some(normalize_socket_addr_ex_for_ip_stack(
++            SocketAddrEx::read_from_user(addr, addrlen)?,
++            false,
++        )?)
+     };
+ 
+     debug!("sys_send <= fd: {fd}, flags: {flags}, addr: {addr:?}");
+@@ -113,7 +116,9 @@ fn recv_impl(
+     )?;
+ 
+     if let Some(remote_addr) = remote_addr {
+-        remote_addr.write_to_user(addr, addrlen.get_as_mut()?)?;
++        let presented =
++            socket_addr_ex_for_user_name(socket.ip_domain(), remote_addr)?;
++        presented.write_to_user(addr, addrlen.get_as_mut()?)?;
+     }
+ 
+     if let Some(mut builder) = cmsg_builder {
+diff --git a/os/StarryOS/kernel/src/syscall/net/name.rs b/os/StarryOS/kernel/src/syscall/net/name.rs
+index 22339d30..e99efa37 100644
+--- a/os/StarryOS/kernel/src/syscall/net/name.rs
++++ b/os/StarryOS/kernel/src/syscall/net/name.rs
+@@ -2,7 +2,7 @@ use ax_errno::AxResult;
+ use axnet::SocketOps;
+ use linux_raw_sys::net::{sockaddr, socklen_t};
+ 
+-use super::addr::SocketAddrExt;
++use super::addr::{SocketAddrExt, socket_addr_ex_for_user_name};
+ use crate::{
+     file::{FileLike, Socket},
+     mm::UserPtr,
+@@ -14,7 +14,7 @@ pub fn sys_getsockname(
+     addrlen: UserPtr<socklen_t>,
+ ) -> AxResult<isize> {
+     let socket = Socket::from_fd(fd)?;
+-    let local_addr = socket.local_addr()?;
++    let local_addr = socket_addr_ex_for_user_name(socket.ip_domain(), socket.local_addr()?)?;
+     debug!("sys_getsockname <= fd: {fd}, addr: {local_addr:?}");
+ 
+     local_addr.write_to_user(addr, addrlen.get_as_mut()?)?;
+@@ -27,7 +27,7 @@ pub fn sys_getpeername(
+     addrlen: UserPtr<socklen_t>,
+ ) -> AxResult<isize> {
+     let socket = Socket::from_fd(fd)?;
+-    let peer_addr = socket.peer_addr()?;
++    let peer_addr = socket_addr_ex_for_user_name(socket.ip_domain(), socket.peer_addr()?)?;
+     debug!("sys_getpeername <= fd: {fd}, addr: {peer_addr:?}");
+ 
+     peer_addr.write_to_user(addr, addrlen.get_as_mut()?)?;
+diff --git a/os/StarryOS/kernel/src/syscall/net/opt.rs b/os/StarryOS/kernel/src/syscall/net/opt.rs
+index e7afc4fb..3d201dc8 100644
+--- a/os/StarryOS/kernel/src/syscall/net/opt.rs
++++ b/os/StarryOS/kernel/src/syscall/net/opt.rs
+@@ -1,3 +1,5 @@
++use core::mem::size_of;
++
+ use ax_errno::{AxError, AxResult, LinuxError};
+ use axnet::options::{Configurable, GetSocketOption, SetSocketOption};
+ use linux_raw_sys::net::socklen_t;
+@@ -5,6 +7,7 @@ use linux_raw_sys::net::socklen_t;
+ use crate::{
+     file::{FileLike, Socket},
+     mm::{UserConstPtr, UserPtr},
++    syscall::net::addr::{IPPROTO_IPV6, IPV6_V6ONLY},
+ };
+ 
+ const PROTO_TCP: u32 = linux_raw_sys::net::IPPROTO_TCP as u32;
+@@ -138,6 +141,12 @@ pub fn sys_getsockopt(
+     }
+ 
+     let socket = Socket::from_fd(fd)?;
++
++    if level == IPPROTO_IPV6 && optname == IPV6_V6ONLY {
++        *get::<i32>(optval, optlen)? = 0;
++        return Ok(0);
++    }
++
+     macro_rules! dispatch {
+         ($which:ident) => {
+             socket.get_option(GetSocketOption::$which(get(optval, optlen)?))?;
+@@ -177,6 +186,12 @@ pub fn sys_setsockopt(
+     }
+ 
+     let socket = Socket::from_fd(fd)?;
++
++    if level == IPPROTO_IPV6 && optname == IPV6_V6ONLY {
++        let _ = *get::<i32>(optval, optlen)?;
++        return Ok(0);
++    }
++
+     macro_rules! dispatch {
+         ($which:ident) => {
+             socket.set_option(SetSocketOption::$which(get(optval, optlen)?))?;
+diff --git a/os/StarryOS/kernel/src/syscall/net/socket.rs b/os/StarryOS/kernel/src/syscall/net/socket.rs
+index 86c5c6c2..9776a550 100644
+--- a/os/StarryOS/kernel/src/syscall/net/socket.rs
++++ b/os/StarryOS/kernel/src/syscall/net/socket.rs
+@@ -11,12 +11,12 @@ use axnet::{
+ use linux_raw_sys::{
+     general::{O_CLOEXEC, O_NONBLOCK},
+     net::{
+-        AF_INET, AF_UNIX, AF_VSOCK, IPPROTO_TCP, IPPROTO_UDP, SHUT_RD, SHUT_RDWR, SHUT_WR,
++        AF_INET, AF_INET6, AF_UNIX, AF_VSOCK, IPPROTO_TCP, IPPROTO_UDP, SHUT_RD, SHUT_RDWR, SHUT_WR,
+         SOCK_DGRAM, SOCK_SEQPACKET, SOCK_STREAM, sockaddr, socklen_t,
+     },
+ };
+ 
+-use super::addr::SocketAddrExt;
++use super::addr::{SocketAddrExt, normalize_socket_addr_ex_for_ip_stack};
+ use crate::{
+     file::{FileLike, Socket},
+     mm::{UserConstPtr, UserPtr},
+@@ -28,14 +28,20 @@ pub fn sys_socket(domain: u32, raw_ty: u32, proto: u32) -> AxResult<isize> {
+     let ty = raw_ty & 0xFF;
+ 
+     let pid = current().as_thread().proc_data.proc.pid();
+-    let socket = match (domain, ty) {
+-        (AF_INET, SOCK_STREAM) => {
++    let ip_domain = if domain == AF_INET as u32 || domain == AF_INET6 as u32 {
++        domain
++    } else {
++        AF_INET as u32
++    };
++
++    let inner = match (domain, ty) {
++        (AF_INET | AF_INET6, SOCK_STREAM) => {
+             if proto != 0 && proto != IPPROTO_TCP as _ {
+                 return Err(AxError::from(LinuxError::EPROTONOSUPPORT));
+             }
+             SocketInner::Tcp(TcpSocket::new())
+         }
+-        (AF_INET, SOCK_DGRAM) => {
++        (AF_INET | AF_INET6, SOCK_DGRAM) => {
+             if proto != 0 && proto != IPPROTO_UDP as _ {
+                 return Err(AxError::from(LinuxError::EPROTONOSUPPORT));
+             }
+@@ -47,7 +53,7 @@ pub fn sys_socket(domain: u32, raw_ty: u32, proto: u32) -> AxResult<isize> {
+         (AF_VSOCK, SOCK_STREAM) => {
+             SocketInner::Vsock(VsockSocket::new(VsockStreamTransport::new()))
+         }
+-        (AF_INET, _) | (AF_UNIX, _) | (AF_VSOCK, _) => {
++        (AF_INET | AF_INET6, _) | (AF_UNIX, _) | (AF_VSOCK, _) => {
+             warn!("Unsupported socket type: domain: {domain}, ty: {ty}");
+             return Err(AxError::from(LinuxError::ESOCKTNOSUPPORT));
+         }
+@@ -55,7 +61,7 @@ pub fn sys_socket(domain: u32, raw_ty: u32, proto: u32) -> AxResult<isize> {
+             return Err(AxError::from(LinuxError::EAFNOSUPPORT));
+         }
+     };
+-    let socket = Socket(socket);
++    let socket = Socket::new(inner, ip_domain);
+ 
+     if raw_ty & O_NONBLOCK != 0 {
+         socket.set_nonblocking(true)?;
+@@ -66,7 +72,10 @@ pub fn sys_socket(domain: u32, raw_ty: u32, proto: u32) -> AxResult<isize> {
+ }
+ 
+ pub fn sys_bind(fd: i32, addr: UserConstPtr<sockaddr>, addrlen: u32) -> AxResult<isize> {
+-    let addr = SocketAddrEx::read_from_user(addr, addrlen)?;
++    let addr = normalize_socket_addr_ex_for_ip_stack(
++        SocketAddrEx::read_from_user(addr, addrlen)?,
++        true,
++    )?;
+     debug!("sys_bind <= fd: {fd}, addr: {addr:?}");
+ 
+     Socket::from_fd(fd)?.bind(addr)?;
+@@ -75,7 +84,10 @@ pub fn sys_bind(fd: i32, addr: UserConstPtr<sockaddr>, addrlen: u32) -> AxResult
+ }
+ 
+ pub fn sys_connect(fd: i32, addr: UserConstPtr<sockaddr>, addrlen: u32) -> AxResult<isize> {
+-    let addr = SocketAddrEx::read_from_user(addr, addrlen)?;
++    let addr = normalize_socket_addr_ex_for_ip_stack(
++        SocketAddrEx::read_from_user(addr, addrlen)?,
++        false,
++    )?;
+     debug!("sys_connect <= fd: {fd}, addr: {addr:?}");
+ 
+     Socket::from_fd(fd)?.connect(addr).map_err(|e| {
+@@ -119,13 +131,14 @@ pub fn sys_accept4(
+ 
+     let cloexec = flags & O_CLOEXEC != 0;
+ 
+-    let socket = Socket::from_fd(fd)?;
+-    let socket = Socket(socket.accept()?);
++    let listener = Socket::from_fd(fd)?;
++    let ip_domain = listener.ip_domain();
++    let socket = Socket::new(listener.accept()?, ip_domain);
+     if flags & O_NONBLOCK != 0 {
+         socket.set_nonblocking(true)?;
+     }
+ 
+-    let remote_addr = socket.local_addr()?;
++    let remote_addr = socket.peer_addr()?;
+     let fd = socket.add_to_fd_table(cloexec).map(|fd| fd as isize)?;
+     debug!("sys_accept => fd: {fd}, addr: {remote_addr:?}");
+ 
+@@ -177,8 +190,8 @@ pub fn sys_socketpair(
+             return Err(AxError::from(LinuxError::ESOCKTNOSUPPORT));
+         }
+     };
+-    let sock1 = Socket(SocketInner::Unix(sock1));
+-    let sock2 = Socket(SocketInner::Unix(sock2));
++    let sock1 = Socket::new(SocketInner::Unix(sock1), AF_UNIX as u32);
++    let sock2 = Socket::new(SocketInner::Unix(sock2), AF_UNIX as u32);
+ 
+     if raw_ty & O_NONBLOCK != 0 {
+         sock1.set_nonblocking(true)?;
