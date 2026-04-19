@@ -1,76 +1,32 @@
 {
   "task_id": "T8",
-  "auto_os_branch": "cursor/t8-procfs-7c9d",
-  "tgoskits_local_branch": "cursor/selfhost-t8-7c9d",
+  "status": "PARTIAL",
+  "what_done": [
+    "在 tgoskits 上实现 procfs：/proc/cpuinfo、/proc/meminfo（allocator）、多行 mounts、loadavg/uptime/version/filesystems、/proc/sys/kernel/random/{uuid,boot_id}，并提取为 patches/T8/0001-*.patch",
+    "新增 tests/selfhost：test_proc_self_exe.c 与 4 个 .sh，Makefile 已登记",
+    "在 PIN+c7e88 上单独 git am T8 patch 通过；riscv64 与 x86_64 的 scripts/build.sh 在应用 T8 后构建通过",
+    "Auto-OS 分支 cursor/t8-procfs-7c9d 已推送（含补丁、测试与历史 sentinel 提交）"
+  ],
+  "what_not_done": [
+    {
+      "item": "scripts/sanity-check.sh 合并 apply 全绿",
+      "reason": "全部 patch 顺序 git am 时在 T2 与 T1 的 execve.rs/task/ops.rs 上冲突（仓库既有问题，非 T8 独有）"
+    },
+    {
+      "item": "gh pr create 自动开 PR",
+      "reason": "此前 GraphQL 报错 Resource not accessible by integration；需人工在 GitHub 上从分支开 PR"
+    },
+    {
+      "item": "QEMU 来宾内运行 5 个 selfhost 测试",
+      "reason": "代理环境未执行来宾测试流水线"
+    }
+  ],
+  "blockers": [
+    "patch 栈合并冲突（T1/T2）需上游或编排侧解决后才能 sanity-check 全绿",
+    "CI/integration token 无 createPullRequest 权限时无法自动建 PR"
+  ],
   "patches": [
     "patches/T8/0001-feat-starry-add-real-procfs-cpuinfo-meminfo-mounts-a.patch"
   ],
-  "tests": [
-    "tests/selfhost/test_proc_self_exe.c",
-    "tests/selfhost/test_proc_cpuinfo.sh",
-    "tests/selfhost/test_proc_meminfo.sh",
-    "tests/selfhost/test_proc_random_uuid.sh",
-    "tests/selfhost/test_proc_loadavg.sh"
-  ],
-  "auto_os_commits": [
-    "f3888f89a45fbd7d4ef615c5daad4676e1678904"
-  ],
-  "pr_url": "",
-  "sanity_check": "FAIL",
-  "build_riscv64": "PASS",
-  "build_x86_64": "PASS",
-  "acceptance_criteria": [
-    {
-      "item": "/proc/self/exe readlink 真路径",
-      "status": "PASS",
-      "note": "沿用 proc_data.exe_path；test_proc_self_exe.c"
-    },
-    {
-      "item": "/proc/cpuinfo 架构字段",
-      "status": "PASS",
-      "note": "x86/riscv 分支；test_proc_cpuinfo.sh"
-    },
-    {
-      "item": "/proc/meminfo MemTotal/MemFree/MemAvailable + Swap=0",
-      "status": "PASS",
-      "note": "ax_alloc global_allocator；test_proc_meminfo.sh"
-    },
-    {
-      "item": "/proc/sys/kernel/random/uuid 每次新 UUID",
-      "status": "PASS",
-      "note": "SmallRng；test_proc_random_uuid.sh"
-    },
-    {
-      "item": "/proc/loadavg 格式",
-      "status": "PASS",
-      "note": "test_proc_loadavg.sh"
-    },
-    {
-      "item": "boot_id / uptime / version / mounts / filesystems",
-      "status": "PASS",
-      "note": "已实现；shell 测试未单独覆盖"
-    },
-    {
-      "item": "scripts/sanity-check.sh 全绿",
-      "status": "FAIL",
-      "note": "合并 apply 在 T1/T2 execve 冲突（既有问题）；T8 单独 apply 通过"
-    },
-    {
-      "item": "来宾内 5 测",
-      "status": "SKIP",
-      "note": "本环境未跑 QEMU guest"
-    },
-    {
-      "item": "GitHub PR 已创建",
-      "status": "FAIL",
-      "note": "gh pr create: Resource not accessible by integration"
-    }
-  ],
-  "blocked_by": [],
-  "decisions_needed": [
-    "请人工从分支 cursor/t8-procfs-7c9d 向 main 开 PR；或授予 integration token createPullRequest 权限"
-  ],
-  "status": "PARTIAL",
-  "tests_in_guest": "0/5 SKIP",
-  "sanity_note": "T8 standalone apply OK; combined git am fails at T2 vs T1 (execve.rs / task/ops.rs), unrelated to T8"
+  "guest_verified": false
 }
