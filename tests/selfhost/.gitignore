@@ -1,0 +1,3 @@
+# T10 selfhost rootfs 镜像（体积大，不入库）
+rootfs-selfhost*.img
+rootfs-selfhost*.img.xz
