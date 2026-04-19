@@ -15,14 +15,16 @@
   ],
   "auto_os_branch": "cursor/t7-prctl-7c9d",
   "auto_os_commits": [
-    "48c62090067f60d57ffb89df87ad449af5149cba"
+    "48c62090067f60d57ffb89df87ad449af5149cba",
+    "abd22d43ef5aadb50f9f21ebde4814e50d4dca4a"
   ],
   "build_riscv64": "PASS",
   "build_x86_64": "PASS",
   "tests_in_guest": "0/5 PASS (guest not run; host gcc compile of tests only)",
   "pr_url": "",
   "blocked_by": [
-    "scripts/sanity-check.sh combined patch apply fails even when patches/T7 is absent (pre-existing stack conflict). T7 standalone apply succeeds."
+    "scripts/sanity-check.sh combined patch apply fails even when patches/T7 is absent (pre-existing stack conflict). Per-task standalone apply including T7 succeeds.",
+    "gh pr create failed: GraphQL Resource not accessible by integration — open PR manually from branch cursor/t7-prctl-7c9d."
   ],
   "decisions_needed": []
 }
