@@ -16,7 +16,8 @@
   "auto_os_branch": "cursor/t7-prctl-7c9d",
   "auto_os_commits": [
     "48c62090067f60d57ffb89df87ad449af5149cba",
-    "abd22d43ef5aadb50f9f21ebde4814e50d4dca4a"
+    "abd22d43ef5aadb50f9f21ebde4814e50d4dca4a",
+    "5a8aa7172bf5af68f1d40aa2c3e253073c333824"
   ],
   "build_riscv64": "PASS",
   "build_x86_64": "PASS",
