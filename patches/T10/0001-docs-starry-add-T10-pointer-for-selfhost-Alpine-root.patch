@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sun, 19 Apr 2026 17:09:08 +0000
+Subject: [PATCH] docs(starry): add T10 pointer for selfhost Alpine rootfs
+
+Auto-OS carries build scripts under tests/selfhost/; this file anchors patches/T10.
+
+Made-with: Cursor
+
+diff --git a/os/StarryOS/SELFHOST-T10-ROOTFS.txt b/os/StarryOS/SELFHOST-T10-ROOTFS.txt
+new file mode 100644
+index 00000000..a536b972
+--- /dev/null
++++ b/os/StarryOS/SELFHOST-T10-ROOTFS.txt
+@@ -0,0 +1,3 @@
++T10 (Auto-OS selfhost): Alpine musl rootfs 镜像构建脚本位于 Auto-OS 仓
++tests/selfhost/build-selfhost-rootfs.sh；说明见 tests/selfhost/SELFHOST-ROOTFS.md。
++本文件仅为 patches/T10 提供非空 git am 载体，不含内核行为变更。

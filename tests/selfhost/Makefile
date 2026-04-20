@@ -20,37 +20,12 @@ OUT := out-$(ARCH)
 
 CFLAGS := -static -O0 -Wall -Wextra -Wno-unused-parameter
 
-C_SRCS := \
-	test_execve_basic.c \
-	test_execve_multithread.c \
-	test_execveat_dirfd.c \
-	test_execve_fdcloexec.c \
-	test_flock_excl_block.c \
-	test_flock_nonblock.c \
-	test_flock_shared.c \
-	test_flock_close_release.c \
-	test_fcntl_setlk_overlap.c \
-	test_fcntl_setlkw_signal.c \
-	test_fcntl_ofd_fork.c \
-	test_fcntl_unknown_cmd.c \
-	test_ipv6_socket_basic.c \
-	test_ipv6_bind_getsockname.c \
-	test_ipv6_v4mapped_loopback.c \
-	test_ipv6_pure_v6_unreach.c \
-	test_ipv6_v6only_setsockopt.c \
-	test_mount_unknown_fstype.c \
-	test_umount_busy.c \
-	test_umount_force.c \
-	test_rlimit_stack_default.c \
-	test_rlimit_stack_alloca.c \
-	test_rlimit_nofile_set.c \
-	test_rlimit_nofile_inherit.c \
-	test_rlimit_as_set.c \
-	test_rlimit_data_brk.c
+C_SRCS := $(filter-out test_pipe_bisect.c test_fork_exec_bisect.c,$(wildcard test_*.c))
 
 C_BINS := $(patsubst %.c,$(OUT)/%,$(C_SRCS))
 
-SH_SRCS := \
+SH_SRCS := $(filter test_%.sh,$(wildcard test_*.sh))
+SH_SRCS_OLD := \
 	test_mount_ext4_basic.sh \
 	test_mount_bind_dir.sh \
 	test_mount_9p_optional.sh \
