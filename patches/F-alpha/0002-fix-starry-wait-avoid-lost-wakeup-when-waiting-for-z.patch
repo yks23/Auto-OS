@@ -1,0 +1,26 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sun, 19 Apr 2026 13:25:12 +0000
+Subject: [PATCH] fix(starry/wait): avoid lost wakeup when waiting for zombie
+ children
+
+Made-with: Cursor
+
+diff --git a/os/StarryOS/kernel/src/syscall/task/wait.rs b/os/StarryOS/kernel/src/syscall/task/wait.rs
+index d02b652c..9f3cb8a1 100644
+--- a/os/StarryOS/kernel/src/syscall/task/wait.rs
++++ b/os/StarryOS/kernel/src/syscall/task/wait.rs
+@@ -110,7 +110,12 @@ pub fn sys_waitpid(pid: i32, exit_code: *mut i32, options: u32) -> AxResult<isiz
+             Some(res) => Poll::Ready(res),
+             None => {
+                 proc_data.child_exit_event.register(cx.waker());
+-                Poll::Pending
++                // 关闭「检查 → 注册 waker」之间的丢唤醒窗口：子进程可能恰好在
++                // 这两步之间退出并 child_exit_event.wake()（当时尚无 waiter）。
++                match check_children().transpose() {
++                    Some(res) => Poll::Ready(res),
++                    None => Poll::Pending,
++                }
+             }
+         }
+     })))?

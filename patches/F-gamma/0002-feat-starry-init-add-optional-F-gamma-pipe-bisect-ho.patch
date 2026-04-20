@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sun, 19 Apr 2026 17:16:42 +0000
+Subject: [PATCH] feat(starry/init): add optional F-gamma pipe bisect hook
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Run the staged pipe bisect helper when present, but not when /opt/run-tests.sh
+exists so the self-host batch runner keeps control. Placed after the early
+exports so it merges cleanly with F-α.
+
+Made-with: Cursor
+
+diff --git a/os/StarryOS/starryos/src/init.sh b/os/StarryOS/starryos/src/init.sh
+index 1f1ea3d7..f0bd1d38 100644
+--- a/os/StarryOS/starryos/src/init.sh
++++ b/os/StarryOS/starryos/src/init.sh
+@@ -4,6 +4,11 @@ export HOME=/root
+ export USER=root
+ export HOSTNAME=starry
+ 
++# F-γ：pipe / dup2 / execve 诊断；仅当未注入 /opt/run-tests.sh 时才 exec，避免与 self-host 批量测试抢 init。
++if [ ! -x /opt/run-tests.sh ] && [ -x /opt/selfhost-tests/test_pipe_bisect_1 ]; then
++	exec /opt/selfhost-tests/test_pipe_bisect_1
++fi
++
+ printf "Welcome to \033[96m\033[1mStarry OS\033[0m!\n"
+ env
+ echo

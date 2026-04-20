@@ -1,0 +1,97 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sun, 19 Apr 2026 17:09:59 +0000
+Subject: [PATCH] feat(starry-process): reparent orphans to nearest child
+ subreaper
+
+Made-with: Cursor
+
+diff --git a/components/starry-process/src/process.rs b/components/starry-process/src/process.rs
+index f3787717..981780d4 100644
+--- a/components/starry-process/src/process.rs
++++ b/components/starry-process/src/process.rs
+@@ -27,9 +27,9 @@ pub struct Process {
+     is_zombie: AtomicBool,
+     pub(crate) tg: SpinNoIrq<ThreadGroup>,
+ 
+-    // TODO: child subreaper9
+     children: SpinNoIrq<StrongMap<Pid, Arc<Process>>>,
+     parent: SpinNoIrq<Weak<Process>>,
++    child_subreaper: AtomicBool,
+ 
+     group: SpinNoIrq<Arc<ProcessGroup>>,
+ }
+@@ -61,6 +61,16 @@ impl Process {
+     pub fn children(&self) -> Vec<Arc<Process>> {
+         self.children.lock().values().cloned().collect()
+     }
++
++    /// Whether this process acts as a child subreaper for orphaned descendants.
++    pub fn is_child_subreaper(&self) -> bool {
++        self.child_subreaper.load(Ordering::Relaxed)
++    }
++
++    /// Mark this process as a child subreaper (or clear the flag).
++    pub fn set_child_subreaper(&self, enabled: bool) {
++        self.child_subreaper.store(enabled, Ordering::Relaxed);
++    }
+ }
+ 
+ /// [`ProcessGroup`] & [`Session`]
+@@ -201,10 +211,10 @@ impl Process {
+     ///
+     /// This method panics if the [`Process`] is the init process.
+     pub fn exit(self: &Arc<Self>) {
+-        // TODO: child subreaper
+-        let reaper = INIT_PROC.get().unwrap();
++        let init = INIT_PROC.get().unwrap();
++        let reaper = nearest_child_subreaper(self, init);
+ 
+-        if Arc::ptr_eq(self, reaper) {
++        if Arc::ptr_eq(self, &reaper) {
+             return;
+         }
+ 
+@@ -212,10 +222,10 @@ impl Process {
+         self.is_zombie.store(true, Ordering::Release);
+ 
+         let mut reaper_children = reaper.children.lock();
+-        let reaper = Arc::downgrade(reaper);
++        let reaper_weak = Arc::downgrade(&reaper);
+ 
+         for (pid, child) in core::mem::take(&mut *children) {
+-            *child.parent.lock() = reaper.clone();
++            *child.parent.lock() = reaper_weak.clone();
+             reaper_children.insert(pid, child);
+         }
+     }
+@@ -232,6 +242,17 @@ impl Process {
+     }
+ }
+ 
++fn nearest_child_subreaper(exiting: &Arc<Process>, init: &Arc<Process>) -> Arc<Process> {
++    let mut curr = exiting.parent();
++    while let Some(p) = curr {
++        if p.is_child_subreaper() {
++            return p;
++        }
++        curr = p.parent();
++    }
++    init.clone()
++}
++
+ impl fmt::Debug for Process {
+     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+         let mut builder = f.debug_struct("Process");
+@@ -271,6 +292,11 @@ impl Process {
+             children: SpinNoIrq::new(StrongMap::new()),
+             parent: SpinNoIrq::new(parent.as_ref().map(Arc::downgrade).unwrap_or_default()),
+             group: SpinNoIrq::new(group.clone()),
++            child_subreaper: AtomicBool::new(
++                parent
++                    .as_ref()
++                    .is_some_and(|p| p.is_child_subreaper()),
++            ),
+         });
+ 
+         group.processes.lock().insert(pid, &process);

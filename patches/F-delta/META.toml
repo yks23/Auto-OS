@@ -1,0 +1,3 @@
+task = "F-delta"
+base_commit = "c7e88fb3"
+note = "Real fix: sys_dup3 deadlock via close_file_like recursion. Director found via guest QEMU bisect (test_execve_basic/test_pipe_dup2). After this 31 PASS / 2 FAIL of 43 tests."

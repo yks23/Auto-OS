@@ -1,0 +1,890 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sun, 19 Apr 2026 17:13:18 +0000
+Subject: [PATCH] feat(starry): add ptrace(2) subset for self-hosting
+
+Implement TRACEME/ATTACH/DETACH/CONT/SYSCALL/SINGLESTEP/KILL,
+PEEK/POKE data, GET/SETREGS, and GETSIGINFO with per-process
+ptrace state, waitpid WUNTRACED reporting, and tracee hooks
+around syscalls, execve post-exec SIGTRAP, and x86 debug traps.
+
+Made-with: Cursor
+
+diff --git a/os/StarryOS/kernel/src/syscall/mod.rs b/os/StarryOS/kernel/src/syscall/mod.rs
+index a2ba8f31..a8033288 100644
+--- a/os/StarryOS/kernel/src/syscall/mod.rs
++++ b/os/StarryOS/kernel/src/syscall/mod.rs
+@@ -445,6 +445,12 @@ pub fn handle_syscall(uctx: &mut UserContext) {
+         Sysno::exit => sys_exit(uctx.arg0() as _),
+         Sysno::exit_group => sys_exit_group(uctx.arg0() as _),
+         Sysno::wait4 => sys_waitpid(uctx.arg0() as _, uctx.arg1() as _, uctx.arg2() as _),
++        Sysno::ptrace => crate::task::ptrace::sys_ptrace(
++            uctx.arg0() as _,
++            uctx.arg1() as _,
++            uctx.arg2(),
++            uctx.arg3(),
++        ),
+         Sysno::getsid => sys_getsid(uctx.arg0() as _),
+         Sysno::setsid => sys_setsid(),
+         Sysno::getpgid => sys_getpgid(uctx.arg0() as _),
+diff --git a/os/StarryOS/kernel/src/syscall/task/execve.rs b/os/StarryOS/kernel/src/syscall/task/execve.rs
+index 614d3d40..020bf4ce 100644
+--- a/os/StarryOS/kernel/src/syscall/task/execve.rs
++++ b/os/StarryOS/kernel/src/syscall/task/execve.rs
+@@ -11,7 +11,10 @@ use crate::{
+     config::USER_HEAP_BASE,
+     file::FD_TABLE,
+     mm::{load_user_app, vm_load_string},
+-    task::AsThread,
++    task::{
++        AsThread,
++        ptrace::tracee_execve_post_trap,
++    },
+ };
+ 
+ pub fn sys_execve(
+@@ -84,5 +87,8 @@ pub fn sys_execve(
+ 
+     uctx.set_ip(entry_point.as_usize());
+     uctx.set_sp(user_stack_base.as_usize());
++
++    tracee_execve_post_trap(proc_data, uctx);
++
+     Ok(0)
+ }
+diff --git a/os/StarryOS/kernel/src/syscall/task/wait.rs b/os/StarryOS/kernel/src/syscall/task/wait.rs
+index d02b652c..c1ebeb3d 100644
+--- a/os/StarryOS/kernel/src/syscall/task/wait.rs
++++ b/os/StarryOS/kernel/src/syscall/task/wait.rs
+@@ -13,7 +13,7 @@ use linux_raw_sys::general::{
+ use starry_process::{Pid, Process};
+ use starry_vm::{VmMutPtr, VmPtr};
+ 
+-use crate::task::AsThread;
++use crate::task::{get_process_data, AsThread};
+ 
+ bitflags! {
+     #[derive(Debug)]
+@@ -90,6 +90,22 @@ pub fn sys_waitpid(pid: i32, exit_code: *mut i32, options: u32) -> AxResult<isiz
+     }
+ 
+     let check_children = || {
++        if options.contains(WaitOptions::WUNTRACED) {
++            for child in &children {
++                if child.is_zombie() {
++                    continue;
++                }
++                if let Ok(pdata) = get_process_data(child.pid()) {
++                    if let Some(status) = pdata.ptrace.wait_status_if_stopped() {
++                        if let Some(exit_code) = exit_code.nullable() {
++                            exit_code.vm_write(status)?;
++                        }
++                        return Ok(Some(child.pid() as _));
++                    }
++                }
++            }
++        }
++
+         if let Some(child) = children.iter().find(|child| child.is_zombie()) {
+             if !options.contains(WaitOptions::WNOWAIT) {
+                 child.free();
+diff --git a/os/StarryOS/kernel/src/task/mod.rs b/os/StarryOS/kernel/src/task/mod.rs
+index c26f907e..cd019ba0 100644
+--- a/os/StarryOS/kernel/src/task/mod.rs
++++ b/os/StarryOS/kernel/src/task/mod.rs
+@@ -2,6 +2,7 @@
+ 
+ mod futex;
+ mod ops;
++pub mod ptrace;
+ mod resources;
+ mod signal;
+ mod stat;
+@@ -30,6 +31,8 @@ use starry_signal::{
+ pub use self::{futex::*, ops::*, resources::*, signal::*, stat::*, timer::*, user::*};
+ use crate::mm::AddrSpace;
+ 
++use self::ptrace::PtraceState;
++
+ ///  A wrapper type that assumes the inner type is `Sync`.
+ #[repr(transparent)]
+ pub struct AssumeSync<T>(pub T);
+@@ -233,6 +236,9 @@ pub struct ProcessData {
+ 
+     /// The default mask for file permissions.
+     umask: AtomicU32,
++
++    /// `ptrace(2)` state shared by all threads in the process.
++    pub ptrace: Arc<PtraceState>,
+ }
+ 
+ impl ProcessData {
+@@ -267,6 +273,8 @@ impl ProcessData {
+             futex_table: Arc::new(FutexTable::new()),
+ 
+             umask: AtomicU32::new(0o022),
++
++            ptrace: Arc::new(PtraceState::new()),
+         })
+     }
+ 
+diff --git a/os/StarryOS/kernel/src/task/ptrace.rs b/os/StarryOS/kernel/src/task/ptrace.rs
+new file mode 100644
+index 00000000..dfe22bfb
+--- /dev/null
++++ b/os/StarryOS/kernel/src/task/ptrace.rs
+@@ -0,0 +1,698 @@
++//! Minimal `ptrace(2)` support for self-hosting (gdb/strace foundations).
++
++use alloc::sync::Arc;
++use core::{
++    future::poll_fn,
++    mem::MaybeUninit,
++    sync::atomic::{AtomicBool, AtomicU32, Ordering},
++    task::Poll,
++};
++
++use ax_errno::{AxError, AxResult, LinuxError};
++use ax_hal::uspace::UserContext;
++use ax_memory_addr::VirtAddr;
++use ax_task::{
++    current,
++    future::{block_on, interruptible},
++};
++use axpoll::PollSet;
++use spin::Mutex;
++use starry_process::Pid;
++use starry_signal::Signo;
++use starry_vm::{vm_read_slice, vm_write_slice};
++
++use super::{get_process_data, get_task, AsThread, ProcessData};
++use crate::mm::AddrSpace;
++
++/// Linux `ptrace` request numbers we implement (subset).
++pub const PTRACE_TRACEME: i32 = 0;
++pub const PTRACE_PEEKTEXT: i32 = 1;
++pub const PTRACE_PEEKDATA: i32 = 2;
++pub const PTRACE_POKETEXT: i32 = 4;
++pub const PTRACE_POKEDATA: i32 = 5;
++pub const PTRACE_CONT: i32 = 7;
++pub const PTRACE_KILL: i32 = 8;
++pub const PTRACE_SINGLESTEP: i32 = 9;
++pub const PTRACE_ATTACH: i32 = 16;
++pub const PTRACE_DETACH: i32 = 17;
++pub const PTRACE_SYSCALL: i32 = 24;
++pub const PTRACE_GETREGS: i32 = 12;
++pub const PTRACE_SETREGS: i32 = 13;
++pub const PTRACE_GETSIGINFO: i32 = 0x4202;
++
++/// `x86_64` `user_regs_struct` size from Linux uapi.
++#[cfg(target_arch = "x86_64")]
++pub const USER_REGS_STRUCT_SIZE: usize = 27 * 8;
++/// `riscv64` `user_regs_struct` size from Linux uapi (pc + x1..x31).
++#[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
++pub const USER_REGS_STRUCT_SIZE: usize = 32 * core::mem::size_of::<usize>();
++
++#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
++pub enum PtraceStopKind {
++    #[default]
++    None,
++    SyscallEntry,
++    SyscallExit,
++    /// `SIGTRAP` after `execve`, single-step, or breakpoint-style stop.
++    Trap,
++    /// Job-control style / `PTRACE_ATTACH` synthetic `SIGSTOP`.
++    GroupStop { signo: i32 },
++}
++
++#[derive(Debug, Default)]
++struct PtraceStopSlot {
++    kind: PtraceStopKind,
++    /// For `WSTOPSIG` / `PTRACE_GETSIGINFO` (`si_signo`).
++    stop_signal: i32,
++}
++
++/// Per-process ptrace state (thread-group shared via [`ProcessData`](super::ProcessData)).
++pub struct PtraceState {
++    /// Tracer process TGID, or `0` if not ptrace'd.
++    tracer: AtomicU32,
++    /// When `true`, the tracee may run user code; when `false`, it is ptrace-stopped.
++    continuing: AtomicBool,
++    wait_poll: Arc<PollSet>,
++    slot: Mutex<PtraceStopSlot>,
++    saved_uctx: Mutex<Option<UserContext>>,
++    /// Last synthetic / delivered stop siginfo (`PTRACE_GETSIGINFO`).
++    siginfo: Mutex<Option<SiginfoBuf>>,
++    pub(crate) attach_pending: AtomicBool,
++    pub(crate) syscall_trace: AtomicBool,
++    /// Skip syscall-exit stop once (used after `execve` post-exec `SIGTRAP`).
++    skip_post_syscall_stop: AtomicBool,
++    pub(crate) single_step_armed: AtomicBool,
++}
++
++#[repr(C)]
++#[derive(Clone, Copy)]
++pub struct SiginfoBuf {
++    pub words: [u8; 128],
++}
++
++impl Default for SiginfoBuf {
++    fn default() -> Self {
++        Self { words: [0; 128] }
++    }
++}
++
++impl PtraceState {
++    pub fn new() -> Self {
++        Self {
++            tracer: AtomicU32::new(0),
++            continuing: AtomicBool::new(true),
++            wait_poll: Arc::new(PollSet::new()),
++            slot: Mutex::new(PtraceStopSlot::default()),
++            saved_uctx: Mutex::new(None),
++            siginfo: Mutex::new(None),
++            attach_pending: AtomicBool::new(false),
++            syscall_trace: AtomicBool::new(false),
++            skip_post_syscall_stop: AtomicBool::new(false),
++            single_step_armed: AtomicBool::new(false),
++        }
++    }
++
++    #[inline]
++    pub fn tracer_tgid(&self) -> Pid {
++        self.tracer.load(Ordering::Acquire)
++    }
++
++    #[inline]
++    pub fn has_tracer(&self) -> bool {
++        self.tracer_tgid() != 0
++    }
++
++    pub fn set_tracer(&self, tgid: Pid) {
++        self.tracer.store(tgid, Ordering::Release);
++    }
++
++    pub fn clear_tracer(&self) {
++        self.tracer.store(0, Ordering::Release);
++        self.syscall_trace.store(false, Ordering::Release);
++        self.attach_pending.store(false, Ordering::Release);
++        self.single_step_armed.store(false, Ordering::Release);
++        self.skip_post_syscall_stop.store(false, Ordering::Release);
++        *self.slot.lock() = PtraceStopSlot::default();
++        *self.saved_uctx.lock() = None;
++        *self.siginfo.lock() = None;
++    }
++
++    /// Encode `waitpid(2)` status for a ptrace-stopped child (`WIFSTOPPED`).
++    pub fn wait_status_if_stopped(&self) -> Option<i32> {
++        if self.continuing.load(Ordering::Acquire) {
++            return None;
++        }
++        let g = self.slot.lock();
++        if g.kind == PtraceStopKind::None {
++            return None;
++        }
++        let sig = g.stop_signal;
++        Some(((sig & 0xff) << 8) | 0x7f)
++    }
++
++    fn notify_tracer(&self) {
++        let t = self.tracer_tgid();
++        if t == 0 {
++            return;
++        }
++        if let Ok(pd) = get_process_data(t) {
++            pd.child_exit_event.wake();
++        }
++    }
++
++    fn fill_siginfo_locked(&self, signo: i32, code: i32) {
++        let mut b = SiginfoBuf::default();
++        // Common Linux layout: `si_signo` at 0, `si_code` at 4, `si_pid` at 0x10 ...
++        b.words[0..4].copy_from_slice(&signo.to_ne_bytes());
++        b.words[4..8].copy_from_slice(&code.to_ne_bytes());
++        *self.siginfo.lock() = Some(b);
++    }
++
++    /// Tracee: block until tracer `CONT` / `DETACH`, applying any `SETREGS` overlay.
++    pub fn tracee_enter_stop(
++        self: &Arc<Self>,
++        _proc_data: &Arc<ProcessData>,
++        uctx: &mut UserContext,
++        kind: PtraceStopKind,
++        stop_signal: i32,
++    ) {
++        if !self.has_tracer() {
++            return;
++        }
++
++        *self.saved_uctx.lock() = Some(*uctx);
++        {
++            let mut s = self.slot.lock();
++            s.kind = kind;
++            s.stop_signal = stop_signal;
++        }
++        self.fill_siginfo_locked(stop_signal, 1); // `SI_USER`-like minimal fill
++        self.continuing.store(false, Ordering::Release);
++        self.notify_tracer();
++
++        let _ = block_on(interruptible(poll_fn(|cx| {
++            self.wait_poll.register(cx.waker());
++            if self.continuing.load(Ordering::Acquire) {
++                Poll::Ready(())
++            } else {
++                Poll::Pending
++            }
++        })));
++
++        if let Some(saved) = self.saved_uctx.lock().take() {
++            *uctx = saved;
++        }
++        {
++            let mut s = self.slot.lock();
++            s.kind = PtraceStopKind::None;
++            s.stop_signal = 0;
++        }
++        *self.siginfo.lock() = None;
++    }
++
++    pub fn request_skip_next_syscall_exit(&self) {
++        self.skip_post_syscall_stop.store(true, Ordering::Release);
++    }
++
++    pub fn take_skip_next_syscall_exit(&self) -> bool {
++        self.skip_post_syscall_stop.swap(false, Ordering::AcqRel)
++    }
++
++    pub fn tracee_on_resume_apply_singlestep(self: &Arc<Self>, uctx: &mut UserContext) {
++        if !self.single_step_armed.swap(false, Ordering::AcqRel) {
++            return;
++        }
++        #[cfg(target_arch = "x86_64")]
++        {
++            uctx.rflags |= 0x100; // TF
++        }
++        #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
++        {
++            // Not implemented: would need `sstatus` SPIE / debug support.
++        }
++    }
++}
++
++fn current_tgid() -> Pid {
++    current().as_thread().proc_data.proc.pid()
++}
++
++fn ensure_tracer(state: &PtraceState, tracee_pid: Pid) -> AxResult<()> {
++    if state.tracer_tgid() != current_tgid() {
++        return Err(AxError::from(LinuxError::ESRCH));
++    }
++    let _ = get_process_data(tracee_pid)?;
++    Ok(())
++}
++
++fn tracee_proc_data(pid: Pid) -> AxResult<Arc<ProcessData>> {
++    get_process_data(pid)
++}
++
++fn peek_poke_word(aspace: &AddrSpace, addr: VirtAddr, write: Option<usize>) -> AxResult<usize> {
++    let mut buf = [0u8; core::mem::size_of::<usize>()];
++    let align_mask = core::mem::size_of::<usize>() - 1;
++    let aligned = (addr.as_usize() & !align_mask).into();
++    match write {
++        None => {
++            aspace.read(aligned, &mut buf)?;
++            Ok(usize::from_ne_bytes(buf))
++        }
++        Some(v) => {
++            buf = v.to_ne_bytes();
++            aspace.write(aligned, &buf)?;
++            Ok(v)
++        }
++    }
++}
++
++/// `PTRACE_PEEK*` / `PTRACE_POKE*`.
++pub fn ptrace_peek_poke(pid: Pid, addr: usize, data: usize, poke: bool) -> AxResult<isize> {
++    let pd = tracee_proc_data(pid)?;
++    ensure_tracer(&pd.ptrace, pid)?;
++    let aspace = pd.aspace.lock();
++    let vaddr: VirtAddr = addr.into();
++    if poke {
++        let _ = peek_poke_word(&aspace, vaddr, Some(data as usize))?;
++        Ok(0)
++    } else {
++        let w = peek_poke_word(&aspace, vaddr, None)?;
++        Ok(w as isize)
++    }
++}
++
++/// `PTRACE_GETREGS` / `PTRACE_SETREGS`.
++pub fn ptrace_getregs(pid: Pid, data: *mut u8) -> AxResult<isize> {
++    let pd = tracee_proc_data(pid)?;
++    ensure_tracer(&pd.ptrace, pid)?;
++    let Some(uctx) = *pd.ptrace.saved_uctx.lock() else {
++        return Err(AxError::from(LinuxError::EFAULT));
++    };
++    #[cfg(target_arch = "x86_64")]
++    {
++        let mut buf = [0u8; USER_REGS_STRUCT_SIZE];
++        pack_user_regs_struct_x86_64(&uctx, &mut buf);
++        vm_write_slice(data, &buf).map_err(|_| AxError::from(LinuxError::EFAULT))?;
++    }
++    #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
++    {
++        let mut buf = [0u8; USER_REGS_STRUCT_SIZE];
++        pack_user_regs_struct_riscv64(&uctx, &mut buf);
++        vm_write_slice(data, &buf).map_err(|_| AxError::from(LinuxError::EFAULT))?;
++    }
++    #[cfg(not(any(
++        target_arch = "x86_64",
++        target_arch = "riscv32",
++        target_arch = "riscv64"
++    )))]
++    {
++        let _ = uctx;
++        return Err(AxError::from(LinuxError::EINVAL));
++    }
++    Ok(0)
++}
++
++pub fn ptrace_setregs(pid: Pid, data: *const u8) -> AxResult<isize> {
++    let pd = tracee_proc_data(pid)?;
++    ensure_tracer(&pd.ptrace, pid)?;
++    let mut slot = pd.ptrace.saved_uctx.lock();
++    let Some(mut uctx) = *slot else {
++        return Err(AxError::from(LinuxError::EFAULT));
++    };
++    #[cfg(target_arch = "x86_64")]
++    {
++        let mut buf = [0u8; USER_REGS_STRUCT_SIZE];
++        vm_read_slice(data, unsafe {
++            core::mem::transmute::<&mut [u8], &mut [MaybeUninit<u8>]>(&mut buf)
++        })
++        .map_err(|_| AxError::from(LinuxError::EFAULT))?;
++        unpack_user_regs_struct_x86_64(&mut uctx, &buf)?;
++    }
++    #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
++    {
++        let mut buf = [0u8; USER_REGS_STRUCT_SIZE];
++        vm_read_slice(data, unsafe {
++            core::mem::transmute::<&mut [u8], &mut [MaybeUninit<u8>]>(&mut buf)
++        })
++        .map_err(|_| AxError::from(LinuxError::EFAULT))?;
++        unpack_user_regs_struct_riscv64(&mut uctx, &buf)?;
++    }
++    #[cfg(not(any(
++        target_arch = "x86_64",
++        target_arch = "riscv32",
++        target_arch = "riscv64"
++    )))]
++    {
++        let _ = uctx;
++        return Err(AxError::from(LinuxError::EINVAL));
++    }
++    *slot = Some(uctx);
++    Ok(0)
++}
++
++pub fn ptrace_getsiginfo(pid: Pid, data: *mut u8) -> AxResult<isize> {
++    let pd = tracee_proc_data(pid)?;
++    ensure_tracer(&pd.ptrace, pid)?;
++    let Some(info) = pd.ptrace.siginfo.lock().clone() else {
++        return Err(AxError::from(LinuxError::EINVAL));
++    };
++    vm_write_slice(data, &info.words).map_err(|_| AxError::from(LinuxError::EFAULT))?;
++    Ok(0)
++}
++
++fn cont_common(pid: Pid, request: i32, data: usize) -> AxResult<isize> {
++    let pd = tracee_proc_data(pid)?;
++    ensure_tracer(&pd.ptrace, pid)?;
++    if request == PTRACE_SYSCALL {
++        pd.ptrace.syscall_trace.store(true, Ordering::Release);
++    } else if request == PTRACE_CONT {
++        pd.ptrace.syscall_trace.store(false, Ordering::Release);
++    }
++    if request == PTRACE_SINGLESTEP {
++        pd.ptrace.single_step_armed.store(true, Ordering::Release);
++    }
++    // Optional pending signal to inject on resume: `data` as `siginfo_t*` is
++    // only for advanced requests; Linux uses `data` as `void*` for `CONT`
++    // signal number in legacy ABI — we accept `0..=64` as raw signo.
++    let _sig = data as i32;
++    pd.ptrace.continuing.store(true, Ordering::Release);
++    pd.ptrace.wait_poll.wake();
++    if let Ok(task) = get_task(pd.proc.threads().first().copied().unwrap_or(pid)) {
++        task.interrupt();
++    }
++    Ok(0)
++}
++
++pub fn ptrace_detach(pid: Pid, data: usize) -> AxResult<isize> {
++    let pd = tracee_proc_data(pid)?;
++    ensure_tracer(&pd.ptrace, pid)?;
++    let _sig = data as i32;
++    pd.ptrace.clear_tracer();
++    pd.ptrace.continuing.store(true, Ordering::Release);
++    pd.ptrace.wait_poll.wake();
++    if let Ok(task) = get_task(pd.proc.threads().first().copied().unwrap_or(pid)) {
++        task.interrupt();
++    }
++    Ok(0)
++}
++
++pub fn ptrace_kill(pid: Pid) -> AxResult<isize> {
++    let pd = tracee_proc_data(pid)?;
++    ensure_tracer(&pd.ptrace, pid)?;
++    super::send_signal_to_process(
++        pid,
++        Some(starry_signal::SignalInfo::new_kernel(Signo::SIGKILL)),
++    )?;
++    Ok(0)
++}
++
++pub fn ptrace_traceme() -> AxResult<isize> {
++    let pd = current().as_thread().proc_data.clone();
++    if pd.ptrace.has_tracer() {
++        return Err(AxError::from(LinuxError::EPERM));
++    }
++    let parent = pd.proc.parent().ok_or(AxError::from(LinuxError::EPERM))?;
++    pd.ptrace.set_tracer(parent.pid());
++    Ok(0)
++}
++
++pub fn ptrace_attach(pid: Pid) -> AxResult<isize> {
++    if pid == current_tgid() {
++        return Err(AxError::from(LinuxError::EINVAL));
++    }
++    let pd = tracee_proc_data(pid)?;
++    if pd.ptrace.has_tracer() {
++        return Err(AxError::from(LinuxError::EBUSY));
++    }
++    pd.ptrace.set_tracer(current_tgid());
++    pd.ptrace.attach_pending.store(true, Ordering::Release);
++    let tid = pd.proc.threads().first().copied().unwrap_or(pid);
++    if let Ok(task) = get_task(tid) {
++        task.interrupt();
++    }
++    Ok(0)
++}
++
++pub fn sys_ptrace(request: i64, pid: i32, addr: usize, data: usize) -> AxResult<isize> {
++    let req = request as i32;
++    match req {
++        PTRACE_TRACEME => {
++            if pid != 0 || addr != 0 || data != 0 {
++                return Err(AxError::from(LinuxError::EINVAL));
++            }
++            ptrace_traceme()
++        }
++        PTRACE_ATTACH => ptrace_attach(pid as Pid),
++        PTRACE_DETACH => ptrace_detach(pid as Pid, data),
++        PTRACE_CONT | PTRACE_SYSCALL | PTRACE_SINGLESTEP => {
++            cont_common(pid as Pid, req, data)
++        }
++        PTRACE_KILL => ptrace_kill(pid as Pid),
++        PTRACE_PEEKTEXT | PTRACE_PEEKDATA => ptrace_peek_poke(pid as Pid, addr, 0, false),
++        PTRACE_POKETEXT | PTRACE_POKEDATA => ptrace_peek_poke(pid as Pid, addr, data, true),
++        PTRACE_GETREGS => ptrace_getregs(pid as Pid, data as _),
++        PTRACE_SETREGS => ptrace_setregs(pid as Pid, data as _),
++        PTRACE_GETSIGINFO => ptrace_getsiginfo(pid as Pid, data as _),
++        _ => Err(AxError::from(LinuxError::EINVAL)),
++    }
++}
++
++// --- register packers -------------------------------------------------------
++
++#[cfg(target_arch = "x86_64")]
++fn pack_user_regs_struct_x86_64(uctx: &UserContext, buf: &mut [u8; USER_REGS_STRUCT_SIZE]) {
++    let mut w = |i: &mut usize, v: u64| {
++        buf[*i..*i + 8].copy_from_slice(&v.to_ne_bytes());
++        *i += 8;
++    };
++    let mut i = 0usize;
++    w(&mut i, uctx.r15);
++    w(&mut i, uctx.r14);
++    w(&mut i, uctx.r13);
++    w(&mut i, uctx.r12);
++    w(&mut i, uctx.rbp);
++    w(&mut i, uctx.rbx);
++    w(&mut i, uctx.r11);
++    w(&mut i, uctx.r10);
++    w(&mut i, uctx.r9);
++    w(&mut i, uctx.r8);
++    w(&mut i, uctx.rax);
++    w(&mut i, uctx.rcx);
++    w(&mut i, uctx.rdx);
++    w(&mut i, uctx.rsi);
++    w(&mut i, uctx.rdi);
++    w(&mut i, uctx.sysno() as u64); // orig_rax
++    w(&mut i, uctx.rip);
++    w(&mut i, uctx.cs);
++    w(&mut i, uctx.rflags);
++    w(&mut i, uctx.rsp);
++    w(&mut i, uctx.ss);
++    w(&mut i, uctx.fs_base as u64);
++    w(&mut i, uctx.gs_base as u64);
++    w(&mut i, 0); // ds
++    w(&mut i, 0); // es
++    w(&mut i, 0); // fs
++    w(&mut i, 0); // gs
++    debug_assert_eq!(i, USER_REGS_STRUCT_SIZE);
++}
++
++#[cfg(target_arch = "x86_64")]
++fn unpack_user_regs_struct_x86_64(
++    uctx: &mut UserContext,
++    buf: &[u8; USER_REGS_STRUCT_SIZE],
++) -> AxResult<()> {
++    let mut o = 0usize;
++    let mut rd = || -> u64 {
++        let v = u64::from_ne_bytes(buf[o..o + 8].try_into().unwrap());
++        o += 8;
++        v
++    };
++    uctx.r15 = rd();
++    uctx.r14 = rd();
++    uctx.r13 = rd();
++    uctx.r12 = rd();
++    uctx.rbp = rd();
++    uctx.rbx = rd();
++    uctx.r11 = rd();
++    uctx.r10 = rd();
++    uctx.r9 = rd();
++    uctx.r8 = rd();
++    uctx.rax = rd();
++    uctx.rcx = rd();
++    uctx.rdx = rd();
++    uctx.rsi = rd();
++    uctx.rdi = rd();
++    let _orig_rax = rd();
++    uctx.rip = rd();
++    uctx.cs = rd();
++    uctx.rflags = rd();
++    uctx.rsp = rd();
++    uctx.ss = rd();
++    uctx.fs_base = rd();
++    uctx.gs_base = rd();
++    let _ds = rd();
++    let _es = rd();
++    let _fs = rd();
++    let _gs = rd();
++    Ok(())
++}
++
++#[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
++fn pack_user_regs_struct_riscv64(uctx: &UserContext, buf: &mut [u8; USER_REGS_STRUCT_SIZE]) {
++    let r = &uctx.regs;
++    let mut i = 0usize;
++    let mut w = |v: usize| {
++        let sz = core::mem::size_of::<usize>();
++        buf[i..i + sz].copy_from_slice(&v.to_ne_bytes());
++        i += sz;
++    };
++    w(uctx.sepc);
++    w(r.ra);
++    w(r.sp);
++    w(r.gp);
++    w(r.tp);
++    w(r.t0);
++    w(r.t1);
++    w(r.t2);
++    w(r.s0);
++    w(r.s1);
++    w(r.a0);
++    w(r.a1);
++    w(r.a2);
++    w(r.a3);
++    w(r.a4);
++    w(r.a5);
++    w(r.a6);
++    w(r.a7);
++    w(r.s2);
++    w(r.s3);
++    w(r.s4);
++    w(r.s5);
++    w(r.s6);
++    w(r.s7);
++    w(r.s8);
++    w(r.s9);
++    w(r.s10);
++    w(r.s11);
++    w(r.t3);
++    w(r.t4);
++    w(r.t5);
++    w(r.t6);
++    debug_assert_eq!(i, USER_REGS_STRUCT_SIZE);
++}
++
++#[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
++fn unpack_user_regs_struct_riscv64(
++    uctx: &mut UserContext,
++    buf: &[u8; USER_REGS_STRUCT_SIZE],
++) -> AxResult<()> {
++    let sz = core::mem::size_of::<usize>();
++    let mut o = 0usize;
++    let mut rd = || -> usize {
++        let v = usize::from_ne_bytes(buf[o..o + sz].try_into().unwrap());
++        o += sz;
++        v
++    };
++    uctx.sepc = rd();
++    uctx.regs.ra = rd();
++    uctx.regs.sp = rd();
++    uctx.regs.gp = rd();
++    uctx.regs.tp = rd();
++    uctx.regs.t0 = rd();
++    uctx.regs.t1 = rd();
++    uctx.regs.t2 = rd();
++    uctx.regs.s0 = rd();
++    uctx.regs.s1 = rd();
++    uctx.regs.a0 = rd();
++    uctx.regs.a1 = rd();
++    uctx.regs.a2 = rd();
++    uctx.regs.a3 = rd();
++    uctx.regs.a4 = rd();
++    uctx.regs.a5 = rd();
++    uctx.regs.a6 = rd();
++    uctx.regs.a7 = rd();
++    uctx.regs.s2 = rd();
++    uctx.regs.s3 = rd();
++    uctx.regs.s4 = rd();
++    uctx.regs.s5 = rd();
++    uctx.regs.s6 = rd();
++    uctx.regs.s7 = rd();
++    uctx.regs.s8 = rd();
++    uctx.regs.s9 = rd();
++    uctx.regs.s10 = rd();
++    uctx.regs.s11 = rd();
++    uctx.regs.t3 = rd();
++    uctx.regs.t4 = rd();
++    uctx.regs.t5 = rd();
++    uctx.regs.t6 = rd();
++    Ok(())
++}
++
++/// Called from the tracee user loop before each `uctx.run()`.
++pub fn tracee_before_user_run(proc_data: &Arc<ProcessData>, uctx: &mut UserContext) {
++    let p = &proc_data.ptrace;
++    if !p.has_tracer() {
++        return;
++    }
++    if p.attach_pending.swap(false, Ordering::AcqRel) {
++        p.tracee_enter_stop(
++            proc_data,
++            uctx,
++            PtraceStopKind::GroupStop {
++                signo: Signo::SIGSTOP as i32,
++            },
++            Signo::SIGSTOP as i32,
++        );
++    }
++    p.tracee_on_resume_apply_singlestep(uctx);
++}
++
++/// Syscall-entry hook (`PTRACE_SYSCALL`).
++pub fn tracee_before_syscall(proc_data: &Arc<ProcessData>, uctx: &mut UserContext) {
++    let p = &proc_data.ptrace;
++    if !p.has_tracer() || !p.syscall_trace.load(Ordering::Acquire) {
++        return;
++    }
++    p.tracee_enter_stop(
++        proc_data,
++        uctx,
++        PtraceStopKind::SyscallEntry,
++        Signo::SIGTRAP as i32,
++    );
++}
++
++/// Syscall-exit hook (`PTRACE_SYSCALL`).
++pub fn tracee_after_syscall(proc_data: &Arc<ProcessData>, uctx: &mut UserContext) {
++    let p = &proc_data.ptrace;
++    if !p.has_tracer() || !p.syscall_trace.load(Ordering::Acquire) {
++        return;
++    }
++    if p.take_skip_next_syscall_exit() {
++        return;
++    }
++    p.tracee_enter_stop(
++        proc_data,
++        uctx,
++        PtraceStopKind::SyscallExit,
++        Signo::SIGTRAP as i32,
++    );
++}
++
++/// `execve` post-exec `SIGTRAP` stop for `PTRACE_TRACEME` children.
++pub fn tracee_execve_post_trap(proc_data: &Arc<ProcessData>, uctx: &mut UserContext) {
++    let p = &proc_data.ptrace;
++    if !p.has_tracer() {
++        return;
++    }
++    p.request_skip_next_syscall_exit();
++    p.tracee_enter_stop(proc_data, uctx, PtraceStopKind::Trap, Signo::SIGTRAP as i32);
++}
++
++/// `SIGTRAP` from CPU debug / breakpoint while ptraced.
++pub fn tracee_trap_stop(proc_data: &Arc<ProcessData>, uctx: &mut UserContext) {
++    let p = &proc_data.ptrace;
++    if !p.has_tracer() {
++        return;
++    }
++    p.tracee_enter_stop(proc_data, uctx, PtraceStopKind::Trap, Signo::SIGTRAP as i32);
++}
+diff --git a/os/StarryOS/kernel/src/task/user.rs b/os/StarryOS/kernel/src/task/user.rs
+index 1ef33b5a..a48f4a17 100644
+--- a/os/StarryOS/kernel/src/task/user.rs
++++ b/os/StarryOS/kernel/src/task/user.rs
+@@ -7,7 +7,12 @@ use starry_vm::{VmMutPtr, VmPtr};
+ use super::{
+     AsThread, TimerState, check_signals, raise_signal_fatal, set_timer_state, unblock_next_signal,
+ };
+-use crate::syscall::handle_syscall;
++use crate::{
++    syscall::handle_syscall,
++    task::ptrace::{
++        tracee_after_syscall, tracee_before_syscall, tracee_before_user_run, tracee_trap_stop,
++    },
++};
+ 
+ /// Create a new user task.
+ pub fn new_user_task(name: &str, mut uctx: UserContext, set_child_tid: usize) -> TaskInner {
+@@ -23,12 +28,18 @@ pub fn new_user_task(name: &str, mut uctx: UserContext, set_child_tid: usize) ->
+ 
+             let thr = curr.as_thread();
+             while !thr.pending_exit() {
++                tracee_before_user_run(&thr.proc_data, &mut uctx);
++
+                 let reason = uctx.run();
+ 
+                 set_timer_state(&curr, TimerState::Kernel);
+ 
+                 match reason {
+-                    ReturnReason::Syscall => handle_syscall(&mut uctx),
++                    ReturnReason::Syscall => {
++                        tracee_before_syscall(&thr.proc_data, &mut uctx);
++                        handle_syscall(&mut uctx);
++                        tracee_after_syscall(&thr.proc_data, &mut uctx);
++                    }
+                     ReturnReason::PageFault(addr, flags) => {
+                         if !thr.proc_data.aspace.lock().handle_page_fault(addr, flags) {
+                             info!(
+@@ -55,6 +66,17 @@ pub fn new_user_task(name: &str, mut uctx: UserContext, set_child_tid: usize) ->
+                             ExceptionKind::IllegalInstruction => Signo::SIGILL,
+                             _ => Signo::SIGTRAP,
+                         };
++                        #[cfg(target_arch = "x86_64")]
++                        if thr.proc_data.ptrace.has_tracer()
++                            && matches!(signo, Signo::SIGTRAP)
++                            && matches!(
++                                exc_info.kind(),
++                                ExceptionKind::Breakpoint | ExceptionKind::Debug
++                            )
++                        {
++                            tracee_trap_stop(&thr.proc_data, &mut uctx);
++                            break 'exc;
++                        }
+                         raise_signal_fatal(SignalInfo::new_kernel(signo))
+                             .expect("Failed to send SIGTRAP");
+                     }

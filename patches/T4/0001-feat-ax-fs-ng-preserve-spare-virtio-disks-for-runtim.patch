@@ -1,0 +1,289 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sat, 18 Apr 2026 19:21:33 +0000
+Subject: [PATCH] feat(ax-fs-ng): preserve spare virtio disks for runtime ext4
+
+Non-root block devices are wrapped in Arc<Mutex<_>> and registered after
+rootfs init so sys_mount can attach ext4 on /dev/vdb-style paths without
+losing the underlying device on umount.
+
+Made-with: Cursor
+
+diff --git a/os/arceos/modules/axfs-ng/src/fs/ext4/fs.rs b/os/arceos/modules/axfs-ng/src/fs/ext4/fs.rs
+index 9c4c0624..b8a95e9e 100644
+--- a/os/arceos/modules/axfs-ng/src/fs/ext4/fs.rs
++++ b/os/arceos/modules/axfs-ng/src/fs/ext4/fs.rs
+@@ -2,6 +2,7 @@ use alloc::sync::Arc;
+ use core::cell::OnceCell;
+ 
+ use ax_driver::{AxBlockDevice, PartitionRegion};
++use ax_sync::Mutex as AxSyncMutex;
+ use ax_kspin::{SpinNoPreempt as Mutex, SpinNoPreemptGuard as MutexGuard};
+ use axfs_ng_vfs::{
+     DirEntry, DirNode, Filesystem, FilesystemOps, Reference, StatFs, VfsResult, path::MAX_NAME_LEN,
+@@ -36,6 +37,25 @@ impl Ext4Filesystem {
+         Ok(Filesystem::new(fs))
+     }
+ 
++    /// Mount a secondary ext4 on a block device shared behind [`Arc<Mutex<_>>`].
++    pub fn new_shared(
++        dev: Arc<AxSyncMutex<AxBlockDevice>>,
++        region: PartitionRegion,
++    ) -> VfsResult<Filesystem> {
++        let ext4 = lwext4_rust::Ext4Filesystem::new(Ext4Disk::new_shared(dev, region), EXT4_CONFIG)
++            .map_err(into_vfs_err)?;
++
++        let fs = Arc::new(Self {
++            inner: Mutex::new(ext4),
++            root_dir: OnceCell::new(),
++        });
++        let _ = fs.root_dir.set(DirEntry::new_dir(
++            |this| DirNode::new(Inode::new(fs.clone(), EXT4_ROOT_INO, Some(this))),
++            Reference::root(),
++        ));
++        Ok(Filesystem::new(fs))
++    }
++
+     pub(crate) fn lock(&self) -> MutexGuard<'_, LwExt4Filesystem> {
+         self.inner.lock()
+     }
+diff --git a/os/arceos/modules/axfs-ng/src/fs/ext4/mod.rs b/os/arceos/modules/axfs-ng/src/fs/ext4/mod.rs
+index baf3e1d9..12e88bd1 100644
+--- a/os/arceos/modules/axfs-ng/src/fs/ext4/mod.rs
++++ b/os/arceos/modules/axfs-ng/src/fs/ext4/mod.rs
+@@ -2,20 +2,83 @@ mod fs;
+ mod inode;
+ mod util;
+ 
+-use ax_driver::{AxBlockDevice, PartitionBlockDevice, PartitionRegion, prelude::BlockDriverOps};
++use alloc::sync::Arc;
++
++use ax_driver::{
++    AxBlockDevice, PartitionBlockDevice, PartitionRegion,
++    prelude::{BaseDriverOps, BlockDriverOps, DevResult, DeviceType},
++};
+ pub use fs::*;
+ pub use inode::*;
++use ax_sync::Mutex as AxSyncMutex;
+ use lwext4_rust::{BlockDevice, Ext4Error, Ext4Result, ffi::EIO};
+ 
+-pub(crate) struct Ext4Disk(PartitionBlockDevice<AxBlockDevice>);
++pub(crate) struct LockedAxBlockDevice {
++    dev: Arc<AxSyncMutex<AxBlockDevice>>,
++}
++
++impl LockedAxBlockDevice {
++    pub(crate) fn new(dev: Arc<AxSyncMutex<AxBlockDevice>>) -> Self {
++        Self { dev }
++    }
++}
++
++impl BaseDriverOps for LockedAxBlockDevice {
++    fn device_name(&self) -> &str {
++        "virtio-blk"
++    }
++
++    fn device_type(&self) -> DeviceType {
++        DeviceType::Block
++    }
++}
++
++impl BlockDriverOps for LockedAxBlockDevice {
++    fn num_blocks(&self) -> u64 {
++        self.dev.lock().num_blocks()
++    }
++
++    fn block_size(&self) -> usize {
++        self.dev.lock().block_size()
++    }
++
++    fn read_block(&mut self, block_id: u64, buf: &mut [u8]) -> DevResult {
++        self.dev.lock().read_block(block_id, buf)
++    }
++
++    fn write_block(&mut self, block_id: u64, buf: &[u8]) -> DevResult {
++        self.dev.lock().write_block(block_id, buf)
++    }
++
++    fn flush(&mut self) -> DevResult {
++        self.dev.lock().flush()
++    }
++}
++
++pub(crate) enum Ext4DiskInner {
++    Owned(PartitionBlockDevice<AxBlockDevice>),
++    Shared(PartitionBlockDevice<LockedAxBlockDevice>),
++}
++
++pub(crate) struct Ext4Disk(Ext4DiskInner);
+ 
+ impl Ext4Disk {
+     pub(crate) const fn new(dev: AxBlockDevice, region: PartitionRegion) -> Self {
+-        Self(PartitionBlockDevice::new(dev, region))
++        Self(Ext4DiskInner::Owned(PartitionBlockDevice::new(dev, region)))
++    }
++
++    pub(crate) fn new_shared(dev: Arc<AxSyncMutex<AxBlockDevice>>, region: PartitionRegion) -> Self {
++        Self(Ext4DiskInner::Shared(PartitionBlockDevice::new(
++            LockedAxBlockDevice::new(dev),
++            region,
++        )))
+     }
+ 
+     fn check_buffer_len(&self, buf_len: usize) -> Ext4Result<()> {
+-        let block_size = self.0.block_size();
++        let block_size = match &self.0 {
++            Ext4DiskInner::Owned(p) => p.block_size(),
++            Ext4DiskInner::Shared(p) => p.block_size(),
++        };
+         if block_size == 0 || !buf_len.is_multiple_of(block_size) {
+             return Err(Ext4Error::new(EIO as _, None));
+         }
+@@ -26,21 +89,34 @@ impl Ext4Disk {
+ impl BlockDevice for Ext4Disk {
+     fn read_blocks(&mut self, block_id: u64, buf: &mut [u8]) -> Ext4Result<usize> {
+         self.check_buffer_len(buf.len())?;
+-        self.0
+-            .read_block(block_id, buf)
+-            .map_err(|_| Ext4Error::new(EIO as _, None))?;
++        match &mut self.0 {
++            Ext4DiskInner::Owned(p) => {
++                p.read_block(block_id, buf).map_err(|_| Ext4Error::new(EIO as _, None))?;
++            }
++            Ext4DiskInner::Shared(p) => {
++                p.read_block(block_id, buf).map_err(|_| Ext4Error::new(EIO as _, None))?;
++            }
++        }
+         Ok(buf.len())
+     }
+ 
+     fn write_blocks(&mut self, block_id: u64, buf: &[u8]) -> Ext4Result<usize> {
+         self.check_buffer_len(buf.len())?;
+-        self.0
+-            .write_block(block_id, buf)
+-            .map_err(|_| Ext4Error::new(EIO as _, None))?;
++        match &mut self.0 {
++            Ext4DiskInner::Owned(p) => {
++                p.write_block(block_id, buf).map_err(|_| Ext4Error::new(EIO as _, None))?;
++            }
++            Ext4DiskInner::Shared(p) => {
++                p.write_block(block_id, buf).map_err(|_| Ext4Error::new(EIO as _, None))?;
++            }
++        }
+         Ok(buf.len())
+     }
+ 
+     fn num_blocks(&self) -> Ext4Result<u64> {
+-        Ok(self.0.num_blocks())
++        Ok(match &self.0 {
++            Ext4DiskInner::Owned(p) => p.num_blocks(),
++            Ext4DiskInner::Shared(p) => p.num_blocks(),
++        })
+     }
+ }
+diff --git a/os/arceos/modules/axfs-ng/src/fs/mod.rs b/os/arceos/modules/axfs-ng/src/fs/mod.rs
+index ceb56bb2..c2d6279f 100644
+--- a/os/arceos/modules/axfs-ng/src/fs/mod.rs
++++ b/os/arceos/modules/axfs-ng/src/fs/mod.rs
+@@ -1,10 +1,21 @@
++use alloc::sync::Arc;
++
+ use ax_driver::{AxBlockDevice, PartitionRegion};
++use ax_sync::Mutex as AxSyncMutex;
+ use axfs_ng_vfs::{Filesystem, VfsResult};
+ 
+ cfg_if::cfg_if! {
+     if #[cfg(feature = "ext4")] {
+         mod ext4;
+         type DefaultFilesystem = ext4::Ext4Filesystem;
++
++        /// Build an ext4 [`Filesystem`] on a block device that may already be wrapped for sharing.
++        pub fn new_ext4_shared(
++            dev: Arc<AxSyncMutex<AxBlockDevice>>,
++            region: PartitionRegion,
++        ) -> VfsResult<Filesystem> {
++            ext4::Ext4Filesystem::new_shared(dev, region)
++        }
+     } else if #[cfg(feature = "fat")] {
+         mod fat;
+         type DefaultFilesystem = fat::FatFilesystem;
+@@ -21,3 +32,11 @@ cfg_if::cfg_if! {
+ pub fn new_default(dev: AxBlockDevice, region: PartitionRegion) -> VfsResult<Filesystem> {
+     DefaultFilesystem::new(dev, region)
+ }
++
++#[cfg(not(feature = "ext4"))]
++pub fn new_ext4_shared(
++    _dev: Arc<AxSyncMutex<AxBlockDevice>>,
++    _region: PartitionRegion,
++) -> VfsResult<Filesystem> {
++    Err(axfs_ng_vfs::VfsError::OperationNotSupported)
++}
+diff --git a/os/arceos/modules/axfs-ng/src/lib.rs b/os/arceos/modules/axfs-ng/src/lib.rs
+index 0832259f..ed8a84cd 100644
+--- a/os/arceos/modules/axfs-ng/src/lib.rs
++++ b/os/arceos/modules/axfs-ng/src/lib.rs
+@@ -13,8 +13,10 @@ extern crate alloc;
+ extern crate log;
+ 
+ use alloc::{
++    collections::BTreeMap,
+     format,
+     string::{String, ToString},
++    sync::Arc,
+     vec::Vec,
+ };
+ 
+@@ -23,11 +25,39 @@ use ax_driver::{
+     prelude::{BaseDriverOps, BlockDriverOps},
+     scan_partitions,
+ };
++use ax_sync::Mutex as AxSyncMutex;
++use spin::Mutex as SpinMutex;
+ 
+ mod fs;
+ 
+ mod highlevel;
+ pub use highlevel::*;
++pub use fs::new_ext4_shared;
++
++/// Block devices discovered during boot but not used as root, keyed by virtio-blk probe order.
++static SPARE_BLOCK_DEVS: SpinMutex<Option<BTreeMap<usize, Arc<AxSyncMutex<AxBlockDevice>>>>> =
++    SpinMutex::new(None);
++
++/// Map `/dev/vdX` paths to the virtio-blk enumeration index (`vda` → 0, `vdb` → 1, …).
++pub fn virtio_disk_index_for_path(path: &str) -> Option<usize> {
++    let suffix = path.strip_prefix("/dev/vd")?;
++    if suffix.len() != 1 {
++        return None;
++    }
++    let c = suffix.as_bytes()[0];
++    if !(b'a'..=b'z').contains(&c) {
++        return None;
++    }
++    Some((c - b'a') as usize)
++}
++
++/// Clone the shared mutex for a spare whole-disk block device, if present.
++pub fn spare_block_disk(disk_index: usize) -> Option<Arc<AxSyncMutex<AxBlockDevice>>> {
++    SPARE_BLOCK_DEVS
++        .lock()
++        .as_ref()
++        .and_then(|m| m.get(&disk_index).cloned())
++}
+ 
+ #[derive(Debug, Default)]
+ struct RootSpec {
+@@ -125,6 +155,12 @@ pub fn init_filesystems(mut block_devs: AxDeviceContainer<AxBlockDevice>, bootar
+ 
+     let mp = axfs_ng_vfs::Mountpoint::new_root(&fs);
+     ROOT_FS_CONTEXT.call_once(|| FsContext::new(mp.root_location()));
++
++    let mut spare: BTreeMap<usize, Arc<AxSyncMutex<AxBlockDevice>>> = BTreeMap::new();
++    for disk in disks {
++        spare.insert(disk.disk_index, Arc::new(AxSyncMutex::new(disk.dev)));
++    }
++    *SPARE_BLOCK_DEVS.lock() = Some(spare);
+ }
+ 
+ fn collect_disks(block_devs: &mut AxDeviceContainer<AxBlockDevice>) -> Vec<DiscoveredDisk> {

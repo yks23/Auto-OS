@@ -1,0 +1,176 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sun, 19 Apr 2026 17:10:17 +0000
+Subject: [PATCH] feat(starry): extend sys_prctl and deliver parent death
+ signal
+
+Made-with: Cursor
+
+diff --git a/os/StarryOS/kernel/src/syscall/task/ctl.rs b/os/StarryOS/kernel/src/syscall/task/ctl.rs
+index 7ee4b8e9..c0117ef5 100644
+--- a/os/StarryOS/kernel/src/syscall/task/ctl.rs
++++ b/os/StarryOS/kernel/src/syscall/task/ctl.rs
+@@ -3,6 +3,7 @@ use core::ffi::c_char;
+ use ax_errno::{AxError, AxResult};
+ use ax_task::current;
+ use linux_raw_sys::general::{__user_cap_data_struct, __user_cap_header_struct};
++use starry_signal::Signo;
+ use starry_vm::{VmMutPtr, VmPtr, vm_write_slice};
+ 
+ use crate::{
+@@ -76,6 +77,23 @@ pub fn sys_get_mempolicy(
+     Ok(0)
+ }
+ 
++fn validate_pdeath_signal_arg(arg2: usize) -> AxResult<Option<Signo>> {
++    if arg2 > u8::MAX as usize {
++        return Err(AxError::InvalidInput);
++    }
++    let sig = arg2 as i32;
++    if sig == 0 {
++        return Ok(None);
++    }
++    let Some(signo) = Signo::from_repr(sig as u8) else {
++        return Err(AxError::InvalidInput);
++    };
++    if signo == Signo::SIGKILL {
++        return Err(AxError::InvalidInput);
++    }
++    Ok(Some(signo))
++}
++
+ /// prctl() is called with a first argument describing what to do, and further
+ /// arguments with a significance depending on the first one.
+ /// The first argument can be:
+@@ -93,6 +111,11 @@ pub fn sys_prctl(
+ ) -> AxResult<isize> {
+     use linux_raw_sys::prctl::*;
+ 
++    let curr = current();
++    let thr = curr.as_thread();
++    let proc_data = &thr.proc_data;
++    let proc = &proc_data.proc;
++
+     debug!("sys_prctl <= option: {option}, args: {arg2}, {arg3}, {arg4}, {arg5}");
+ 
+     match option {
+@@ -109,6 +132,69 @@ pub fn sys_prctl(
+         }
+         PR_SET_SECCOMP => {}
+         PR_MCE_KILL => {}
++        PR_SET_PDEATHSIG => {
++            let raw = match validate_pdeath_signal_arg(arg2)? {
++                None => 0i32,
++                Some(s) => s as u8 as i32,
++            };
++            proc_data.set_pdeath_signal(raw);
++        }
++        PR_GET_PDEATHSIG => {
++            let p = arg2 as *mut core::ffi::c_int;
++            if p.is_null() {
++                return Err(AxError::InvalidInput);
++            }
++            p.vm_write(proc_data.pdeath_signal())?;
++        }
++        PR_GET_DUMPABLE => {
++            return Ok(proc_data.dumpable() as isize);
++        }
++        PR_SET_DUMPABLE => {
++            let v = arg2 as u32;
++            if v > 2 {
++                return Err(AxError::InvalidInput);
++            }
++            proc_data.set_dumpable(v);
++        }
++        PR_GET_KEEPCAPS => {
++            return Ok(proc_data.keep_caps() as isize);
++        }
++        PR_SET_KEEPCAPS => {
++            match arg2 {
++                0 | 1 => proc_data.set_keep_caps(arg2 != 0),
++                _ => return Err(AxError::InvalidInput),
++            }
++        }
++        PR_SET_CHILD_SUBREAPER => {
++            match arg2 {
++                0 => proc.set_child_subreaper(false),
++                1 => proc.set_child_subreaper(true),
++                _ => return Err(AxError::InvalidInput),
++            }
++        }
++        PR_GET_CHILD_SUBREAPER => {
++            let p = arg2 as *mut u32;
++            if p.is_null() {
++                return Err(AxError::InvalidInput);
++            }
++            p.vm_write(u32::from(proc.is_child_subreaper()))?;
++        }
++        PR_SET_NO_NEW_PRIVS => {
++            if arg2 != 1 {
++                return Err(AxError::InvalidInput);
++            }
++            if !proc_data.no_new_privs() {
++                proc_data.set_no_new_privs();
++            }
++        }
++        PR_GET_NO_NEW_PRIVS => {
++            return Ok(proc_data.no_new_privs() as isize);
++        }
++        PR_GET_TID_ADDRESS => {
++            let _ = (arg3, arg4, arg5);
++            return Ok(thr.clear_child_tid() as isize);
++        }
++        PR_SET_THP_DISABLE | PR_GET_THP_DISABLE => {}
+         PR_SET_MM => {
+             // not implemented; but avoid annoying warnings
+             return Err(AxError::InvalidInput);
+diff --git a/os/StarryOS/kernel/src/task/ops.rs b/os/StarryOS/kernel/src/task/ops.rs
+index d8cdb5d2..c814f9f6 100644
+--- a/os/StarryOS/kernel/src/task/ops.rs
++++ b/os/StarryOS/kernel/src/task/ops.rs
+@@ -9,7 +9,7 @@ use ax_task::{AxTaskRef, TaskInner, WeakAxTaskRef, current};
+ use bytemuck::AnyBitPattern;
+ use linux_raw_sys::general::ROBUST_LIST_LIMIT;
+ use spin::RwLock;
+-use starry_process::{Pid, ProcessGroup, Session};
++use starry_process::{Pid, Process, ProcessGroup, Session};
+ use starry_signal::{SignalInfo, Signo};
+ use starry_vm::{VmMutPtr, VmPtr};
+ use weak_map::WeakMap;
+@@ -197,6 +197,28 @@ pub fn exit_robust_list(head: *const RobustListHead) -> AxResult<()> {
+     Ok(())
+ }
+ 
++fn deliver_parent_death_signal_to_children(process: &Process) {
++    for child in process.children() {
++        let Ok(child_data) = get_process_data(child.pid()) else {
++            continue;
++        };
++        let raw = child_data.pdeath_signal();
++        if raw == 0 {
++            continue;
++        }
++        let Some(signo) = Signo::from_repr(raw as u8) else {
++            continue;
++        };
++        if signo == Signo::SIGKILL {
++            continue;
++        }
++        let _ = send_signal_to_process(
++            child.pid(),
++            Some(SignalInfo::new_kernel(signo)),
++        );
++    }
++}
++
+ pub fn do_exit(exit_code: i32, group_exit: bool) {
+     let curr = current();
+     let thr = curr.as_thread();
+@@ -222,6 +244,7 @@ pub fn do_exit(exit_code: i32, group_exit: bool) {
+ 
+     let process = &thr.proc_data.proc;
+     if process.exit_thread(curr.id().as_u64() as Pid, exit_code) {
++        deliver_parent_death_signal_to_children(process);
+         process.exit();
+         if let Some(parent) = process.parent() {
+             if let Some(signo) = thr.proc_data.exit_signal {

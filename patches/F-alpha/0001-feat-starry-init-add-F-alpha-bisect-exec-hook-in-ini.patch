@@ -1,0 +1,22 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Sun, 19 Apr 2026 13:25:12 +0000
+Subject: [PATCH] feat(starry/init): add F-alpha bisect exec hook in init.sh
+
+Made-with: Cursor
+
+diff --git a/os/StarryOS/starryos/src/init.sh b/os/StarryOS/starryos/src/init.sh
+index 1f1ea3d7..033b121d 100644
+--- a/os/StarryOS/starryos/src/init.sh
++++ b/os/StarryOS/starryos/src/init.sh
+@@ -1,5 +1,10 @@
+ #!/bin/sh
+ 
++# F-α：fork/exec/wait 诊断；尽早 exec 进静态 bisect，避免与尾部 init hook patch 冲突。
++if [ -x /opt/selfhost-tests/test_bisect_1 ]; then
++	exec /opt/selfhost-tests/test_bisect_1
++fi
++
+ export HOME=/root
+ export USER=root
+ export HOSTNAME=starry
