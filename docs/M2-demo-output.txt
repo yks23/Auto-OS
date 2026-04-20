@@ -1,0 +1,114 @@
+OpenSBI v1.3
+   ____                    _____ ____ _____
+  / __ \                  / ____|  _ \_   _|
+ | |  | |_ __   ___ _ __ | (___ | |_) || |
+ | |  | | '_ \ / _ \ '_ \ \___ \|  _ < | |
+ | |__| | |_) |  __/ | | |____) | |_) || |_
+  \____/| .__/ \___|_| |_|_____/|___
+/_____|
+        | |
+        |_|
+Platform Name             : riscv-virtio,qemu
+Platform Features         : medeleg
+Platform HART Count       : 1
+Platform IPI Device       : aclint-mswi
+Platform Timer Device     : aclint-mtimer @ 10000000Hz
+Platform Console Device   : uart8250
+Platform HSM Device       : ---
+Platform PMU Device       : ---
+Platform Reboot Device    : sifive_test
+Platform Shutdown Device  : sifive_test
+Platform Suspend Device   : ---
+Platform CPPC Device      : ---
+Firmware Base             : 0x80000000
+Firmware Size             : 322 KB
+Firmware RW Offset        : 0x40000
+Firmware RW Size          : 66 KB
+Firmware Heap Offset      : 0x48000
+Firmware Heap Size        : 34 KB (total), 2 KB (reserved), 9 KB (used), 22 KB (free)
+Firmware Scratch Size     : 4096 B (total), 760 B (used), 3336 B (free)
+Runtime SBI Version       : 1.0
+Domain0 Name              : root
+Domain0 Boot HART         : 0
+Domain0 HARTs             : 0*
+Domain0 Region00          : 0x0000000002000000-0x000000000200ffff M: (I,R,W) S/U: ()
+Domain0 Region01          : 0x0000000080040000-0x000000008005ffff M: (R,W) S/U: ()
+Domain0 Region02          : 0x0000000080000000-0x000000008003ffff M: (R,X) S/U: ()
+Domain0 Region03          : 0x0000000000000000-0xffffffffffffffff M: (R,W,X) S/U: (R,W,X)
+Domain0 Next Address      : 0x0000000080200000
+Domain0 Next Arg1         : 0x0000000087e00000
+Domain0 Next Mode         : S-mode
+Domain0 SysReset          : yes
+Domain0 SysSuspend        : yes
+Boot HART ID              : 0
+Boot HART Domain          : root
+Boot HART Priv Version    : v1.12
+Boot HART Base ISA        : rv64imafdch
+Boot HART ISA Extensions  : time,sstc
+Boot HART PMP Count       : 16
+Boot HART PMP Granularity : 4
+Boot HART PMP Address Bits: 54
+Boot HART MHPM Count      : 16
+Boot HART MIDELEG         : 0x0000000000001666
+Boot HART MEDELEG         : 0x0000000000f0b509
+       d8888                            .d88888b.   .d8888b.
+      d88888                           d88P" "Y88b d88P  Y88b
+     d88P888                           888     888 Y88b.
+    d88P 888 888d888  .d8888b  .d88b.  888     888  "Y888b.
+   d88P  888 888P"   d88P"    d8P  Y8b 888     888     "Y88b.
+  d88P   888 888     888      88888888 888     888       "888
+ d8888888888 888     Y88b.    Y8b.     Y88b. .d88P Y88b  d88P
+d88P     888 888      "Y8888P  "Y8888   "Y88888P"   "Y8888P"
+arch = riscv64
+platform = riscv64-qemu-virt
+target = riscv64gc-unknown-none-elf
+build_mode = release
+log_level = warn
+backtrace = false
+smp = 1
+Boot at 2026-04-20 14:54:24.001950100 UTC
+[37m[  0.102990 0 ax_net_ng:139] 
+[33m  No vsock device found!
+[37m[  0.103496 0 ax_display:26] 
+[33m  No display device found!
+[mWelcome to 
+[96m
+[1mStarry OS
+[0m!
+USER=root
+HOSTNAME=starry
+SHLVL=1
+HOME=/root
+PWD=/
+Use 
+[3mapk
+[0m to install packages.
+================================================================
+  StarryOS Self-Hosting Demo - Live in QEMU
+================================================================
+[1] /proc/cpuinfo:
+processor	: 0
+isa		: rv64gc
+mmu		: sv48
+[2] /proc/meminfo:
+MemTotal:       126976 kB
+MemFree:        114348 kB
+MemAvailable:   117236 kB
+[3] /proc/sys/kernel/random/uuid:
+e9380691-8834-4fd1-b011-f9261b3ab191
+[4] mount:
+proc on /proc type proc (rw,nosuid,nodev,noexec,relatime)
+devtmpfs on /dev type devtmpfs (rw,nosuid,relatime,size=65536k,mode=755)
+tmpfs on /tmp type tmpfs (rw,nosuid,nodev,relatime)
+sysfs on /sys type sysfs (rw,nosuid,nodev,noexec,relatime)
+/dev/root on / type ext4 (rw,relatime)
+[5] Run pre-built musl static binary (fork+execve+wait):
+[TEST] test_execve_basic PASS
+[6] fork+pipe+wait works (F-delta dup3 fix):
+[MIN] read=1 c=Z ws=0x0
+[7] gcc/make/ld in rootfs (--version):
+gcc (Alpine 14.2.0) 14.2.0
+GNU Make 4.4.1
+GNU ld (GNU Binutils) 2.43.1
+===M2-PASS===
+===SELFHOST-DONE===

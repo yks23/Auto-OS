@@ -28,13 +28,17 @@ export PATH
 ARCH=""
 KERNEL=""
 DISK=""
+DISK2="${DISK2:-}"
 TIMEOUT=120
+SERIAL_MODE="${SERIAL_MODE:-tcp}"  # tcp | stdio
 for arg in "$@"; do
     case "$arg" in
         ARCH=*)   ARCH="${arg#ARCH=}" ;;
         KERNEL=*) KERNEL="${arg#KERNEL=}" ;;
         DISK=*)   DISK="${arg#DISK=}" ;;
+        DISK2=*)  DISK2="${arg#DISK2=}" ;;
         TIMEOUT=*) TIMEOUT="${arg#TIMEOUT=}" ;;
+        SERIAL_MODE=*) SERIAL_MODE="${arg#SERIAL_MODE=}" ;;
         *) echo "unknown arg: $arg" >&2; exit 1 ;;
     esac
 done
@@ -108,16 +112,24 @@ case "$ARCH" in
     *) echo "unknown ARCH: $ARCH" >&2; exit 1 ;;
 esac
 
-QEMU_ARGS=(
-    "${QEMU_BASE[@]}"
-    -monitor none
-    -serial tcp::4444,server=on,wait=on
-)
+QEMU_ARGS=("${QEMU_BASE[@]}" -monitor none)
+case "$SERIAL_MODE" in
+    tcp)   QEMU_ARGS+=( -serial tcp::4444,server=on,wait=on ) ;;
+    stdio) QEMU_ARGS+=( -serial mon:stdio ) ;;
+    *) echo "bad SERIAL_MODE: $SERIAL_MODE" >&2; exit 1 ;;
+esac
 
 if [[ -n "$DISK" && -f "$DISK" ]]; then
     QEMU_ARGS+=(
         -device virtio-blk-pci,drive=disk0
         -drive "id=disk0,if=none,format=raw,file=$DISK"
+    )
+fi
+
+if [[ -n "${DISK2:-}" && -f "${DISK2}" ]]; then
+    QEMU_ARGS+=(
+        -device virtio-blk-pci,drive=disk1
+        -drive "id=disk1,if=none,format=raw,file=$DISK2"
     )
 fi
 
