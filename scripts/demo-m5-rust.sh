@@ -131,12 +131,19 @@ sudo timeout 1500 qemu-system-riscv64 \
     -device virtio-net-pci,netdev=net0 -netdev user,id=net0 \
     > "$RESULT" 2>&1 < /dev/null &
 QEMU=$!
-trap "sudo kill -9 $QEMU 2>/dev/null" EXIT
+trap "sudo kill -9 $QEMU 2>/dev/null || true" EXIT
 for i in $(seq 1 1480); do
     sleep 1
     if grep -q "M5-DEMO-PASS\|panic" "$RESULT" 2>/dev/null; then break; fi
 done
-sudo kill -9 $QEMU 2>/dev/null
+sudo kill -9 $QEMU 2>/dev/null || true
 echo ""
 echo "=== M5 demo done ==="
-strings "$RESULT" | grep -E "STARRYOS|Stage|rustc|cargo|exit=|Hello from|hello_rs|hellocargo|adder|sum|M5-DEMO-PASS|panic|error\[|error:|Compiling|Finished|Checking" | tail -80
+strings "$RESULT" | grep -E "STARRYOS|Stage|rustc|cargo|exit=|Hello from|hello_rs|hellocargo|adder|sum|M5-DEMO-PASS|panic|error\[|error:|Compiling|Finished|Checking" | tail -80 || true
+
+# Propagate a proper exit code so callers (e.g. reproduce-all.sh) can decide.
+if grep -q "===M5-DEMO-PASS===" "$RESULT" 2>/dev/null; then
+    exit 0
+else
+    exit 1
+fi
