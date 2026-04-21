@@ -115,6 +115,10 @@ run_in_root "/sbin/apk update"
 run_in_root "/sbin/apk add --no-cache build-base make bash coreutils findutils grep sed gawk"
 
 if [[ "$PROFILE" == "rust" ]]; then
+  echo "[+] enable Alpine edge repos (Alpine 3.21 在 riscv64 不带 rust，edge 才有)"
+  run_in_root "echo 'https://dl-cdn.alpinelinux.org/alpine/edge/main' >> /etc/apk/repositories"
+  run_in_root "echo 'https://dl-cdn.alpinelinux.org/alpine/edge/community' >> /etc/apk/repositories"
+  run_in_root "/sbin/apk update"
   echo "[+] apk rust/cargo (体积大，耗时久)"
   run_in_root "/sbin/apk add --no-cache rust cargo"
 fi
