@@ -155,7 +155,13 @@ else
 fi
 if [[ -d "$ROOT/tgoskits/.git" || -f "$ROOT/tgoskits/.git" ]]; then
     SUBMOD_SHA="$(cd "$ROOT/tgoskits" && git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    SUBMOD_URL="$(cd "$ROOT/tgoskits" && git config --get remote.origin.url 2>/dev/null || echo unknown)"
     row PASS "tgoskits submodule"           "checkout at $SUBMOD_SHA"
+    if [[ "$SUBMOD_URL" == *"yks23/tgoskits"* ]]; then
+        row PASS "tgoskits origin"          "$SUBMOD_URL"
+    else
+        row WARN "tgoskits origin"          "$SUBMOD_URL  (Auto-OS expects yks23/tgoskits — run: git submodule sync tgoskits && git submodule update --init tgoskits)"
+    fi
 else
     row FAIL "tgoskits submodule"           "not initialised — git submodule update --init tgoskits"
 fi

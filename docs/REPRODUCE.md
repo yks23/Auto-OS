@@ -109,11 +109,10 @@ bash scripts/reproduce-all.sh
 
 干这些：
 1. **环境检测**（`check-env.sh`）
-2. **tgoskits submodule** 同步到 Auto-OS 锁定的 commit（已含 T1-T10 + F-α/β/γ/δ + M1.5）
-3. **应用 F-ε** vfork/posix_spawn 修复（`patches/F-eps/`）到 tgoskits 工作树
-4. **build kernel**（`scripts/build.sh ARCH=riscv64`，绕开 tgoskits 的旧 Makefile，直接 `cargo axplat info` + `ax-config-gen` + 两遍 `cargo build`）
-5. **build rootfs**（`tests/selfhost/build-selfhost-rootfs.sh ARCH=riscv64 PROFILE=rust`，跨 chroot 装 Alpine rust 1.95 + cargo 1.95 + musl 工具链，~700 MB）
-6. **跑 M5 demo**（`scripts/demo-m5-rust.sh`：注入 hello.rs / hellocargo 到 rootfs → 启 QEMU → 串口监 `===M5-DEMO-PASS===`）
+2. **tgoskits submodule** 同步到 Auto-OS 锁定的 commit（指向 [`yks23/tgoskits`](https://github.com/yks23/tgoskits) 的 `selfhost-m5` 分支，已含 T1-T10 + F-α/β/γ/δ + M1.5 + **F-ε**）
+3. **build kernel**（`scripts/build.sh ARCH=riscv64`，绕开 tgoskits 的旧 Makefile，直接 `cargo axplat info` + `ax-config-gen` + 两遍 `cargo build`）
+4. **build rootfs**（`tests/selfhost/build-selfhost-rootfs.sh ARCH=riscv64 PROFILE=rust`，跨 chroot 装 Alpine rust 1.95 + cargo 1.95 + musl 工具链，~700 MB）
+5. **跑 M5 demo**（`scripts/demo-m5-rust.sh`：注入 hello.rs / hellocargo 到 rootfs → 启 QEMU → 串口监 `===M5-DEMO-PASS===`）
 
 可选 flag：
 
@@ -164,26 +163,15 @@ git -C tgoskits reset --hard "$(git ls-tree HEAD tgoskits | awk '{print $3}')"
 git -C tgoskits clean -fd
 ```
 
-> 这个 commit (`6b97deab` 当前) 已经包含 T1-T10、F-α、F-β、F-γ、F-δ、M1.5 全部之前轮次的 patches。
+> Auto-OS 的 submodule 现在指向 [`yks23/tgoskits`](https://github.com/yks23/tgoskits) 的 `selfhost-m5` 分支（fork 自 `rcore-os/tgoskits`），锁定的 commit 已经包含：
+> - T1-T10：自托管所需缺失 syscall（flock、ptrace、prctl、procfs、waitid、openat2、personality、setpriority、…）
+> - F-α/β/γ/δ：fork+exec / sys_waitpid / pipe / sys_dup3 死锁修复
+> - M1.5：init.sh 自动 hook 让 31 个 acceptance test 能被批量跑
+> - **F-ε**：本轮 vfork / posix_spawn 修复（cargo build 必须依赖）
+>
+> 你不再需要在 working tree 单独 apply patches —— submodule 一就位就齐了。
 
-### 4.2 应用 F-ε（本轮新增的核心 fix）
-
-```bash
-( cd tgoskits && git apply ../patches/F-eps/*.patch )
-```
-
-如果说 patch 已 apply 过：
-
-```bash
-( cd tgoskits && git apply --check --reverse ../patches/F-eps/*.patch )    # 已 apply
-# 或重置并重新 apply：
-( cd tgoskits && git checkout -- . )
-( cd tgoskits && git apply ../patches/F-eps/*.patch )
-```
-
-F-ε 是什么、为什么需要：见 [`patches/F-eps/README.md`](../patches/F-eps/README.md)。一句话：StarryOS 老的 `do_clone` 把 `CLONE_VFORK` 退化成 fork，`musl posix_spawn` / `cargo` / `rustc` 全跑不通；F-ε 实现真 vfork + 共享 aspace 的 execve detach + 同步 task ctx satp。
-
-### 4.3 编 kernel
+### 4.2 编 kernel
 
 ```bash
 export PATH=/opt/riscv64-linux-musl-cross/bin:$PATH
@@ -200,7 +188,7 @@ tgoskits/target/riscv64gc-unknown-none-elf/release/starryos    # ELF, ~4 MB
 >
 > 如果你要看 starry kernel 内部 trace：`AX_LOG=info bash scripts/build.sh ARCH=riscv64`，再跑 demo。
 
-### 4.4 造 rust rootfs
+### 4.3 造 rust rootfs
 
 ```bash
 sudo bash tests/selfhost/build-selfhost-rootfs.sh ARCH=riscv64 PROFILE=rust
@@ -218,7 +206,7 @@ tests/selfhost/rootfs-selfhost-rust-riscv64.img.xz    # ~750 MB xz
 
 如果 `apk fetch` 慢/挂，可重跑该命令——它会从中断处续。
 
-### 4.5 跑 demo
+### 4.4 跑 demo
 
 ```bash
 bash scripts/demo-m5-rust.sh
@@ -277,16 +265,12 @@ add_squares(3, 4) = 25  (expect 25)
 ### `qemu-system-riscv64: Could not open '/dev/kvm'`
 忽略 — 我们不用 KVM；`-bios default` + 软件模拟即可。
 
-### `error: F-eps patch ... cannot apply`
-你 tgoskits 里有别的本地修改，或者 submodule 指针被 reset 到了别的 commit。修：
+### tgoskits submodule 指错（remote 还是 rcore-os）
+老 clone 可能锁的还是 `rcore-os/tgoskits`。重定向：
 
 ```bash
-cd tgoskits
-git fetch origin
-git reset --hard "$(cd .. && git ls-tree HEAD tgoskits | awk '{print $3}')"
-git clean -fd
-cd ..
-( cd tgoskits && git apply patches/F-eps/*.patch )      # 注意路径
+git submodule sync tgoskits
+git submodule update --init --remote tgoskits   # 拉到 .gitmodules 指定的 yks23/tgoskits selfhost-m5
 ```
 
 ### M5 demo 超时（`results.txt` 没出现 PASS 标记）
