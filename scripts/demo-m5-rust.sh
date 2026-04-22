@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
-# StarryOS Self-Hosting Demo M5 (Codegen-Only):
-# 在 starry guest 内：
-#   - rustc --version / cargo --version
-#   - rustc --emit=obj hello.rs    (rust 编译器跑通到生成 .o)
-#   - cargo --offline check        (cargo 解析 + rustc-as-driver 跑通)
-# 已知限制：rustc -> cc/ld 链接步骤会卡在 posix_spawn race (F-ε)，所以避开整链。
+# StarryOS Self-Hosting Demo M5: rustc + cargo build inside the guest.
+# Drives a QEMU run that:
+#   - prints rustc / cargo version in-guest
+#   - runs `rustc -C linker=cc hello.rs` end-to-end (rustc spawns cc + ld via
+#     posix_spawn) and executes the produced binary
+#   - runs `cargo --offline build --release` on a multi-file project
+#     and executes the cargo-built binary
+# Requires the F-ε vfork/posix_spawn fix in the kernel (already in
+# yks23/tgoskits selfhost-m5 / db7e7e50).
 set -e
-WORK=/workspace/.guest-runs/riscv64-m5
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+WORK="$ROOT/.guest-runs/riscv64-m5"
 sudo mkdir -p "$WORK"
 sudo chown -R "$(id -u):$(id -g)" "$WORK"
-ROOTFS=/workspace/tests/selfhost/rootfs-selfhost-rust-riscv64.img
-ELF=/workspace/tgoskits/target/riscv64gc-unknown-none-elf/release/starryos
+ROOTFS="$ROOT/tests/selfhost/rootfs-selfhost-rust-riscv64.img"
+ELF="$ROOT/tgoskits/target/riscv64gc-unknown-none-elf/release/starryos"
 [[ -f "$ROOTFS" ]] || { echo "rootfs not found: $ROOTFS"; exit 1; }
 [[ -f "$ELF" ]] || { echo "kernel not found: $ELF"; exit 1; }
 
