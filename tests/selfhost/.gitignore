@@ -1,0 +1,8 @@
+# Generated rootfs images live here at runtime; never commit them
+# (5G+ raw, hundreds of MiB compressed). Builders / reproduce-all.sh
+# regenerate them on demand.
+*.img
+*.img.xz
+*.img.sha256
+*.img.xz.sha256
+out-*/
