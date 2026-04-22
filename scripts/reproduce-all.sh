@@ -56,14 +56,17 @@ git submodule update --init tgoskits
 
 # ---------------------------------------------- step 3: run inside container
 log "step 3/3  enter container, run reproduce-in-container.sh"
-EXTRA_ARGS=()
-(( WITH_M6 )) && EXTRA_ARGS+=("--m6")
+EXTRA=""
+(( WITH_M6 )) && EXTRA="--m6"
 
 $DOCKER run --rm --privileged --network host \
     -v "$ROOT:/work" -w /work \
     "$IMAGE" \
-    bash scripts/reproduce-in-container.sh "${EXTRA_ARGS[@]}"
+    bash scripts/reproduce-in-container.sh $EXTRA
 
 log "done. See:"
 echo "    .guest-runs/riscv64-m5/results.txt   (M5: cargo build hello world inside starry)"
-(( WITH_M6 )) && echo "    .guest-runs/riscv64-m6/results.txt   (M6: starry sources + nightly toolchain inside starry guest)"
+if (( WITH_M6 )); then
+    echo "    .guest-runs/riscv64-m6/results.txt   (M6: starry sources + nightly toolchain inside starry guest)"
+fi
+exit 0
