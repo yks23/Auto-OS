@@ -79,7 +79,7 @@ ax-config-gen \
 export AX_ARCH="$ARCH"
 export AX_PLATFORM="$PLAT_NAME"
 export AX_MODE=release
-export AX_LOG=warn
+export AX_LOG="${AX_LOG:-warn}"
 export AX_TARGET="$RUST_TARGET"
 export AX_IP=10.0.2.15
 export AX_GW=10.0.2.2
