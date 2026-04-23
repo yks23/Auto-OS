@@ -1,2 +1,5 @@
 .worktrees/
 selfhost-orchestrator/logs/
+
+# reproduce-all.sh：绑定到容器内 CARGO_HOME 的 crates.io / git 缓存
+.docker-cargo-registry/

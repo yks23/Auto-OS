@@ -62,15 +62,37 @@ bash scripts/check-env.sh
 
 ## 4. One-button reproduce
 
+**Docker Desktop 内存**：`docker info` 里 **Total Memory** 建议 **≥10 GiB**（arm64 上整仓 `cargo` 否则易慢或 OOM）。若低于约 **9 GiB**，`reproduce-all.sh` 会 **默认退出**；仅在无法调大 VM 时临时跳过：`AUTO_OS_REPRODUCE_ALLOW_LOW_DOCKER_MEM=1 bash scripts/reproduce-all.sh ...`。
+
+**Cargo 缓存**：`docker run --rm` 会丢掉容器可写层；脚本默认把镜像内 **`/usr/local/cargo/registry`** 与 **`git`** 挂到仓库下 **`.docker-cargo-registry/`**（已在 `.gitignore`），避免每次冷启动重复拉 crates。不需要时：`AUTO_OS_DOCKER_NO_CARGO_CACHE=1`。自定义目录：`AUTO_OS_DOCKER_CARGO_CACHE=/path/to/dir`。
+
+**跨机续作（路径 A / M5）**：对齐同一 Auto-OS **commit** 与 **`git submodule update --init tgoskits`** 后，可将 **`tgoskits/target/`** 与已生成的 **`tests/selfhost/rootfs-selfhost-rust-riscv64.img`** 用 `rsync` 或拷盘带到新机，再 **`bash scripts/reproduce-all.sh --skip-build`**，可显著省时间与流量。
+
 ```bash
 bash scripts/reproduce-all.sh
 ```
 
+**Docker 平台**：`reproduce-all.sh` 为 `docker build` / `docker run` 传入 **`--platform`**，与
+`Dockerfile` 里 BuildKit 的 **`TARGETARCH`** 一致：
+
+| 宿主 | 默认 `--platform` | 镜像内 RISC-V 宿主工具链（lwext4 等） |
+|------|---------------------|--------------------------------------|
+| **宿主 CPU 为 arm64 / aarch64**（Apple Silicon、Linux aarch64 云主机等） | `linux/arm64` | `gcc-riscv64-linux-gnu` 链到 `riscv64-linux-musl-cc` |
+| **其他**（x86_64、CI、Intel Mac 等） | `linux/amd64` | arceos **riscv64-linux-musl-cross** 预编译包 |
+
+Apple Silicon 默认 **不再** 构建 `linux/amd64` 用户态镜像，以避免 Docker Desktop 上常见的
+`fork/exec /usr/bin/runc`、`unpigz: exec format error`（QEMU/Rosetta 链未就绪或损坏时）。
+
+需要强制 amd64 时（例如你已修好 Rosetta 且希望与 CI 完全一致）：  
+`DOCKER_PLATFORM=linux/amd64 bash scripts/reproduce-all.sh`。
+
+若切换过平台仍异常，可：`docker builder prune -f` 后重试。
+
 What happens:
 
-1. **`docker build -t auto-os/starry`** — first time only, ~5 min.
-   Image contains rust nightly-2026-04-01, qemu-system-riscv64, musl-cross,
-   binfmt, cargo subcommands, etc.
+1. **`docker build --platform <默认或 DOCKER_PLATFORM> -t auto-os/starry`** — first time only, ~5 min.
+   Image contains rust nightly-2026-04-01, qemu-system-riscv64, riscv cross toolchain for lwext4,
+   binfmt helpers, cargo subcommands, etc.
 2. `git submodule update --init tgoskits` (no-op if already inited).
 3. **Inside the container**:
    - `bash scripts/build.sh ARCH=riscv64` — cross-compiles the StarryOS
@@ -159,8 +181,8 @@ the kernel build.
 
 | Want… | Run |
 |---|---|
-| Just `docker build` the image | `sudo docker build --network host -t auto-os/starry .` |
-| Drop into the container shell | `sudo docker run --rm -it --privileged --network host -v $PWD:/work -w /work auto-os/starry bash` |
+| Just `docker build` the image | `sudo docker build --platform linux/amd64 --network host -t auto-os/starry -f Dockerfile .`（Intel/Linux amd64）；Apple Silicon 上常用 `--platform linux/arm64` |
+| Drop into the container shell | `sudo docker run --rm -it --platform linux/arm64 --privileged --network host -v $PWD:/work -w /work auto-os/starry bash`（与 `reproduce-all` 默认一致时） |
 | Re-build kernel only | inside container: `bash scripts/build.sh ARCH=riscv64` |
 | Re-build M5 rootfs only | inside container: `bash tests/selfhost/build-selfhost-rootfs.sh ARCH=riscv64 PROFILE=rust` |
 | Re-build M6 rootfs only | inside container: `bash tests/selfhost/build-selfbuild-rootfs.sh` |
