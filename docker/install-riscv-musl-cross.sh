@@ -58,7 +58,8 @@ case "$t" in
         fetch_tgz riscv64-linux-musl-cross
         wrap_riscv_i386_to_local
         fetch_tgz x86_64-linux-musl-cross
-        wrap_prefix_with_qemu /usr/bin/qemu-x86_64-static /opt/x86_64-linux-musl-cross \
+        # arceos 预编译包内 gcc 为 **i386** 宿主（与 riscv64 包一致），须用 qemu-i386，不能用 qemu-x86_64
+        wrap_prefix_with_qemu /usr/bin/qemu-i386-static /opt/x86_64-linux-musl-cross \
             "/opt/x86_64-linux-musl-cross/bin.real/x86_64-linux-musl-*"
         # aarch64-linux-musl：arceos 同名包宿主 ISA 因版本而异，未校验前不装入，以免 arm64 镜像构建失败。
         rm -rf /var/lib/apt/lists/*

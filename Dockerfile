@@ -17,7 +17,7 @@
 #
 # 镜像用户态平台（由 docker build --platform 决定 TARGETARCH）：
 # - linux/amd64：arceos 预编译 riscv64 + x86_64 musl 交叉（lwext4 / build.sh 多 ARCH）
-# - linux/arm64：riscv64（i686 + qemu-i386）+ x86_64（qemu-x86_64）musl 包
+# - linux/arm64：riscv64 / x86_64 musl 包均为 i386 宿主 gcc，统一用 qemu-i386-static 包装
 # Apple Silicon 上默认用 arm64 原生用户态，避免 Desktop 对 linux/amd64 的 QEMU/Rosetta
 # 链导致 unpigz/runc exec format error。
 #
