@@ -3,7 +3,7 @@
 # This single image contains everything needed to:
 #   - cross-build the StarryOS riscv64 kernel ELF
 #   - build a self-host rootfs (alpine-based, with rust toolchain in-guest)
-#   - run the kernel under qemu-system-riscv64
+#   - run the kernel under qemu-system-riscv64 / qemu-system-x86_64（arm64 镜像需 qemu-system-x86 包）
 #   - run guest-side demos (M5: cargo build hello, M6: cargo build starry kernel)
 #
 # Built on top of Ubuntu 24.04 so the layout matches our existing scripts.
@@ -44,6 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         pkg-config \
         python3 \
         qemu-system-misc \
+        qemu-system-x86 \
         qemu-system-data \
         qemu-user-static \
         binfmt-support \
