@@ -113,6 +113,7 @@ if [[ "${AUTO_OS_DOCKER_NO_CARGO_CACHE:-}" != "1" ]]; then
 fi
 
 $DOCKER run --rm "${PLATFORM_ARGS[@]}" --privileged --network host \
+    -e GIT_DISCOVERY_ACROSS_FILESYSTEM=1 \
     -v "$ROOT:/work" -w /work \
     "${DOCKER_CARGO_MOUNTS[@]}" \
     "$IMAGE" \

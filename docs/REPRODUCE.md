@@ -77,7 +77,7 @@ bash scripts/reproduce-all.sh
 
 | 宿主 | 默认 `--platform` | 镜像内 RISC-V 宿主工具链（lwext4 等） |
 |------|---------------------|--------------------------------------|
-| **宿主 CPU 为 arm64 / aarch64**（Apple Silicon、Linux aarch64 云主机等） | `linux/arm64` | `gcc-riscv64-linux-gnu` 链到 `riscv64-linux-musl-cc` |
+| **宿主 CPU 为 arm64 / aarch64**（Apple Silicon、Linux aarch64 云主机等） | `linux/arm64` | arceos **riscv64-linux-musl-cross**（i686 宿主）+ **`qemu-i386-static`** 包装为 `riscv64-linux-musl-*`，供 lwext4 真 musl 头文件 |
 | **其他**（x86_64、CI、Intel Mac 等） | `linux/amd64` | arceos **riscv64-linux-musl-cross** 预编译包 |
 
 Apple Silicon 默认 **不再** 构建 `linux/amd64` 用户态镜像，以避免 Docker Desktop 上常见的
