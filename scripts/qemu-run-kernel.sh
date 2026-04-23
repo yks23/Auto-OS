@@ -6,6 +6,10 @@
 #
 # 启动后 QEMU 在前台跑；外部用 `nc localhost 4444` 接进 BusyBox shell。
 #
+# virtio-net：默认 **不** 插网卡（与 StarryOS/Makefile 里 NET?=n 一致）。需要 user 网时：
+#   QEMU_RUN_NET=1 bash scripts/qemu-run-kernel.sh ARCH=... KERNEL=...
+# 否则早期引导可能访问未就绪的 PCI BAR，QEMU guest_errors 出现 Invalid read/write。
+#
 # RISC-V：axplat-riscv64-qemu-virt 的 axconfig 仅声明 128MiB 物理内存；若 QEMU -m 过大，
 # OpenSBI 会把 DTB 放在高位物理页，内核按 128MiB 模型访问会触发 S 态 page fault。
 # 因此 riscv64 固定 -m 128M -smp 1，并把 ELF strip 成与 Starry Makefile 一致的 flat binary
@@ -135,10 +139,12 @@ if [[ -n "${DISK2:-}" && -f "${DISK2}" ]]; then
     )
 fi
 
-QEMU_ARGS+=(
-    -device virtio-net-pci,netdev=net0
-    -netdev user,id=net0
-)
+if [[ "${QEMU_RUN_NET:-0}" == "1" ]]; then
+    QEMU_ARGS+=(
+        -device virtio-net-pci,netdev=net0
+        -netdev user,id=net0
+    )
+fi
 
 echo "[qemu-run] starting: $QEMU ${QEMU_ARGS[*]}" >&2
 timeout "$TIMEOUT" "$QEMU" "${QEMU_ARGS[@]}"
