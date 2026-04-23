@@ -102,8 +102,10 @@ case "$ARCH" in
         ;;
     x86_64)
         QEMU=qemu-system-x86_64
+        # 须与 tgoskits/os/StarryOS/make/qemu.mk 一致：ax-plat-x86-pc 使用 q35（默认 pc 会导致 virtio PCI BAR 错位、guest_errors 里 Invalid read/write）
         QEMU_BASE=(
             -nographic
+            -machine q35
             -smp "$GUEST_SMP"
             -m "$GUEST_MEM"
             -kernel "$KERNEL"
