@@ -1,5 +1,7 @@
 # REPRODUCE — From `git clone` to StarryOS self-build (Docker-only host)
 
+> **中文总览（任务拆解 / 实现 / 现状）**：[`docs/README.md`](./README.md) · [`SELFHOST-ROADMAP-TASKS.md`](./SELFHOST-ROADMAP-TASKS.md) · [`SELFHOST-IMPLEMENTATION-SUMMARY.md`](./SELFHOST-IMPLEMENTATION-SUMMARY.md) · [`SELFHOST-STATUS-AND-IMPROVEMENTS.md`](./SELFHOST-STATUS-AND-IMPROVEMENTS.md)
+
 This is the new minimal-host-deps reproduction guide. The **only** thing
 the host needs is **Docker**. All other build / run dependencies (rust
 nightly, qemu, musl-cross, binfmt, `tgoskits` sources, Debian + Rust
@@ -148,9 +150,11 @@ with no host-side rust / qemu / musl install required.
 
 ## 6. Optional — M6 selfbuild rootfs (heavy)
 
-There's a **larger** rootfs that also contains rust **nightly** and the
-StarryOS kernel sources themselves (it's the rootfs you'd use to attempt
-in-guest `cargo build` of the kernel). Building it is heavier:
+There's a **larger** rootfs that contains a **Debian 13** base plus an
+**Alpine-edge musl** `rustc`/`cargo` tree under `/opt/alpine-rust` (patchelf
+adjusts the musl loader path so it coexists with glibc on Debian), a
+**matching** `rust-std` for `riscv64gc-unknown-none-elf` from static.rust-lang,
+and the StarryOS sources at `/opt/tgoskits`. Building it is heavier:
 
 ```bash
 bash scripts/reproduce-all.sh --m6
@@ -158,22 +162,21 @@ bash scripts/reproduce-all.sh --m6
 
 This will additionally:
 
-- build `tests/selfhost/rootfs-selfbuild-riscv64.img` (~5 GiB raw, ~1.3 GiB
-  xz-compressed) — Debian 13 trixie riscv64 rootfs containing
-  `rustc nightly-2026-04-01`, `cargo`, `musl-tools`, the tgoskits sources at
-  `/opt/tgoskits` with `cargo fetch` already populated.
+- build `tests/selfhost/rootfs-selfbuild-riscv64.img` (multi‑GiB raw + xz) —
+  Debian trixie + `/opt/alpine-rust` musl toolchain + `musl-tools` + tgoskits at
+  `/opt/tgoskits` with `cargo fetch` (best-effort). The baked `rust-toolchain.toml`
+  is **removed** in the image so the guest uses the Alpine `rustc`/`cargo` only.
 - boot the starry kernel against it and run `scripts/demo-m6-selfbuild.sh`,
-  which inside the guest runs `rustc --version`, `cargo --version`,
-  `git log -1` on `/opt/tgoskits`, then attempts
-  `cargo build -p ax_errno --target riscv64gc-unknown-none-elf --release`.
+  which inside the guest runs `rustc`/`cargo` from `/opt/alpine-rust`, then
+  attempts `cargo build` of `starry-kernel` / `starryos` for
+  `riscv64gc-unknown-none-elf`.
 
-Status: **the toolchain itself runs** (we have logs of `rustc 1.96.0-nightly`
-and `cargo 1.96.0-nightly` printing inside the guest), but a full `cargo
-build` of starry-kernel-sized C/C++ build scripts hits a `*** stack smashing
-detected ***` in user-space, which we believe is a starry user-stack /
-mprotect interaction — separate from the F-ε fix and not yet fixed in this
-branch. M6 thus boots the toolchain successfully but does not yet finish
-the kernel build.
+Status: **musl `cargo` is the supported path** for in-guest builds. Earlier
+**glibc** `cargo` from static.rust-lang could abort with `*** stack smashing
+detected ***` under Starry; that layout is no longer what `build-selfbuild-rootfs.sh`
+installs for the compiler driver. Whether the full guest `cargo build` reaches
+`===M6-SELFBUILD-PASS===` depends on the workspace vs the Alpine rustc version
+(see `tests/selfhost/build-selfbuild-rootfs.sh`).
 
 ---
 
@@ -204,7 +207,7 @@ scripts/build.sh                                # build StarryOS kernel ELF
 scripts/demo-m5-rust.sh                         # M5: cargo build hello world
 scripts/demo-m6-selfbuild.sh                    # M6: in-guest starry build
 tests/selfhost/build-selfhost-rootfs.sh         # M5 rootfs (alpine + rust)
-tests/selfhost/build-selfbuild-rootfs.sh        # M6 rootfs (debian + nightly)
+tests/selfhost/build-selfbuild-rootfs.sh        # M6 rootfs (debian + alpine musl rust)
 tgoskits/                                       # StarryOS submodule
 patches/                                        # historical patches (T1-T10 + F-α-ε)
 docs/REPRODUCE.md                               # this file

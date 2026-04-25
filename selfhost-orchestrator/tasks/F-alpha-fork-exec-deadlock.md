@@ -9,8 +9,8 @@
 
 ## 上下文文件（必读）
 
-- `docs/STARRYOS-STATUS.md` — starry 现状评估
-- `docs/M1.5-results.md` — M1.5 第二轮报告，详细记录死锁现象
+- `docs/STARRYOS-STATUS.md`（stub）→ **`docs/SELFHOST-STATUS-AND-IMPROVEMENTS.md`** — starry 现状评估
+- 历史 `docs/M1.5-results.md`（死锁现象逐条）见 git；总述见 `docs/SELFHOST-IMPLEMENTATION-SUMMARY.md`
 - `patches/M1.5/0001-feat-starry-init-auto-run-opt-run-tests.sh-hook-for-.patch` — 已有的 init.sh 自动 run 测试 hook（你可以复用）
 
 ## 问题精确描述

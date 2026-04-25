@@ -9,8 +9,8 @@
 
 ## 上下文文件（必读）
 
-- `docs/STARRYOS-STATUS.md` — starry 现状
-- `docs/M1.5-results.md` — 第二轮报告，详细描述 stdin 阻塞
+- `docs/STARRYOS-STATUS.md`（stub）→ **`docs/SELFHOST-STATUS-AND-IMPROVEMENTS.md`** — starry 现状
+- 历史 `docs/M1.5-results.md`（第二轮 stdin 阻塞细节）见 git；总述见 `docs/SELFHOST-IMPLEMENTATION-SUMMARY.md`
 - `tgoskits/os/StarryOS/scripts/ci-test.py` — starry 自己的 CI 怎么走串口
 
 ## 问题精确描述

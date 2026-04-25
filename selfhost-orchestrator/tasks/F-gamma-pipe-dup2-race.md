@@ -9,8 +9,8 @@
 
 ## 上下文（必读）
 
-- `docs/M1.5-final-results.md` — F-α/F-β 后的实测：bisect OK + ls / OK，但 31 测试 hang
-- `docs/STARRYOS-STATUS.md` — starry 现状
+- `docs/SELFHOST-IMPLEMENTATION-SUMMARY.md` — 含 F-α/β/γ 与 M1.5 背景；历史 `docs/M1.5-final-results.md` 见 git
+- `docs/STARRYOS-STATUS.md`（stub）→ **`docs/SELFHOST-STATUS-AND-IMPROVEMENTS.md`** — starry 现状与能力边界
 - `patches/F-alpha/0002-fix-starry-wait-avoid-lost-wakeup-...patch` — F-α 已修的 waitpid lost wakeup
 - `patches/F-beta/0001-fix-axplat-riscv64-qemu-virt-console-RX-...patch` — F-β 已修的 console RX
 

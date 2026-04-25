@@ -1,5 +1,7 @@
 # StarryOS Self-Hosting Live Demo — M5 真 cargo build 收官
 
+**总览（任务拆解 / 实现体量 / 现状）**：见 [`docs/README.md`](./README.md) 与 [`SELFHOST-ROADMAP-TASKS.md`](./SELFHOST-ROADMAP-TASKS.md)、[`SELFHOST-IMPLEMENTATION-SUMMARY.md`](./SELFHOST-IMPLEMENTATION-SUMMARY.md)、[`SELFHOST-STATUS-AND-IMPROVEMENTS.md`](./SELFHOST-STATUS-AND-IMPROVEMENTS.md)。
+
 **实测**：2026-04-21
 **架构**：riscv64 (qemu-virt, 2 GiB RAM, single core)
 **结果**：✅ M5 — `rustc hello.rs` 全链路 + `cargo --offline build --release` PASS
@@ -26,6 +28,8 @@ add_squares(3, 4) = 25  (expect 25)
 ```
 
 完整原始 serial log：[`docs/M5-DEMO-output.txt`](./M5-DEMO-output.txt)（165 行）
+
+**更细的 M5 效果与编译效率**：见 [`SELFHOST-IMPLEMENTATION-SUMMARY.md` §4](./SELFHOST-IMPLEMENTATION-SUMMARY.md)。
 
 ---
 
