@@ -240,8 +240,17 @@ fi
 echo "[quick] starting QEMU (timeout=${TIMEOUT}s)..."
 
 # Use background process + sleep + kill for reliable timeout on macOS
+# QEMU TCG LR/SC is broken under multi-threaded mode (MTTCG): SC uses
+# cmpxchg(value) instead of reservation tracking, causing spurious SC
+# success across harts and breaking user-space atomics.  Force
+# single-threaded TCG when SMP > 1.
+_accel=()
+if [[ "$SMP" -gt 1 ]]; then
+    _accel=(-accel tcg,thread=single)
+fi
 qemu-system-riscv64 \
   -nographic -machine virt -bios default -smp "$SMP" -m "$MEM" \
+  "${_accel[@]}" \
   -kernel "$KERNEL_BIN" -cpu rv64 \
   -monitor none -serial mon:stdio \
   -device virtio-blk-pci,drive=disk0 \

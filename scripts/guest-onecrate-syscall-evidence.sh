@@ -421,9 +421,14 @@ if [[ "${_stats_http}" == "1" ]]; then
   echo "[+] syscall stats HTTP sidecar pid=${GUEST_ONECRATE_HTTP_PID} STARRY_SMOKE_LOG=${RESULT} (default http://127.0.0.1:1378/)" >&2
 fi
 
+# QEMU TCG LR/SC broken under MTTCG; only need single-threaded TCG when SMP > 1.
+_EVSMP="${EVIDENCE_SMP:-1}"
+_evtcg=()
+if [[ "$_EVSMP" -gt 1 ]]; then _evtcg=(-accel tcg,thread=single); fi
 set +e
 timeout "$TO" qemu-system-riscv64 \
-  -nographic -machine virt -bios default -smp 4 -m 5G \
+  -nographic -machine virt -bios default -smp "$_EVSMP" -m 5G \
+  "${_evtcg[@]}" \
   -kernel "$KERNEL_BIN" -cpu rv64 \
   -monitor none -serial mon:stdio \
   -device virtio-blk-pci,drive=disk0 \

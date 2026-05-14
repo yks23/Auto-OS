@@ -77,8 +77,9 @@ ELF="$ROOT/tgoskits/target/riscv64gc-unknown-none-elf/release/starryos"
 M6_QEMU_TIMEOUT_SEC="${M6_QEMU_TIMEOUT_SEC:-4200}"
 M6_STALL_SEC="${M6_STALL_SEC:-0}"
 M6_STALL_GRACE_SEC="${M6_STALL_GRACE_SEC:-120}"
-# 与 scripts/build.sh 默认 MAX_CPU_NUM=4 对齐；内核须用当前仓库 scripts/build.sh 重编后再跑 demo。
-M6_QEMU_SMP="${M6_QEMU_SMP:-4}"
+# -smp 1 avoids QEMU TCG LR/SC cross-hart race without needing thread=single serialization.
+# The kernel handles runtime CPU detection, so booting with fewer harts is safe.
+M6_QEMU_SMP="${M6_QEMU_SMP:-1}"
 M6_QEMU_MEM="${M6_QEMU_MEM:-5G}"
 M6_HOST_HEARTBEAT_SEC="${M6_HOST_HEARTBEAT_SEC:-120}"
 M6_GUEST_HEARTBEAT_SEC="${M6_GUEST_HEARTBEAT_SEC:-120}"
@@ -139,8 +140,14 @@ P2EOF
     rm -f "$P2RESULT"
     echo "[phase2] QEMU second boot (timeout 240s)..."
     set +e
+    # QEMU TCG LR/SC is broken under MTTCG.  Only need thread=single when SMP > 1.
+    local _accel=()
+    if [[ "$M6_QEMU_SMP" -gt 1 ]]; then
+        _accel=(-accel tcg,thread=single)
+    fi
     $SUDO timeout 240 qemu-system-riscv64 \
         -nographic -machine virt -bios default -smp "$M6_QEMU_SMP" -m "$M6_QEMU_MEM" \
+        "${_accel[@]}" \
         -kernel "$GUEST_BIN" -cpu rv64 \
         -monitor none -serial mon:stdio \
         -device virtio-blk-pci,drive=disk0 \
@@ -249,8 +256,16 @@ echo "[+] progress log: $M6_PROGRESS_LOG  (tail -f in another terminal)"
 echo "[+] launching qemu (timeout ${M6_QEMU_TIMEOUT_SEC}s — guest cargo build)..."
 echo "[+] diag: M6_QEMU_SMP=$M6_QEMU_SMP M6_QEMU_MEM=$M6_QEMU_MEM M6_STALL_SEC=$M6_STALL_SEC M6_HOST_HEARTBEAT_SEC=$M6_HOST_HEARTBEAT_SEC M6_GUEST_HEARTBEAT_SEC=$M6_GUEST_HEARTBEAT_SEC M6_SYSCALL_STATS_INTERVAL_SEC=$M6_SYSCALL_STATS_INTERVAL_SEC M6_RESUME=${M6_RESUME:-0}"
 # -smp 须 ≤ 镜像内 .axconfig.toml 的 plat.max-cpu-num（见 tests/selfhost/build-selfbuild-rootfs.sh / scripts/build.sh）。
+# QEMU TCG LR/SC is broken under MTTCG: SC uses cmpxchg(value) instead of
+# reservation tracking, causing spurious SC success across harts.  With -smp 1
+# the race cannot happen, so we only need thread=single when SMP > 1.
+_accel=()
+if [[ "$M6_QEMU_SMP" -gt 1 ]]; then
+    _accel=(-accel tcg,thread=single)
+fi
 $SUDO timeout "$M6_QEMU_TIMEOUT_SEC" qemu-system-riscv64 \
     -nographic -machine virt -bios default -smp "$M6_QEMU_SMP" -m "$M6_QEMU_MEM" \
+    "${_accel[@]}" \
     -kernel "$KERNEL" -cpu rv64 \
     -monitor none -serial mon:stdio \
     -device virtio-blk-pci,drive=disk0 \

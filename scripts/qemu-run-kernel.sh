@@ -114,6 +114,11 @@ case "$ARCH" in
             -kernel "$KERNEL_FOR_QEMU"
             -cpu rv64
         )
+        # QEMU TCG LR/SC is broken under MTTCG (SC uses cmpxchg instead of
+        # reservation tracking).  Force single-threaded TCG when SMP > 1.
+        if [[ "$GUEST_SMP" -gt 1 ]]; then
+            QEMU_BASE+=( -accel tcg,thread=single )
+        fi
         ;;
     x86_64)
         QEMU=qemu-system-x86_64
