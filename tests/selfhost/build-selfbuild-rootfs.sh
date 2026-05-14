@@ -26,7 +26,7 @@ ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ARCH="riscv64"
 DEBIAN_VER="13"
 DEBIAN_CODENAME="trixie"
-TGOSKITS_BRANCH="selfhost-m5"
+TGOSKITS_BRANCH="selfhost"
 # Alpine minirootfs（与 build-selfhost-rootfs.sh 一致）；rust/cargo 来自 edge apk
 ALPINE_DOT="3.21.0"
 ALPINE_REL="v3.21"
@@ -35,8 +35,13 @@ ALPINE_TARBALL="alpine-minirootfs-${ALPINE_DOT}-riscv64.tar.gz"
 TGOSKITS_URL="https://github.com/yks23/tgoskits.git"
 
 OUT_IMG="$ROOT/tests/selfhost/rootfs-selfbuild-${ARCH}.img"
-WORK_DIR="${WORK_DIR:-/tmp/selfbuild-rootfs.work}"
+WORK_DIR="${WORK_DIR:-$ROOT/.cache/rootfs-build}"
 DISK_SIZE_GB="${DISK_SIZE_GB:-20}"
+# xz 压缩等级：默认 6（比 -9 快 3–5x，大小差异 <5%）；需要最小体积时设 XZ_LEVEL=9。
+XZ_LEVEL="${XZ_LEVEL:-6}"
+# 与 scripts/build.sh / demo-m6-selfbuild 默认一致：多核 SMP + 更大物理内存（访客内多 rustc）。
+M6_MAX_CPU_NUM="${M6_MAX_CPU_NUM:-4}"
+M6_PHYS_MEM="${M6_PHYS_MEMORY_SIZE:-0x100000000}" # 4GiB，与 starry-kernel page-alloc-4g 上限一致
 
 if [[ "$(id -u)" -ne 0 ]]; then
     echo "error: run as root (this script mounts loop devices and chroots)" >&2
@@ -57,7 +62,43 @@ have_riscv_binfmt || { echo "binfmt_misc not available — pass --privileged to 
 mkdir -p "$WORK_DIR"
 cd "$WORK_DIR"
 
+# 增量重建：若 BASE_CACHE 指向一个已 "apt install 完" 的 ext4 镜像，
+# 可跳过步骤 1–4（下载 + 解压 + apt + ccwrap）。用 -DROOTFS_BASE_CACHE=/path/to/cache.img 或
+# 设环境变量；跳过时仍重新执行 5–8（Alpine rust + tgoskits + inject + finalise）。
+BASE_CACHE="${ROOTFS_BASE_CACHE:-}"
+if [[ -n "$BASE_CACHE" && -f "$BASE_CACHE" ]]; then
+    echo "[cache] restoring base rootfs from $BASE_CACHE (skipping steps 1–4)..."
+    DISK_RAW="$WORK_DIR/disk.raw"
+    cp "$BASE_CACHE" "$DISK_RAW"
+    # resize in case the cached image is smaller
+    truncate -s "${DISK_SIZE_GB}G" "$DISK_RAW" 2>/dev/null || true
+    LOOP=$(losetup -fP --show "$DISK_RAW")
+    e2fsck -fy "$LOOP" >/dev/null 2>&1 || true
+    resize2fs "$LOOP" >/dev/null 2>&1 || true
+    MNT="$WORK_DIR/mnt"
+    mkdir -p "$MNT"
+    mount "$LOOP" "$MNT"
+    cleanup() {
+        sync
+        umount -lR "$MNT/proc" "$MNT/dev" "$MNT/sys" "$MNT" 2>/dev/null || true
+        losetup -d "$LOOP" 2>/dev/null || true
+    }
+    trap cleanup EXIT
+    cp /usr/bin/qemu-riscv64-static "$MNT/usr/bin/" 2>/dev/null || true
+    rm -f "$MNT/etc/resolv.conf"
+    cp /etc/resolv.conf "$MNT/etc/resolv.conf"
+    mount -t proc /proc "$MNT/proc"
+    mount --rbind /dev "$MNT/dev"
+    mount --rbind /sys "$MNT/sys"
+    run_in() { chroot "$MNT" /bin/bash -c "$*"; }
+    echo "[cache] base restored, continuing from step 5..."
+    # jump to step 5
+    SKIP_STEPS_1_TO_4=1
+fi
+
 # --------------------------------------------------------- 1. download base
+SKIP_STEPS_1_TO_4="${SKIP_STEPS_1_TO_4:-}"
+if [[ -z "$SKIP_STEPS_1_TO_4" ]]; then
 TARBALL="$WORK_DIR/debian-${DEBIAN_VER}-nocloud-${ARCH}.tar.xz"
 if [[ ! -f "$TARBALL" ]]; then
     echo "[1/8] downloading Debian ${DEBIAN_VER} ${ARCH} cloud rootfs..."
@@ -136,6 +177,16 @@ chmod +x "$MNT/opt/ccwrap/cc"
 ln -sf cc "$MNT/opt/ccwrap/gcc"
 ln -sf cc "$MNT/opt/ccwrap/c++"
 ln -sf cc "$MNT/opt/ccwrap/g++"
+fi # end SKIP_STEPS_1_TO_4 guard
+
+# 保存 base cache（apt + ccwrap 完成后的 rootfs），供后续增量重建跳过步骤 1–4。
+BASE_CACHE_SAVE="${ROOTFS_BASE_CACHE_SAVE:-$WORK_DIR/base-apt-done.img}"
+if [[ ! -f "$BASE_CACHE_SAVE" ]]; then
+    echo "[cache] saving base rootfs cache -> $BASE_CACHE_SAVE ..."
+    sync
+    dd if="$DISK_RAW" of="$BASE_CACHE_SAVE" bs=4M skip=$((OFFSET / 4194304)) status=none
+    echo "[cache] base cache saved ($(du -h "$BASE_CACHE_SAVE" | cut -f1))"
+fi
 
 # --------------------------------------------------------- 5. Alpine musl rustc/cargo + matching rust-std (none-elf)
 echo "[5/8] Alpine stage: musl rustc/cargo -> /opt/alpine-rust ..."
@@ -206,19 +257,20 @@ STD_VER="${ALPINE_RUSTC_VER}"
 STD_TARBALL="rust-std-${STD_VER}-riscv64gc-unknown-none-elf.tar.xz"
 STD_URL="https://static.rust-lang.org/dist/${STD_TARBALL}"
 echo "[5c/8] install rust-std ($STD_TARBALL) into /opt/alpine-rust/usr ..."
-rm -f "$WORK_DIR/$STD_TARBALL"
-if ! curl -fL "$STD_URL" -o "$WORK_DIR/$STD_TARBALL" 2>/dev/null; then
-    # e.g. release 1.xx.0-nightly → try stable component tarball 1.xx.0
-    rm -f "$WORK_DIR/$STD_TARBALL"
-    STD_VER="${ALPINE_RUSTC_VER%%-nightly}"
-    STD_TARBALL="rust-std-${STD_VER}-riscv64gc-unknown-none-elf.tar.xz"
-    STD_URL="https://static.rust-lang.org/dist/${STD_TARBALL}"
-    curl -fL "$STD_URL" -o "$WORK_DIR/$STD_TARBALL"
+if [[ ! -f "$WORK_DIR/$STD_TARBALL" ]]; then
+    if ! curl -fL "$STD_URL" -o "$WORK_DIR/$STD_TARBALL" 2>/dev/null; then
+        # e.g. release 1.xx.0-nightly → try stable component tarball 1.xx.0
+        rm -f "$WORK_DIR/$STD_TARBALL"
+        STD_VER="${ALPINE_RUSTC_VER%%-nightly}"
+        STD_TARBALL="rust-std-${STD_VER}-riscv64gc-unknown-none-elf.tar.xz"
+        STD_URL="https://static.rust-lang.org/dist/${STD_TARBALL}"
+        curl -fL "$STD_URL" -o "$WORK_DIR/$STD_TARBALL"
+    fi
 fi
 mkdir -p "$WORK_DIR/rust-std-extract"
 tar xJf "$WORK_DIR/$STD_TARBALL" -C "$WORK_DIR/rust-std-extract" --strip-components=1
 ( cd "$WORK_DIR/rust-std-extract" && ./install.sh --prefix="$MNT/opt/alpine-rust/usr" >/dev/null )
-rm -rf "$WORK_DIR/rust-std-extract" "$WORK_DIR/$STD_TARBALL"
+rm -rf "$WORK_DIR/rust-std-extract"
 
 # Alpine rustc/cargo 的 PT_INTERP 为 /lib/ld-musl-riscv64.so.1（与 glibc 的 ld-linux 文件名不同，可并存）。
 # 不要用 patchelf 改解释器：曾观察到在 Starry 访客内触发 stack smashing，疑似破坏 ELF 安全元数据。
@@ -300,8 +352,16 @@ command -v ax-config-gen >/dev/null 2>&1 || {
 }
 [[ -f "$PLAT_C" ]] || { echo "error: missing $PLAT_C" >&2; exit 1; }
 mkdir -p "$STARRY_IMG"
-( cd "$STARRY_SRC" && ax-config-gen "$(pwd)/make/defconfig.toml" "$PLAT_C" \
+_DEFCONFIG=""
+_TGOSKITS="$ROOT/tgoskits"
+for _dc in "$_TGOSKITS/os/arceos/configs/defconfig.toml" "$STARRY_SRC/make/defconfig.toml"; do
+    [[ -f "$_dc" ]] && { _DEFCONFIG="$_dc"; break; }
+done
+[[ -n "$_DEFCONFIG" ]] || { echo "error: defconfig.toml not found" >&2; exit 1; }
+( cd "$STARRY_SRC" && ax-config-gen "$_DEFCONFIG" "$PLAT_C" \
     -w 'arch="riscv64"' -w 'platform="riscv64-qemu-virt"' \
+    -w "plat.max-cpu-num=${M6_MAX_CPU_NUM}" \
+    -w "plat.phys-memory-size=${M6_PHYS_MEM}" \
     -o "$STARRY_IMG/.axconfig.toml" )
 
 # --------------------------------------------------------- 7. inject demo helper
@@ -312,6 +372,64 @@ cat > "$MNT/opt/build-starry-kernel.sh" <<'GUESTSH'
 # 使用镜像内 **Alpine musl** rustc/cargo（/opt/alpine-rust）；避免 Debian+glibc 官方 cargo 在 Starry 下栈崩溃。
 # 不用 pipefail：部分 bash+glibc 在 Starry 下与 set -o 组合曾触发异常退出链上的栈保护误报。
 set -e
+# 串口诊断：阶段 + UTC 时间戳；长步骤间可设 M6_GUEST_HEARTBEAT_SEC（默认 120）周期性心跳。
+m6_ts() { echo "[M6 $(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
+# 串口输出 /proc/syscall_stats 供宿主 m6-selfbuild-progress-http.py 解析增量。
+# 此为 **Starry 访客内核内** 的真实计数；不得以宿主 strace 或假日志冒烟代替。
+# 旧内核无该文件时静默跳过。默认整文件 cat；若 >200KiB 则只取前 300 行以免串口洪泛。
+# M6_SYSCALL_STATS_INTERVAL_SEC — 长 cargo 阶段后台周期性 dump 的间隔秒数（默认 10）；无效值回落 10；最小 1。
+m6_dump_syscall_stats() {
+    if [ -r /proc/syscall_stats ]; then
+        echo "===SYSCALL_STATS_BEGIN==="
+        _sz=$(wc -c </proc/syscall_stats 2>/dev/null | tr -d '[:space:]' || echo 0)
+        case ${_sz:-0} in
+        '' | *[!0-9]*) _sz=0 ;;
+        esac
+        if [ "${_sz:-0}" -gt 204800 ]; then
+            echo "m6_dump_syscall_stats: truncating to first 300 lines (size ${_sz} bytes > 200KiB)"
+            head -n 300 /proc/syscall_stats
+        else
+            cat /proc/syscall_stats
+        fi
+        echo "===SYSCALL_STATS_END==="
+    fi
+}
+# 与 m6_hb_* 类似：在 starry-kernel / pass1 / pass2 等长 cargo 阶段周期性调用 m6_dump_syscall_stats。
+m6_syscall_stats_watch_start() {
+    rm -f /tmp/m6-syscall-watch.pid
+    (
+        _iv="${M6_SYSCALL_STATS_INTERVAL_SEC:-10}"
+        case ${_iv} in
+        '' | *[!0-9]*) _iv=10 ;;
+        esac
+        if [ "${_iv}" -lt 1 ]; then _iv=1; fi
+        while sleep "${_iv}"; do
+            m6_dump_syscall_stats
+        done
+    ) &
+    echo $! >/tmp/m6-syscall-watch.pid
+}
+m6_syscall_stats_watch_stop() {
+    if [ -f /tmp/m6-syscall-watch.pid ]; then
+        kill "$(cat /tmp/m6-syscall-watch.pid)" 2>/dev/null || true
+        rm -f /tmp/m6-syscall-watch.pid
+    fi
+}
+m6_hb_start() {
+    rm -f /tmp/m6-hb.pid
+    (
+        while sleep "${M6_GUEST_HEARTBEAT_SEC:-120}"; do
+            m6_ts "heartbeat phase=${M6_PHASE:-?} (rustc/cargo may print nothing for a long time)"
+        done
+    ) &
+    echo $! >/tmp/m6-hb.pid
+}
+m6_hb_stop() {
+    if [ -f /tmp/m6-hb.pid ]; then
+        kill "$(cat /tmp/m6-hb.pid)" 2>/dev/null || true
+        rm -f /tmp/m6-hb.pid
+    fi
+}
 # glibc 的 bash/tee/find 等不要从 /opt/alpine-rust/usr/bin 解析；musl cargo 仅由 _run_cargo 注入 PATH+LD_LIBRARY_PATH。
 export PATH="/opt/ccwrap:/usr/bin:/usr/sbin:/bin:/sbin:${PATH:-}"
 # 全局不要 export Alpine LD_LIBRARY_PATH：本脚本由 glibc bash 解释，混用 musl 库会崩溃。
@@ -343,21 +461,40 @@ export CXX_riscv64_alpine_linux_musl="${CXX_riscv64_alpine_linux_musl:-/opt/ccwr
 # 主机 musl：collect2 在访客里易 ICE，用 lld；不影响 riscv64gc-unknown-none-elf（另套 target）。
 export CARGO_TARGET_RISCV64_ALPINE_LINUX_MUSL_LINKER=/opt/ccwrap/cc
 export CARGO_TARGET_RISCV64_ALPINE_LINUX_MUSL_RUSTFLAGS="-Clink-arg=-fuse-ld=lld"
-# 降低 cargo / rayon 工作线程默认栈不足导致 __stack_chk_fail 的风险
+# 降低 rustc 默认栈过小导致 __stack_chk_fail 的风险；并行度默认随访客 CPU 数（QEMU -smp）。
 export RUST_MIN_STACK="${RUST_MIN_STACK:-16777216}"
-export RAYON_NUM_THREADS="${RAYON_NUM_THREADS:-1}"
-export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
+_NPROC="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 4)"
+if [[ "${_NPROC}" -lt 1 ]]; then _NPROC=1; fi
+export RAYON_NUM_THREADS="${RAYON_NUM_THREADS:-$_NPROC}"
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-$_NPROC}"
+# 详细编译信号（宿主可通过 demo 注入覆盖）：
+#   M6_RUSTFLAGS_COMMON — 默认带 DWARF（等价 gcc -g），便于 rustc 卡住时 objdump/llvm-objcopy 仍可符号化；
+#   M6_CARGO_VV=1 — cargo -vv（每道 rustc 命令行全量打印）；=0 则仅用 -v 缩短日志。
+#   CARGO_TERM_PROGRESS — wide 在串口上更易看出「仍在跑」。
+export CARGO_TERM_PROGRESS="${CARGO_TERM_PROGRESS:-wide}"
+export CARGO_TERM_VERBOSE="${CARGO_TERM_VERBOSE:-true}"
+M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON:--C debuginfo=2}"
+M6_CARGO_VV="${M6_CARGO_VV:-1}"
+if [ "$M6_CARGO_VV" = "1" ]; then _CARGO_V="-vv"; else _CARGO_V="-v"; fi
 RUSTC=/opt/alpine-rust/usr/bin/rustc
 CARGO=/opt/alpine-rust/usr/bin/cargo
 # 不用 stdbuf：其在 glibc 下依赖 LD_PRELOAD(libstdbuf)，在 Starry 访客里会异常退出/被报成 not found。
 # 用 tee 把 cargo 输出打到串口 + /tmp，便于宿主侧看 results.txt 体积增长。
+# **cargo 对匿名 pipe 常全缓冲**：可选 `M6_CARGO_PTY=1` 用 script(1) 分配伪终端以刷日志。
+# 默认 **关闭**：在 Starry 访客 + musl cargo 下曾触发 axtask「atomic context sleep」panic（见 wait_queue.rs）。
+# **断点续编**：`M6_RESUME=1` 时若 virtio 盘上已有阶段产物或 `.m6-done-*` 标记，则跳过已完成阶段（见下方）。
 # 仅对 musl cargo 进程注入 LD_LIBRARY_PATH（勿污染当前 glibc bash）。
 _run_cargo() {
-    env PATH="/opt/ccwrap:/opt/alpine-rust/usr/bin:/usr/bin:/usr/sbin:/bin:/sbin" \
-        LD_LIBRARY_PATH="/opt/alpine-rust/lib:/opt/alpine-rust/usr/lib" \
-        SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp \
-        TMPDIR=/opt/tgoskits/.m6-tmp \
-        "$CARGO" "$@"
+    if [ "${M6_CARGO_PTY:-0}" = "1" ] && command -v script >/dev/null 2>&1; then
+        _M6_CARGO_Q=$(printf ' %q' "$@")
+        script -qefc "/usr/bin/env PATH=\"/opt/ccwrap:/opt/alpine-rust/usr/bin:/usr/bin:/usr/sbin:/bin:/sbin\" LD_LIBRARY_PATH=\"/opt/alpine-rust/lib:/opt/alpine-rust/usr/lib\" SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp TMPDIR=/opt/tgoskits/.m6-tmp /opt/alpine-rust/usr/bin/cargo${_M6_CARGO_Q}" /dev/null
+    else
+        env PATH="/opt/ccwrap:/opt/alpine-rust/usr/bin:/usr/bin:/usr/sbin:/bin:/sbin" \
+            LD_LIBRARY_PATH="/opt/alpine-rust/lib:/opt/alpine-rust/usr/lib" \
+            SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp \
+            TMPDIR=/opt/tgoskits/.m6-tmp \
+            "$CARGO" "$@"
+    fi
 }
 
 # 快速子集：验证 guest 内 cargo 离线解析/索引可用与关键包可定位，不编整棵 starry-kernel。
@@ -367,33 +504,43 @@ if [ "${M6_MODE:-full}" = "subset" ]; then
     echo "  StarryOS M6 — guest cargo SUBSET (quick smoke)"
     echo "================================================================"
     echo
+    m6_ts "subset begin"
     cd /opt/tgoskits
+    m6_ts "[subset-0] start cargo metadata --offline --no-deps"
     echo "[subset-0] cargo metadata --offline --no-deps (workspace 根解析)"
     _run_cargo metadata --offline --format-version 1 --no-deps > /tmp/m6-subset-meta.json
     RC0=$?
+    m6_ts "metadata exit=$RC0"
     echo "metadata exit=$RC0"
     [ "$RC0" -eq 0 ] || exit "$RC0"
+    m6_ts "[subset-1] start cargo pkgid -p riscv-h"
     echo "[subset-1] cargo pkgid -p riscv-h (关键包离线定位)"
     set -o pipefail
     _run_cargo pkgid --offline -p riscv-h 2>&1 | tee /tmp/m6-subset-riscv-h.log
     RC1=${PIPESTATUS[0]}
     set +o pipefail
+    m6_ts "riscv-h pkgid exit=$RC1"
     echo "riscv-h pkgid exit=$RC1"
     [ "$RC1" -eq 0 ] || exit "$RC1"
+    m6_ts "[subset-2] start cargo pkgid -p ax-cpu"
     echo "[subset-2] cargo pkgid -p ax-cpu (关键包离线定位)"
     set -o pipefail
     _run_cargo pkgid --offline -p ax-cpu 2>&1 | tee /tmp/m6-subset-ax-cpu.log
     RC2=${PIPESTATUS[0]}
     set +o pipefail
+    m6_ts "ax-cpu pkgid exit=$RC2"
     echo "ax-cpu pkgid exit=$RC2"
     [ "$RC2" -eq 0 ] || exit "$RC2"
+    m6_ts "[subset-3] start cargo pkgid -p ax-errno"
     echo "[subset-3] cargo pkgid -p ax-errno"
     set -o pipefail
     _run_cargo pkgid --offline -p ax-errno 2>&1 | tee /tmp/m6-subset-axerrno.log
     RC3=${PIPESTATUS[0]}
     set +o pipefail
+    m6_ts "ax-errno pkgid exit=$RC3"
     echo "ax-errno pkgid exit=$RC3"
     [ "$RC3" -eq 0 ] || exit "$RC3"
+    m6_ts "subset all steps OK"
     echo
     echo "================================================================"
     echo "===M6-SELFBUILD-SUBSET-PASS==="
@@ -406,11 +553,13 @@ echo "================================================================"
 echo "  StarryOS Self-Build Demo M6 — guest cargo build starry-kernel"
 echo "================================================================"
 echo
+m6_ts "full M6 selfbuild: toolchain + cargo phases (heartbeats every ${M6_GUEST_HEARTBEAT_SEC:-120}s during compile)"
 echo "[0] toolchain sanity:"
 # rustc --version 在部分 Starry+QEMU 组合下会在进程收尾阶段触发 __stack_chk_fail；直接进入构建。
 echo "rustc binary: $RUSTC (skip --version)"
 echo
 cd /opt/tgoskits
+m6_ts "[1] inspect tgoskits tree"
 echo "[1] tgoskits source (HEAD):"
 if [ -d /opt/tgoskits/.git ]; then
     /usr/bin/git -C /opt/tgoskits log -1 --oneline 2>/dev/null || echo "(no git log)"
@@ -444,53 +593,168 @@ export AX_TARGET=riscv64gc-unknown-none-elf
 export AX_IP=10.0.2.15
 export AX_GW=10.0.2.2
 export AX_CONFIG_PATH="$(pwd)/.axconfig.toml"
+m6_ts "AX_* exported AX_TARGET=$AX_TARGET AX_PLATFORM=$AX_PLATFORM"
 
 cd /opt/tgoskits
 
-echo "[2] cargo build -p starry-kernel (lib)"
-set -o pipefail
-_run_cargo build -v --offline -p starry-kernel \
-    --target riscv64gc-unknown-none-elf --release 2>&1 | tee /tmp/m6-cargo-kernel.log
-RC=${PIPESTATUS[0]}
-set +o pipefail
-echo "starry-kernel-build exit=$RC"
-if [ "$RC" -ne 0 ]; then
-    exit "$RC"
+m6_ts "parallelism: CARGO_BUILD_JOBS=$CARGO_BUILD_JOBS RAYON_NUM_THREADS=$RAYON_NUM_THREADS (override via env)"
+
+# ---------- M6_RESUME：同一 rootfs 镜像上多次 QEMU，利用 cargo incremental ----------
+# 宿主 demo 注入 M6_RESUME=1（默认 0）；若盘上已有产物则跳过已完成阶段（需上次运行已把 target/ 写入 virtio 盘）。
+# 成功阶段结束时会 touch /opt/tgoskits/.m6-done-kernel-lib | .m6-done-pass1 | .m6-done-pass2；续跑时亦认产物（rlib / linker_*.lds）。
+M6_RESUME="${M6_RESUME:-0}"
+M6_DONE_K="/opt/tgoskits/.m6-done-kernel-lib"
+M6_DONE_P1="/opt/tgoskits/.m6-done-pass1"
+M6_DONE_P2="/opt/tgoskits/.m6-done-pass2"
+LD="target/riscv64gc-unknown-none-elf/release/linker_${PLAT_NAME}.lds"
+ELF="target/riscv64gc-unknown-none-elf/release/starryos"
+RESUME_SKIP_KERNEL=0
+RESUME_SKIP_PASS1=0
+if [ "$M6_RESUME" = "1" ]; then
+    m6_ts "M6_RESUME=1: scan target/ + .m6-done-* under /opt/tgoskits"
+    if [ -f "$ELF" ]; then
+        touch "$M6_DONE_P2" 2>/dev/null || true
+        m6_ts "found $ELF — build already complete"
+        ls -lh "$ELF" 2>&1 | head -2
+        file "$ELF" 2>/dev/null | head -1 || true
+        echo "================================================================"
+        echo "===M6-SELFBUILD-PASS==="
+        echo "  (resume: ELF already on virtio disk)"
+        echo "================================================================"
+        exit 0
+    fi
+    if [ -f "$LD" ]; then
+        m6_ts "found $LD — skip [2][3], run [4] pass2 only"
+        RESUME_SKIP_KERNEL=1
+        RESUME_SKIP_PASS1=1
+    elif [ -f "$M6_DONE_P1" ]; then
+        m6_ts "resume: $M6_DONE_P1 without $LD — stale marker, will re-run from [3]"
+    fi
+    if [ "$RESUME_SKIP_KERNEL" != "1" ]; then
+        LIB0=$(find target/riscv64gc-unknown-none-elf/release -maxdepth 3 -name "libstarry_kernel*.rlib" 2>/dev/null | head -1 || true)
+        if [ -n "$LIB0" ] && [ -f "$LIB0" ]; then
+            m6_ts "found kernel rlib — skip [2], run [3][4]"
+            RESUME_SKIP_KERNEL=1
+        elif [ -f "$M6_DONE_K" ]; then
+            LIB0=$(find target/riscv64gc-unknown-none-elf/release -maxdepth 3 -name "libstarry_kernel*.rlib" 2>/dev/null | head -1 || true)
+            if [ -n "$LIB0" ] && [ -f "$LIB0" ]; then
+                m6_ts "resume: $M6_DONE_K + rlib — skip [2]"
+                RESUME_SKIP_KERNEL=1
+            else
+                m6_ts "resume: $M6_DONE_K but no libstarry_kernel*.rlib — re-run [2]"
+            fi
+        fi
+    fi
 fi
-LIB=$(find target/riscv64gc-unknown-none-elf/release -name "libstarry_kernel*.rlib" | head -1)
-echo "produced: $(ls -lh "$LIB" 2>&1 | head)"
+
+m6_dump_syscall_stats
+
+# 与宿主 scripts/build.sh 对齐：仅当树内 starry-kernel 声明了 smp feature 时才传 --features smp（旧 rootfs tarball 无此行时会失败）。
+SK_KERNEL_FEAT=""
+if grep -qE '^[[:space:]]*smp[[:space:]]*=' /opt/tgoskits/os/StarryOS/kernel/Cargo.toml 2>/dev/null; then
+    SK_KERNEL_FEAT="--features smp"
+    echo "[2] starry-kernel: enabling workspace feature smp (matches baked axconfig SMP)"
+else
+    echo "[2] starry-kernel: no 'smp' feature in Cargo.toml — building without --features smp (legacy rootfs)"
+fi
+
+RC=0
+RC1=0
+if [ "$RESUME_SKIP_KERNEL" != "1" ]; then
+    m6_ts "[2] start cargo build -p starry-kernel (lib) — may run for a long time with no crate output"
+    echo "[2] cargo build $_CARGO_V --offline -p starry-kernel (lib) $SK_KERNEL_FEAT RUSTFLAGS+=$M6_RUSTFLAGS_COMMON"
+    export M6_PHASE=starry-kernel-lib
+    export RUSTFLAGS="$M6_RUSTFLAGS_COMMON ${RUSTFLAGS:-}"
+    m6_hb_start
+    m6_syscall_stats_watch_start
+    set -o pipefail
+    _run_cargo build $_CARGO_V --offline -p starry-kernel \
+        $SK_KERNEL_FEAT \
+        --target riscv64gc-unknown-none-elf --release 2>&1 | tee /tmp/m6-cargo-kernel.log
+    RC=${PIPESTATUS[0]}
+    set +o pipefail
+    m6_syscall_stats_watch_stop
+    m6_hb_stop
+    m6_ts "[2] starry-kernel lib finished rc=$RC"
+    echo "starry-kernel-build exit=$RC"
+    if [ "$RC" -ne 0 ]; then
+        exit "$RC"
+    fi
+    touch "$M6_DONE_K"
+else
+    m6_ts "[2] skipped (M6_RESUME: kernel stage already done or linker-only resume)"
+    touch "$M6_DONE_K" 2>/dev/null || true
+fi
+
+LIB=$(find target/riscv64gc-unknown-none-elf/release -maxdepth 3 -name "libstarry_kernel*.rlib" 2>/dev/null | head -1 || true)
+if [ -n "$LIB" ] && [ -f "$LIB" ]; then
+    echo "produced rlib: $(ls -lh "$LIB" 2>&1 | head -1)"
+else
+    echo "produced rlib: (none — linker-only resume or clean tree)"
+fi
 echo
 
-echo "[3] pass1 starryos (generate linker_${PLAT_NAME}.lds)"
-set -o pipefail
-_run_cargo build -v --offline -p starryos \
-    --target riscv64gc-unknown-none-elf --release \
-    --features starryos/qemu 2>&1 | tee /tmp/m6-cargo-pass1.log
-RC1=${PIPESTATUS[0]}
-set +o pipefail
-echo "starryos pass1 exit=$RC1"
-LD="target/riscv64gc-unknown-none-elf/release/linker_${PLAT_NAME}.lds"
-if [ ! -f "$LD" ]; then
-    echo "pass1 did not create $LD — reporting lib-only progress"
-    echo "===M6-SELFBUILD-LIB-PASS==="
-    exit 0
+m6_dump_syscall_stats
+
+if [ "$RESUME_SKIP_PASS1" != "1" ]; then
+    m6_ts "[3] start pass1 starryos (generate linker_${PLAT_NAME}.lds)"
+    echo "[3] pass1 starryos $_CARGO_V RUSTFLAGS+=$M6_RUSTFLAGS_COMMON"
+    export M6_PHASE=starryos-pass1
+    export RUSTFLAGS="$M6_RUSTFLAGS_COMMON ${RUSTFLAGS:-}"
+    m6_hb_start
+    m6_syscall_stats_watch_start
+    set -o pipefail
+    _run_cargo build $_CARGO_V --offline -p starryos \
+        --target riscv64gc-unknown-none-elf --release \
+        --features starryos/qemu,smp 2>&1 | tee /tmp/m6-cargo-pass1.log
+    RC1=${PIPESTATUS[0]}
+    set +o pipefail
+    m6_syscall_stats_watch_stop
+    m6_hb_stop
+    m6_ts "[3] starryos pass1 finished rc=$RC1"
+    echo "starryos pass1 exit=$RC1"
+    if [ "$RC1" -ne 0 ]; then
+        exit "$RC1"
+    fi
+    if [ ! -f "$LD" ]; then
+        echo "pass1 did not create $LD — reporting lib-only progress"
+        echo "===M6-SELFBUILD-LIB-PASS==="
+        exit 0
+    fi
+    touch "$M6_DONE_P1"
+else
+    m6_ts "[3] skipped (M6_RESUME: linker script already on disk)"
+    if [ ! -f "$LD" ]; then
+        echo "FATAL: resume expected $LD but missing"
+        exit 2
+    fi
+    touch "$M6_DONE_P1" 2>/dev/null || true
 fi
 
-echo "[4] pass2 starryos (final ELF)"
+m6_dump_syscall_stats
+
+m6_ts "[4] start pass2 starryos (final ELF link)"
+echo "[4] pass2 starryos $_CARGO_V (RUSTFLAGS: debuginfo + linker script)"
+export M6_PHASE=starryos-pass2
+m6_hb_start
+m6_syscall_stats_watch_start
 set -o pipefail
-RUSTFLAGS="-C link-arg=-T$(pwd)/$LD -C link-arg=-no-pie -C link-arg=-znostart-stop-gc" \
-    _run_cargo build -v --offline -p starryos \
+export RUSTFLAGS="$M6_RUSTFLAGS_COMMON -C link-arg=-T$(pwd)/$LD -C link-arg=-no-pie -C link-arg=-znostart-stop-gc"
+_run_cargo build $_CARGO_V --offline -p starryos \
     --target riscv64gc-unknown-none-elf --release \
-    --features starryos/qemu 2>&1 | tee /tmp/m6-cargo-pass2.log
+    --features starryos/qemu,smp 2>&1 | tee /tmp/m6-cargo-pass2.log
 RC2=${PIPESTATUS[0]}
 set +o pipefail
+m6_syscall_stats_watch_stop
+m6_hb_stop
+m6_ts "[4] starryos pass2 finished rc=$RC2"
 echo "starryos pass2 exit=$RC2"
-
-ELF=target/riscv64gc-unknown-none-elf/release/starryos
 if [ -f "$ELF" ]; then
+    touch "$M6_DONE_P2"
     ls -lh "$ELF"
     file "$ELF" | head -1
     echo
+    m6_dump_syscall_stats
     echo "================================================================"
     echo "===M6-SELFBUILD-PASS==="
     echo "  starry kernel ELF was just produced INSIDE the starry guest!"
@@ -528,7 +792,7 @@ e2fsck -fy "$OUT_IMG" >/dev/null
 
 echo "[+] xz compress (this may take a while)..."
 rm -f "$OUT_IMG.xz"
-xz -k -T0 -9 "$OUT_IMG"
+xz -k -T0 -"$XZ_LEVEL" "$OUT_IMG"
 ls -lh "$OUT_IMG" "$OUT_IMG.xz"
 sha256sum "$OUT_IMG" > "$OUT_IMG.sha256"
 sha256sum "$OUT_IMG.xz" > "$OUT_IMG.xz.sha256"

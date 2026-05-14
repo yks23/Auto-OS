@@ -317,6 +317,30 @@ grep -a 'GUEST_ONECRATE_CHECK_RC' "$RESULT" 2>/dev/null | tail -1 || true
 # Elapsed time
 grep -a 'GUEST_ONECRATE_ELAPSED' "$RESULT" 2>/dev/null | tail -1 || true
 
+# Diagnostic summary (if present)
+if grep -a -q 'DIAGNOSTIC_SUMMARY' "$RESULT" 2>/dev/null; then
+  echo "--- diagnostic summary ---"
+  sed -n '/===DIAGNOSTIC_SUMMARY_BEGIN===/,/===DIAGNOSTIC_SUMMARY_END===/p' "$RESULT" | grep -v '===DIAGNOSTIC' | sed 's/^/  /'
+fi
+
+# Error stats (if present)
+if grep -a -q 'SYSCALL_ERROR_STATS' "$RESULT" 2>/dev/null; then
+  echo "--- syscall error stats ---"
+  sed -n '/===SYSCALL_ERROR_STATS_BEGIN===/,/===SYSCALL_ERROR_STATS_END===/p' "$RESULT" | grep -v '===SYSCALL_ERROR' | head -10 | sed 's/^/  /'
+fi
+
+# Page fault stats (if present)
+if grep -a -q 'PAGE_FAULT_STATS' "$RESULT" 2>/dev/null; then
+  echo "--- page fault stats ---"
+  sed -n '/===PAGE_FAULT_STATS_BEGIN===/,/===PAGE_FAULT_STATS_END===/p' "$RESULT" | grep -v '===PAGE_FAULT' | sed 's/^/  /'
+fi
+
+# Signal stats (if present)
+if grep -a -q 'SIGNAL_STATS_BEGIN' "$RESULT" 2>/dev/null; then
+  echo "--- signal stats ---"
+  sed -n '/===SIGNAL_STATS_BEGIN===/,/===SIGNAL_STATS_END===/p' "$RESULT" | grep -v '===SIGNAL' | sed 's/^/  /'
+fi
+
 # Last 5 lines
 echo "--- last 5 lines ---"
 tail -5 "$RESULT" | sed 's/^/  /'

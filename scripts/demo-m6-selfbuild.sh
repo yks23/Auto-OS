@@ -2,6 +2,11 @@
 # demo-m6-selfbuild.sh — boot StarryOS guest with the selfbuild rootfs and
 # have the guest compile the StarryOS kernel from its own sources.
 #
+# Lite vs full:
+#   Full (default flags): QEMU smp=4 mem=5G timeout 4200s; guest runs full starry kernel selfbuild.
+#   Low-resource subset: `bash scripts/demo-m6-lite.sh` → `--subset` + smp=1 mem=3G timeout 3600s
+#   (overridable via env). Or manually: same env + `demo-m6-selfbuild.sh --subset`.
+#
 # Optional:
 #   --subset — 访客内只跑 M6_MODE=subset：metadata + riscv-h + ax-cpu + ax-errno（均为 none-elf cargo check）
 #     的 cargo check，串口出现 ===M6-SELFBUILD-SUBSET-PASS=== 即成功（需盘内
@@ -18,14 +23,28 @@
 #   - qemu-system-riscv64 on PATH
 #
 # Output: .guest-runs/riscv64-m6/results.txt   (full guest serial log)
+#         .guest-runs/riscv64-m6/m6-progress.log — 宿主心跳 CSV（另一终端 tail -f）
 #         exits 0 iff the guest log contains "===M6-SELFBUILD-PASS==="
 #         (or the lib-only marker — which still proves starry-kernel itself
 #          was successfully compiled inside the guest)
 #
+# 长时 / 可恢复（resume）：
+#   使用**同一** ROOTFS 镜像多次运行；超时或手动 kill QEMU 后，盘上 /opt/tgoskits/target 可能已有
+#   增量产物。设 M6_RESUME=1 再跑 demo：访客脚本会跳过已完成的 cargo 阶段，并维护
+#   /opt/tgoskits/.m6-done-{kernel-lib,pass1,pass2}（见 tests/selfhost/build-selfbuild-rootfs.sh GUESTSH）。
+#   勿换副本镜像，否则 target/ 丢失需从头编。
+#
 # Env:
 #   M6_QEMU_TIMEOUT_SEC — outer timeout(1) for qemu（默认 4200）
-#   M6_STALL_SEC — results.txt 字节数连续多久**完全不变**则判死锁/假死并杀 QEMU（默认 10800）。
-#     设为 0 可关闭停滞检测（访客 cargo 可能长时间无 stdout，仅靠 M6_QEMU_TIMEOUT_SEC 兜底）。
+#   M6_STALL_SEC — results.txt 字节数连续多久**完全不变**则判死锁/假死并杀 QEMU。
+#     默认 **0**（关闭）：多进程 rustc 下串口可能长时间无新字节，易误杀；需要时再设正数。
+#   M6_HOST_HEARTBEAT_SEC — 宿主轮询时向 stderr 打印进度间隔秒数（默认 120）
+#   M6_GUEST_HEARTBEAT_SEC — 注入访客：cargo 静默阶段串口心跳间隔秒数（默认 120；写入 /opt/run-tests.sh）
+#   M6_SYSCALL_STATS_INTERVAL_SEC — 访客内 syscall_stats dump 间隔秒数（默认 10；与宿主 m6-selfbuild-progress-http.py 对齐）
+#   M6_SKIP_SYNC_GUESTSH=1 — 不从仓库覆盖镜像内 /opt/build-starry-kernel.sh（默认每次 demo 同步 GUESTSH）
+#   M6_RESUME=1 — 访客内根据盘上 target/（rlib、linker_*.lds、ELF）与 touch 的
+#     /opt/tgoskits/.m6-done-{kernel-lib,pass1,pass2} 跳过已完成阶段（须同一 ROOTFS 可写）
+#   M6_PROGRESS_LOG=path — 覆盖默认 .guest-runs/riscv64-m6/m6-progress.log
 set -e
 
 BOOT_TWICE=0
@@ -56,8 +75,14 @@ WORK="$ROOT/.guest-runs/riscv64-m6"
 ROOTFS="${ROOTFS:-$ROOT/tests/selfhost/rootfs-selfbuild-riscv64.img}"
 ELF="$ROOT/tgoskits/target/riscv64gc-unknown-none-elf/release/starryos"
 M6_QEMU_TIMEOUT_SEC="${M6_QEMU_TIMEOUT_SEC:-4200}"
-M6_STALL_SEC="${M6_STALL_SEC:-10800}"
+M6_STALL_SEC="${M6_STALL_SEC:-0}"
 M6_STALL_GRACE_SEC="${M6_STALL_GRACE_SEC:-120}"
+# 与 scripts/build.sh 默认 MAX_CPU_NUM=4 对齐；内核须用当前仓库 scripts/build.sh 重编后再跑 demo。
+M6_QEMU_SMP="${M6_QEMU_SMP:-4}"
+M6_QEMU_MEM="${M6_QEMU_MEM:-5G}"
+M6_HOST_HEARTBEAT_SEC="${M6_HOST_HEARTBEAT_SEC:-120}"
+M6_GUEST_HEARTBEAT_SEC="${M6_GUEST_HEARTBEAT_SEC:-120}"
+M6_SYSCALL_STATS_INTERVAL_SEC="${M6_SYSCALL_STATS_INTERVAL_SEC:-10}"
 
 mkdir -p "$WORK"
 [[ -f "$ROOTFS" ]] || { echo "rootfs not found: $ROOTFS"; exit 1; }
@@ -115,7 +140,7 @@ P2EOF
     echo "[phase2] QEMU second boot (timeout 240s)..."
     set +e
     $SUDO timeout 240 qemu-system-riscv64 \
-        -nographic -machine virt -bios default -smp 1 -m 3G \
+        -nographic -machine virt -bios default -smp "$M6_QEMU_SMP" -m "$M6_QEMU_MEM" \
         -kernel "$GUEST_BIN" -cpu rv64 \
         -monitor none -serial mon:stdio \
         -device virtio-blk-pci,drive=disk0 \
@@ -140,15 +165,45 @@ echo "[+] injecting /opt/run-tests.sh into rootfs..."
 $SUDO umount /tmp/rfsmnt-m6 2>/dev/null || true
 $SUDO mkdir -p /tmp/rfsmnt-m6
 $SUDO mount -o loop "$ROOTFS" /tmp/rfsmnt-m6
+# 与镜像 bake 时脚本保持一致：每次 demo 从 build-selfbuild-rootfs.sh 抽出 GUESTSH，避免只改仓库未改盘。
+SELFBUILD_SH="$ROOT/tests/selfhost/build-selfbuild-rootfs.sh"
+if [[ "${M6_SKIP_SYNC_GUESTSH:-}" != "1" && -f "$SELFBUILD_SH" ]]; then
+    echo "[+] sync /opt/build-starry-kernel.sh from repo GUESTSH ($SELFBUILD_SH)"
+    awk "/<<'GUESTSH'/{p=1;next} /^GUESTSH\$/{exit} p" "$SELFBUILD_SH" \
+        | $SUDO tee /tmp/rfsmnt-m6/opt/build-starry-kernel.sh >/dev/null
+    $SUDO chmod +x /tmp/rfsmnt-m6/opt/build-starry-kernel.sh
+elif [[ "${M6_SKIP_SYNC_GUESTSH:-}" == "1" ]]; then
+    echo "[+] M6_SKIP_SYNC_GUESTSH=1 — using existing /opt/build-starry-kernel.sh on disk"
+fi
 if [[ "$BOOT_SUBSET" -eq 1 ]]; then
-    $SUDO tee /tmp/rfsmnt-m6/opt/run-tests.sh > /dev/null <<'EOF'
+    $SUDO tee /tmp/rfsmnt-m6/opt/run-tests.sh > /dev/null <<EOF
 #!/bin/sh
+export M6_GUEST_HEARTBEAT_SEC="${M6_GUEST_HEARTBEAT_SEC}"
+export M6_SYSCALL_STATS_INTERVAL_SEC="${M6_SYSCALL_STATS_INTERVAL_SEC}"
+export M6_CARGO_VV="${M6_CARGO_VV:-1}"
+export M6_CARGO_PTY="${M6_CARGO_PTY:-0}"
+export M6_RESUME="${M6_RESUME:-0}"
+export M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON:--C debuginfo=2}"
+export CARGO_TERM_PROGRESS="${CARGO_TERM_PROGRESS:-wide}"
+export CARGO_TERM_VERBOSE="${CARGO_TERM_VERBOSE:-true}"
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-}"
+export RAYON_NUM_THREADS="${RAYON_NUM_THREADS:-}"
 export M6_MODE=subset
 exec /bin/bash --noprofile --norc /opt/build-starry-kernel.sh
 EOF
 else
-    $SUDO tee /tmp/rfsmnt-m6/opt/run-tests.sh > /dev/null <<'EOF'
+    $SUDO tee /tmp/rfsmnt-m6/opt/run-tests.sh > /dev/null <<EOF
 #!/bin/sh
+export M6_GUEST_HEARTBEAT_SEC="${M6_GUEST_HEARTBEAT_SEC}"
+export M6_SYSCALL_STATS_INTERVAL_SEC="${M6_SYSCALL_STATS_INTERVAL_SEC}"
+export M6_CARGO_VV="${M6_CARGO_VV:-1}"
+export M6_CARGO_PTY="${M6_CARGO_PTY:-0}"
+export M6_RESUME="${M6_RESUME:-0}"
+export M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON:--C debuginfo=2}"
+export CARGO_TERM_PROGRESS="${CARGO_TERM_PROGRESS:-wide}"
+export CARGO_TERM_VERBOSE="${CARGO_TERM_VERBOSE:-true}"
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-}"
+export RAYON_NUM_THREADS="${RAYON_NUM_THREADS:-}"
 # 环境全部由 /opt/build-starry-kernel.sh 设置，避免 glibc sh 与 musl/Alpine PATH 的任何交叉。
 exec /bin/bash --noprofile --norc /opt/build-starry-kernel.sh
 EOF
@@ -183,18 +238,23 @@ else
 fi
 
 RESULT="$WORK/results.txt"
+M6_PROGRESS_LOG="${M6_PROGRESS_LOG:-$WORK/m6-progress.log}"
 rm -f "$RESULT" "$WORK/.m6-stalled"
+# 宿主可读进度（另一终端 tail -f）；长时任务勿删此文件以便对照。
+echo "# utc_iso elapsed_s log_bytes log_lines last_signal" >"$M6_PROGRESS_LOG"
+echo "[+] progress log: $M6_PROGRESS_LOG  (tail -f in another terminal)"
 
 # ---------- boot QEMU. Generous memory (3 GB) and configurable timeout because
 # guest cargo build of starry-kernel via emulated RISC-V is genuinely slow.
 echo "[+] launching qemu (timeout ${M6_QEMU_TIMEOUT_SEC}s — guest cargo build)..."
-# Must match the kernel's compiled SMP count (Starry defconfig is often smp=1).
+echo "[+] diag: M6_QEMU_SMP=$M6_QEMU_SMP M6_QEMU_MEM=$M6_QEMU_MEM M6_STALL_SEC=$M6_STALL_SEC M6_HOST_HEARTBEAT_SEC=$M6_HOST_HEARTBEAT_SEC M6_GUEST_HEARTBEAT_SEC=$M6_GUEST_HEARTBEAT_SEC M6_SYSCALL_STATS_INTERVAL_SEC=$M6_SYSCALL_STATS_INTERVAL_SEC M6_RESUME=${M6_RESUME:-0}"
+# -smp 须 ≤ 镜像内 .axconfig.toml 的 plat.max-cpu-num（见 tests/selfhost/build-selfbuild-rootfs.sh / scripts/build.sh）。
 $SUDO timeout "$M6_QEMU_TIMEOUT_SEC" qemu-system-riscv64 \
-    -nographic -machine virt -bios default -smp 1 -m 3G \
+    -nographic -machine virt -bios default -smp "$M6_QEMU_SMP" -m "$M6_QEMU_MEM" \
     -kernel "$KERNEL" -cpu rv64 \
     -monitor none -serial mon:stdio \
     -device virtio-blk-pci,drive=disk0 \
-    -drive id=disk0,if=none,format=raw,file="$ROOTFS" \
+    -drive id=disk0,if=none,format=raw,file="$ROOTFS",file.locking=off \
     -device virtio-net-pci,netdev=net0 -netdev user,id=net0 \
     > "$RESULT" 2>&1 < /dev/null &
 QEMU=$!
@@ -246,10 +306,16 @@ while kill -0 "$QEMU" 2>/dev/null; do
         $SUDO kill -9 "$QEMU" 2>/dev/null || true
         break
     fi
-    if (( EL >= LAST_HB_EL + 300 )); then
+    if (( EL >= LAST_HB_EL + M6_HOST_HEARTBEAT_SEC )); then
         LAST_HB_EL=$EL
-        printf "[host heartbeat] %ss elapsed, log_bytes=%s lines=%s qemu_alive=yes\n" \
-            "$EL" "$bytes" "$(wc -l < "$RESULT" 2>/dev/null || echo 0)" >&2
+        _lines=$(wc -l < "$RESULT" 2>/dev/null || echo 0)
+        printf "[host heartbeat] %ss elapsed, log_bytes=%s lines=%s qemu_alive=yes (M6_HOST_HEARTBEAT_SEC=%s)\n" \
+            "$EL" "$bytes" "$_lines" "${M6_HOST_HEARTBEAT_SEC}" >&2
+        _sig=$(strings "$RESULT" 2>/dev/null | grep -iE '\[M6 |SELFBUILD|^\s*Compiling |^\s*Finished |^error:|panic' | tail -1 | tr '\r\n' '  ' | cut -c1-200 || true)
+        if [[ -n "$_sig" ]]; then
+            printf '[host heartbeat] last_phase_line: %s\n' "$_sig" >&2
+        fi
+        printf '%s %s %s %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$EL" "$bytes" "$_lines" "$_sig" >>"$M6_PROGRESS_LOG"
     fi
 done
 wait "$QEMU" 2>/dev/null || true

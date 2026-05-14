@@ -3,3 +3,9 @@ selfhost-orchestrator/logs/
 
 # reproduce-all.sh：绑定到容器内 CARGO_HOME 的 crates.io / git 缓存
 .docker-cargo-registry/
+
+# 预取上游 tarball（如 arm-scmi），不必提交
+.cache/
+
+# 本地归档的 starry 内核 ELF（体积大，勿提交）；MANIFEST 可由脚本同步到 docs/KERNEL-MANIFEST-latest.txt 后提交
+.guest-runs/kernels/*.elf

@@ -1,7 +1,7 @@
 [submodule "tgoskits"]
 	path = tgoskits
 	url = https://github.com/yks23/tgoskits.git
-	branch = selfhost-m5
+	branch = main
 [submodule "test-cases/oscomp/testsuits"]
 	path = test-cases/oscomp/testsuits
 	url = git@github.com:oscomp/testsuits-for-oskernel.git
