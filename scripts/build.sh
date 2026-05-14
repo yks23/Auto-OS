@@ -100,15 +100,15 @@ STARRY_QEMU_FEATURES="starryos/qemu"
 AXGEN_EXTRA=()
 if [[ "$ARCH" == "riscv64" ]]; then
     MAX_CPU_NUM="${MAX_CPU_NUM:-4}"
+    # Always use 4G phys memory on riscv64 — M6 cargo build needs > 512M.
+    _phys="${STARRY_PHYS_MEMORY_SIZE:-0x100000000}" # 4 GiB
+    AXGEN_EXTRA+=(-w "plat.phys-memory-size=${_phys}")
     if [[ "${MAX_CPU_NUM:-1}" -gt 1 ]]; then
         STARRY_QEMU_FEATURES="starryos/qemu,smp"
-        # 须 ≤ ax-feat「page-alloc-4g」位图容量（约 4GiB 可映射页）；更大需改 kernel 为 page-alloc-64g。
-        _phys="${STARRY_PHYS_MEMORY_SIZE:-0x100000000}" # 4 GiB
         AXGEN_EXTRA+=(-w "plat.max-cpu-num=${MAX_CPU_NUM}")
-        AXGEN_EXTRA+=(-w "plat.phys-memory-size=${_phys}")
-        log "riscv64 SMP: MAX_CPU_NUM=${MAX_CPU_NUM} plat.phys-memory-size=${_phys} features=${STARRY_QEMU_FEATURES}"
+        log "riscv64 SMP: MAX_CPU_NUM=${MAX_CPU_NUM} phys=${_phys} features=${STARRY_QEMU_FEATURES}"
     else
-        log "riscv64 UP: MAX_CPU_NUM=1 (QEMU -smp 1 / 与旧行为一致)"
+        log "riscv64 UP: MAX_CPU_NUM=1 phys=${_phys}"
     fi
 fi
 
