@@ -314,6 +314,28 @@ _dump_cargo_observation() {
   fi
 }
 
+# M6 selfbuild mode: exec the starry-kernel build script directly
+if [[ "${MODE}" == "m6-build" ]]; then
+  echo "[onecrate] M6 selfbuild mode: exec /opt/build-starry-kernel.sh"
+  echo "===M6_BUILD_BEGIN==="
+  export PATH="/opt/ccwrap:/opt/alpine-rust/usr/bin:/usr/bin:/usr/sbin:/bin:/sbin"
+  export LD_LIBRARY_PATH="/opt/alpine-rust/lib:/opt/alpine-rust/usr/lib"
+  export CARGO_HOME="/opt/tgoskits/m6-cargo-home"
+  export TMPDIR="/opt/tgoskits/.m6-tmp"
+  export TMP="/opt/tgoskits/.m6-tmp"
+  export TEMP="/opt/tgoskits/.m6-tmp"
+  export CC="/opt/ccwrap/cc"
+  export CXX="/opt/ccwrap/c++"
+  export RUST_MIN_STACK="${RUST_MIN_STACK:-16777216}"
+  export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
+  export RAYON_NUM_THREADS="${RAYON_NUM_THREADS:-1}"
+  export CARGO_TERM_PROGRESS="wide"
+  export CARGO_TERM_VERBOSE="true"
+  export CARGO_CACHE_AUTO_CLEAN_FREQUENCY="never"
+  /bin/mkdir -p "$TMPDIR" "$CARGO_HOME" 2>/dev/null || true
+  exec /bin/bash --noprofile --norc /opt/build-starry-kernel.sh
+fi
+
 if [[ "${MODE}" == "probe" ]]; then
   echo "[onecrate] probe /opt/fd-pipe-probe"
   set +e
