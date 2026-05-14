@@ -183,7 +183,7 @@ else
   # perl's alarm+exec sometimes loses output when stdout is redirected.
   QEMU_RC=0
   qemu-system-riscv64 \
-    -nographic -machine virt -bios default -smp 4 -m 4G \
+    -nographic -machine virt -bios default -smp 1 -m 4G \
     -kernel "$KERNEL_BIN" -cpu rv64 \
     -monitor none -serial mon:stdio \
     -device virtio-blk-pci,drive=disk0 \

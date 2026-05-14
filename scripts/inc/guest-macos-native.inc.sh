@@ -168,35 +168,42 @@ HELLO
 HELLO_RS
 
   # ── onecrate-hello crate (cargo-hello mode) ──
-  cat >> "$INJECT_SCRIPT" <<'HELLO_CARGO'
+  # NOTE: inner heredoc labels must differ from outer label '_INJ_CARGO' to avoid premature termination.
+  cat >> "$INJECT_SCRIPT" <<'_INJ_CARGO'
 mkdir -p "${MNT}/opt/onecrate-hello/src"
-cat >"${MNT}/opt/onecrate-hello/Cargo.toml" <<'HELLO_CARGO'
+cat >"${MNT}/opt/onecrate-hello/Cargo.toml" <<'_INJ_CARGO_TOML'
 [package]
 name = "onecrate-hello"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-HELLO_CARGO
-cat >"${MNT}/opt/onecrate-hello/src/main.rs" <<'HELLO_RS2'
+_INJ_CARGO_TOML
+cat >"${MNT}/opt/onecrate-hello/src/main.rs" <<'_INJ_MAIN_RS'
 fn main() {
     println!("hello from starry cargo");
 }
-HELLO_RS2
-HELLO_CARGO
+_INJ_MAIN_RS
+_INJ_CARGO
 
   # ── cargo cache sentinels ──
-  cat >> "$INJECT_SCRIPT" <<'CARGO_CACHE'
+  cat >> "$INJECT_SCRIPT" <<'_INJ_CACHE'
 mkdir -p "${MNT}/opt/tgoskits/.m6-tmp" "${MNT}/opt/tgoskits/m6-cargo-home/registry"
-cat >"${MNT}/opt/tgoskits/m6-cargo-home/config.toml" <<'CARGO_CONFIG'
+cat >"${MNT}/opt/tgoskits/m6-cargo-home/config.toml" <<'_INJ_CARGO_CFG'
+[net]
+offline = true
+
 [cache]
 auto-clean-frequency = "never"
-CARGO_CONFIG
+
+[build]
+jobs = 1
+_INJ_CARGO_CFG
 : >"${MNT}/opt/tgoskits/m6-cargo-home/.package-cache"
 : >"${MNT}/opt/tgoskits/m6-cargo-home/.package-cache-journal"
 : >"${MNT}/opt/tgoskits/m6-cargo-home/.global-cache"
 : >"${MNT}/opt/tgoskits/m6-cargo-home/.global-cache-journal"
-CARGO_CACHE
+_INJ_CACHE
 
   # ── probe binary (if needed) ──
   if [[ "${GUEST_ONECRATE_MODE:-}" == "probe" ]]; then
@@ -248,8 +255,38 @@ fi
 PROBE_BUILD
   fi
 
-  # ── run-tests.sh ──
-  # Use the same environment variable forwarding as the Docker path.
+  # ── guest-onecrate-env.sh (sourced by init.sh before guest-onecrate-inner.sh) ──
+  # The StarryOS init.sh checks for /opt/guest-onecrate-inner.sh and sources
+  # /opt/guest-onecrate-env.sh for env vars before exec-ing the inner script.
+  # Without this file, the inner script runs with default (cargo) settings.
+  cat >> "$INJECT_SCRIPT" <<ENV_SH_EOF
+cat > "\${MNT}/opt/guest-onecrate-env.sh" <<'_ENVEOF'
+export GUEST_ONECRATE_CRATE="${CRATE}"
+export GUEST_ONECRATE_TARGET="${TARGET}"
+export GUEST_ONECRATE_SAMPLE_SLEEP="${SLEEP}"
+export GUEST_ONECRATE_MODE="${GUEST_ONECRATE_MODE}"
+export GUEST_ONECRATE_CARGO_PHASE="${GUEST_ONECRATE_CARGO_PHASE}"
+export GUEST_ONECRATE_CARGO_TRACE="${GUEST_ONECRATE_CARGO_TRACE}"
+export GUEST_ONECRATE_CARGO_VERBOSE="${GUEST_ONECRATE_CARGO_VERBOSE}"
+export GUEST_ONECRATE_ALLOW_FETCH="${ALLOW_FETCH}"
+export GUEST_ONECRATE_RUSTFLAGS="${GUEST_ONECRATE_RUSTFLAGS:-}"
+export GUEST_ONECRATE_PROGRESS_SEC="${GUEST_ONECRATE_PROGRESS_SEC}"
+export GUEST_ONECRATE_SYSCALL_STATS_SEC="${GUEST_ONECRATE_SYSCALL_STATS_SEC}"
+export GUEST_ONECRATE_SKIP_STATS_RESET="${GUEST_ONECRATE_SKIP_STATS_RESET}"
+export GUEST_ONECRATE_SYSCALL_TRACE="${GUEST_ONECRATE_SYSCALL_TRACE}"
+export GUEST_ONECRATE_TRACE_SNAPSHOT_SEC="${GUEST_ONECRATE_TRACE_SNAPSHOT_SEC}"
+export GUEST_ONECRATE_TRACE_SNAPSHOT_SKIP_TASKS="${GUEST_ONECRATE_TRACE_SNAPSHOT_SKIP_TASKS}"
+export GUEST_ONECRATE_DEEP_TRACE_SEC="${GUEST_ONECRATE_DEEP_TRACE_SEC}"
+export GUEST_ONECRATE_WAIT_ONLY="${GUEST_ONECRATE_WAIT_ONLY}"
+export GUEST_ONECRATE_DEVLOG_SEC="${GUEST_ONECRATE_DEVLOG_SEC}"
+export GUEST_ONECRATE_CARGO_TAIL_SEC="${GUEST_ONECRATE_CARGO_TAIL_SEC}"
+export GUEST_ONECRATE_HELLO_USE_LLD="${GUEST_ONECRATE_HELLO_USE_LLD:-0}"
+export GUEST_ONECRATE_HELLO_LINKER="${GUEST_ONECRATE_HELLO_LINKER:-}"
+export GUEST_ONECRATE_JOBS="${GUEST_ONECRATE_JOBS:-1}"
+_ENVEOF
+ENV_SH_EOF
+
+  # ── run-tests.sh (fallback for init paths that use it) ──
   cat >> "$INJECT_SCRIPT" <<RUN_TESTS_EOF
 tee "\${MNT}/opt/run-tests.sh" >/dev/null <<'EOF'
 #!/bin/bash
@@ -273,6 +310,9 @@ export GUEST_ONECRATE_DEEP_TRACE_SEC="${GUEST_ONECRATE_DEEP_TRACE_SEC}"
 export GUEST_ONECRATE_WAIT_ONLY="${GUEST_ONECRATE_WAIT_ONLY}"
 export GUEST_ONECRATE_DEVLOG_SEC="${GUEST_ONECRATE_DEVLOG_SEC}"
 export GUEST_ONECRATE_CARGO_TAIL_SEC="${GUEST_ONECRATE_CARGO_TAIL_SEC}"
+export GUEST_ONECRATE_HELLO_USE_LLD="${GUEST_ONECRATE_HELLO_USE_LLD:-0}"
+export GUEST_ONECRATE_HELLO_LINKER="${GUEST_ONECRATE_HELLO_LINKER:-}"
+export GUEST_ONECRATE_JOBS="${GUEST_ONECRATE_JOBS:-1}"
 echo "===GUEST_ONECRATE_EXEC_BASH==="
 exec /bin/bash --noprofile --norc /opt/guest-onecrate-inner.sh
 EOF
@@ -359,7 +399,7 @@ fi
 # macOS doesn't have GNU `timeout`; use background process + kill.
 echo "[macos-native] starting QEMU..."
 qemu-system-riscv64 \
-  -nographic -machine virt -bios default -smp 4 -m 4G \
+  -nographic -machine virt -bios default -smp 1 -m 4G \
   -kernel "$KERNEL_BIN" -cpu rv64 \
   -monitor none -serial mon:stdio \
   -device virtio-blk-pci,drive=disk0 \

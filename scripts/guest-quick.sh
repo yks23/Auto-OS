@@ -105,7 +105,7 @@ rm -f "$RESULT"
 : >"$RESULT"
 
 MEM="${GUEST_QUICK_MEM:-4G}"
-SMP="${GUEST_QUICK_SMP:-4}"
+SMP="${GUEST_QUICK_SMP:-1}"
 
 echo "[quick] mode=${MODE} timeout=${TIMEOUT}s mem=${MEM} smp=${SMP}"
 echo "[quick] kernel=${KERNEL_BIN}"
