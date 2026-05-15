@@ -39,6 +39,7 @@ export RAYON_NUM_THREADS="${RAYON_NUM_THREADS:-$_NPROC}"
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-$_NPROC}"
 export CARGO_TERM_PROGRESS="${CARGO_TERM_PROGRESS:-wide}"
 export CARGO_TERM_VERBOSE="${CARGO_TERM_VERBOSE:-true}"
+export CARGO_INCREMENTAL=0
 
 # Prevent vec_cache.rs:201 ICE: disable rustc parallel frontend under QEMU TCG.
 export RUSTC_BOOTSTRAP=1

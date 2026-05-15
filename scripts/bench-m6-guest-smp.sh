@@ -116,6 +116,7 @@ export RUST_MIN_STACK=16777216
 export CARGO_HOME=/opt/cargo-home
 export CARGO_BUILD_JOBS="\$N"
 export RAYON_NUM_THREADS="\$N"
+export CARGO_INCREMENTAL=0
 /bin/rm -rf /opt/tgoskits/.bench-target /opt/tgoskits/.m6-tmp
 /bin/mkdir -p /opt/tgoskits/.bench-target /opt/tgoskits/.m6-tmp
 # ── Ensure rust-src is available for -Z build-std ──
