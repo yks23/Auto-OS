@@ -118,13 +118,25 @@ export CARGO_BUILD_JOBS="\$N"
 export RAYON_NUM_THREADS="\$N"
 /bin/rm -rf /opt/tgoskits/.bench-target /opt/tgoskits/.m6-tmp
 /bin/mkdir -p /opt/tgoskits/.bench-target /opt/tgoskits/.m6-tmp
+# ── Ensure rust-src is available for -Z build-std ──
+_RUSTC_BIN="/opt/alpine-rust/usr/bin/rustc"
+_SYSROOT="$("$_RUSTC_BIN" --print sysroot 2>/dev/null || echo "/opt/alpine-rust/usr")"
+_RUSTLIB_SRC="${_SYSROOT}/lib/rustlib/src/rust"
+if [ ! -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]; then
+  if [ -f "/opt/rust-src-for-rootfs.tar.gz" ]; then
+    echo "[bench-smp] extracting rust-src..."
+    rm -rf "${_RUSTLIB_SRC}" 2>/dev/null || true
+    mkdir -p "$(dirname "${_RUSTLIB_SRC}")" 2>/dev/null || true
+    (cd "$(dirname "${_RUSTLIB_SRC}")" && tar xzf /opt/rust-src-for-rootfs.tar.gz)
+  fi
+fi
 if [ "${skip_cargo}" != "1" ]; then
 export CARGO_TARGET_DIR=/opt/tgoskits/.bench-target
 export TMPDIR=/opt/tgoskits/.m6-tmp TMP=/opt/tgoskits/.m6-tmp TEMP=/opt/tgoskits/.m6-tmp
 cd /opt/tgoskits
 C0=\$(cut -d' ' -f1 /proc/uptime 2>/dev/null || echo 0)
 set +e
-env LD_LIBRARY_PATH="/opt/alpine-rust/lib:/opt/alpine-rust/usr/lib" SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp /opt/alpine-rust/usr/bin/cargo build --offline -j"\$N" ${cargo_pkgs} --target riscv64gc-unknown-none-elf --release > /tmp/bench-cargo.log 2>&1
+env LD_LIBRARY_PATH="/opt/alpine-rust/lib:/opt/alpine-rust/usr/lib" SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp /opt/alpine-rust/usr/bin/cargo build --offline -j"\$N" ${cargo_pkgs} --target riscv64gc-unknown-none-elf --release -Z build-std=core,alloc,compiler_builtins > /tmp/bench-cargo.log 2>&1
 RC=\$?
 set -e
 C1=\$(cut -d' ' -f1 /proc/uptime 2>/dev/null || echo 0)

@@ -44,6 +44,35 @@ export CARGO_TERM_VERBOSE="${CARGO_TERM_VERBOSE:-true}"
 export RUSTC_BOOTSTRAP=1
 _SERIAL_RF="-Z threads=0"
 
+# ── Ensure rust-src is available for -Z build-std (bare-metal targets) ──
+_RUSTC_BIN="/opt/alpine-rust/usr/bin/rustc"
+_SYSROOT="$("$_RUSTC_BIN" --print sysroot 2>/dev/null || echo "/opt/alpine-rust/usr")"
+_RUSTLIB_SRC="${_SYSROOT}/lib/rustlib/src/rust"
+_ensure_rust_src() {
+  [[ -n "${_RUSTLIB_SRC}" ]] || return 0
+  [[ -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]] && return 0
+  echo "[sterile_p2] rust-src missing at ${_RUSTLIB_SRC}; extracting from tarball..."
+  rm -rf "${_RUSTLIB_SRC}" 2>/dev/null || true
+  mkdir -p "$(dirname "${_RUSTLIB_SRC}")" 2>/dev/null || true
+  if [[ -f "/opt/rust-src-for-rootfs.tar.gz" ]]; then
+    (cd "$(dirname "${_RUSTLIB_SRC}")" && tar xzf /opt/rust-src-for-rootfs.tar.gz)
+    if [[ -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
+      echo "[sterile_p2] rust-src extracted OK"
+    else
+      echo "[sterile_p2] warn: rust-src extraction failed or incomplete"
+    fi
+  else
+    echo "[sterile_p2] warn: /opt/rust-src-for-rootfs.tar.gz not found"
+  fi
+}
+_ensure_rust_src
+_NEEDS_BUILD_STD=0
+if [[ "${TARGET}" == *"-none-"* ]]; then
+  _NEEDS_BUILD_STD=1
+fi
+_BS_FLAG=""
+[[ "${_NEEDS_BUILD_STD}" == "1" ]] && _BS_FLAG="-Z build-std=core,alloc,compiler_builtins"
+
 : >/tmp/guest-sterile-p2.log
 
 if [[ "${MODE}" == "rustc" ]]; then
@@ -72,9 +101,9 @@ elif [[ "${MODE}" == "cargo" ]]; then
     echo "[sterile_p2] skip cargo fetch (ALLOW_FETCH=${ALLOW_FETCH}; offline-only)"
   fi
   T0=$(date +%s)
-  echo "[sterile_p2] cargo check -p app --target ${TARGET} --offline (sampled)"
+  echo "[sterile_p2] cargo check -p app --target ${TARGET} --offline ${_BS_FLAG} (sampled)"
   env PATH="$PATH" LD_LIBRARY_PATH="$LD_LIBRARY_PATH" SQLITE_TMPDIR="$SQLITE_TMPDIR" TMPDIR="$TMPDIR" \
-    /opt/alpine-rust/usr/bin/cargo check -p app --target "${TARGET}" --offline >>/tmp/guest-sterile-p2.log 2>&1 &
+    /opt/alpine-rust/usr/bin/cargo check -p app --target "${TARGET}" --offline ${_BS_FLAG} >>/tmp/guest-sterile-p2.log 2>&1 &
   CPID=$!
 else
   echo "===STERILE_P2_FAIL unknown STERILE_P2_MODE=${MODE}==="

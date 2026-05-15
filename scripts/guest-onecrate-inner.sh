@@ -104,6 +104,38 @@ if [[ "${GUEST_ONECRATE_NO_SERIAL_RUSTC:-}" != "1" && -n "${_RUSTC_BIN}" ]]; the
 else
   _SERIAL_RF=""
 fi
+
+# ── Ensure rust-src is available for -Z build-std (bare-metal targets) ──
+_RUSTLIB_SRC=""
+if [[ -n "${_RUSTC_BIN}" ]]; then
+  _SYSROOT="$("${_RUSTC_BIN}" --print sysroot 2>/dev/null || echo "/opt/alpine-rust/usr")"
+  _RUSTLIB_SRC="${_SYSROOT}/lib/rustlib/src/rust"
+fi
+_ensure_rust_src() {
+  [[ -n "${_RUSTLIB_SRC}" ]] || return 0
+  [[ -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]] && return 0
+  echo "[onecrate] rust-src missing at ${_RUSTLIB_SRC}; extracting from tarball..."
+  # Remove broken symlink or empty dir
+  rm -rf "${_RUSTLIB_SRC}" 2>/dev/null || true
+  mkdir -p "$(dirname "${_RUSTLIB_SRC}")" 2>/dev/null || true
+  if [[ -f "/opt/rust-src-for-rootfs.tar.gz" ]]; then
+    (cd "$(dirname "${_RUSTLIB_SRC}")" && tar xzf /opt/rust-src-for-rootfs.tar.gz)
+    if [[ -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
+      echo "[onecrate] rust-src extracted OK"
+    else
+      echo "[onecrate] warn: rust-src extraction failed or incomplete"
+    fi
+  else
+    echo "[onecrate] warn: /opt/rust-src-for-rootfs.tar.gz not found"
+  fi
+}
+_ensure_rust_src
+
+# Determine if we need -Z build-std for the target (bare-metal / no_std)
+_NEEDS_BUILD_STD=0
+if [[ "${TARGET}" == *"-none-"* ]]; then
+  _NEEDS_BUILD_STD=1
+fi
 export SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp
 export TMPDIR=/opt/tgoskits/.m6-tmp
 export TMP=/opt/tgoskits/.m6-tmp
@@ -518,16 +550,20 @@ elif [[ "${MODE}" == "cargo" ]]; then
   T0=$(date +%s)
   case "${CARGO_PHASE}" in
     check)
-      echo "[onecrate] phase=check cargo check -p ${CRATE} --target ${TARGET} --offline"
+      _BS_FLAG=""
+      [[ "${_NEEDS_BUILD_STD}" == "1" ]] && _BS_FLAG="-Z build-std=core,alloc,compiler_builtins"
+      echo "[onecrate] phase=check cargo check -p ${CRATE} --target ${TARGET} --offline ${_BS_FLAG}"
       env PATH="$PATH" LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" SQLITE_TMPDIR="$SQLITE_TMPDIR" TMPDIR="$TMPDIR" \
         RUSTC="${_RUSTC_BIN}" \
-        "${_CARGO_BIN}" check -p "${CRATE}" --target "${TARGET}" --offline >>/tmp/guest-onecrate-cargo.log 2>&1 &
+        "${_CARGO_BIN}" check -p "${CRATE}" --target "${TARGET}" --offline ${_BS_FLAG} >>/tmp/guest-onecrate-cargo.log 2>&1 &
       ;;
     check-vv)
-      echo "[onecrate] phase=check-vv cargo check -vv -p ${CRATE} --target ${TARGET} --offline"
+      _BS_FLAG=""
+      [[ "${_NEEDS_BUILD_STD}" == "1" ]] && _BS_FLAG="-Z build-std=core,alloc,compiler_builtins"
+      echo "[onecrate] phase=check-vv cargo check -vv -p ${CRATE} --target ${TARGET} --offline ${_BS_FLAG}"
       env PATH="$PATH" LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" SQLITE_TMPDIR="$SQLITE_TMPDIR" TMPDIR="$TMPDIR" \
         RUSTC="${_RUSTC_BIN}" \
-        "${_CARGO_BIN}" check -vv -p "${CRATE}" --target "${TARGET}" --offline >>/tmp/guest-onecrate-cargo.log 2>&1 &
+        "${_CARGO_BIN}" check -vv -p "${CRATE}" --target "${TARGET}" --offline ${_BS_FLAG} >>/tmp/guest-onecrate-cargo.log 2>&1 &
       ;;
     metadata)
       echo "[onecrate] phase=metadata cargo metadata --manifest-path ${_mf} --offline"

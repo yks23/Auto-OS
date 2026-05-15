@@ -104,12 +104,26 @@ export CARGO_TERM_VERBOSE="${CARGO_TERM_VERBOSE:-true}"
 M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON:--C debuginfo=2}"
 export RUSTFLAGS="$M6_RUSTFLAGS_COMMON ${RUSTFLAGS:-}"
 
+# ── Ensure rust-src is available for -Z build-std ──
+_RUSTC_BIN="/opt/alpine-rust/usr/bin/rustc"
+_SYSROOT="$("$_RUSTC_BIN" --print sysroot 2>/dev/null || echo "/opt/alpine-rust/usr")"
+_RUSTLIB_SRC="${_SYSROOT}/lib/rustlib/src/rust"
+if [[ ! -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
+  if [[ -f "/opt/rust-src-for-rootfs.tar.gz" ]]; then
+    echo "[bench] extracting rust-src..."
+    rm -rf "${_RUSTLIB_SRC}" 2>/dev/null || true
+    mkdir -p "$(dirname "${_RUSTLIB_SRC}")" 2>/dev/null || true
+    (cd "$(dirname "${_RUSTLIB_SRC}")" && tar xzf /opt/rust-src-for-rootfs.tar.gz)
+  fi
+fi
+
 cd /opt/tgoskits
 T0=$(date +%s)
 echo "[bench] T0=$T0 starting cargo check -p ${CRATE} ..."
 set +o pipefail
 env PATH="$PATH" LD_LIBRARY_PATH="$LD_LIBRARY_PATH" SQLITE_TMPDIR="$SQLITE_TMPDIR" TMPDIR="$TMPDIR" \
-  /opt/alpine-rust/usr/bin/cargo check -p "${CRATE}" --target riscv64gc-unknown-none-elf 2>&1 | tee /tmp/guest-one-crate-cargo.log
+  /opt/alpine-rust/usr/bin/cargo check -p "${CRATE}" --target riscv64gc-unknown-none-elf \
+  -Z build-std=core,alloc,compiler_builtins 2>&1 | tee /tmp/guest-one-crate-cargo.log
 RC=${PIPESTATUS[0]}
 set -o pipefail
 T1=$(date +%s)
