@@ -69,7 +69,6 @@ _ensure_rust_src() {
 _strip_buildstd_lock() {
   local _lock="${_RUSTLIB_SRC}/library/Cargo.lock"
   local _ws="${_RUSTLIB_SRC}/library/Cargo.toml"
-  [[ -f "${_lock}" ]] || return 0
   if [[ -f "${_ws}" ]]; then
     cp -f "${_ws}" "${_ws}.orig" 2>/dev/null || true
     cat > "${_ws}" << 'MINI_WS'

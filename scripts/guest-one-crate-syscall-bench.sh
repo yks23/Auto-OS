@@ -117,7 +117,7 @@ if [[ ! -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
   fi
 fi
 # Strip workspace for -Z build-std (remove std from workspace, no crates.io deps)
-if [[ -f "${_RUSTLIB_SRC}/library/Cargo.lock" ]]; then
+if [[ -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
   cp -f "${_RUSTLIB_SRC}/library/Cargo.toml" "${_RUSTLIB_SRC}/library/Cargo.toml.orig" 2>/dev/null || true
   cat > "${_RUSTLIB_SRC}/library/Cargo.toml" << 'MINI_WS'
 cargo-features = ["profile-rustflags"]

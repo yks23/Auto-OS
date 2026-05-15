@@ -480,7 +480,7 @@ RUSTC=/opt/alpine-rust/usr/bin/rustc
 CARGO=/opt/alpine-rust/usr/bin/cargo
 # Strip rust-src workspace for -Z build-std (remove std/test members to avoid crates.io deps)
 _strip_buildstd_ws() {
-  [[ -f "${_RUSTLIB_SRC}/library/Cargo.lock" ]] || return 0
+  [[ -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]] || return 0
   cp -f "${_RUSTLIB_SRC}/library/Cargo.toml" "${_RUSTLIB_SRC}/library/Cargo.toml.orig" 2>/dev/null || true
   cat > "${_RUSTLIB_SRC}/library/Cargo.toml" << 'MINI_WS'
 cargo-features = ["profile-rustflags"]
@@ -554,7 +554,7 @@ if [[ ! -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
   else
     echo "[M6] warn: /opt/rust-src-for-rootfs.tar.gz not found; -Z build-std may fail"
   fi
-elif [[ -f "${_RUSTLIB_SRC}/library/Cargo.lock" ]]; then
+elif [[ -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
   _strip_buildstd_ws
 fi
 _BS_FLAG="-Z build-std=core,alloc,compiler_builtins"
