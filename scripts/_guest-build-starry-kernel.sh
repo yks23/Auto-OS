@@ -141,7 +141,10 @@ core = { path = "../core", public = true }
 alloc = { path = "../alloc", public = true }
 compiler_builtins = { path = "../compiler-builtins/compiler-builtins" }
 [features]
-default = []
+default = ["panic-unwind"]
+backtrace = []
+panic-unwind = []
+panic-abort = []
 compiler-builtins-c = []
 compiler-builtins-mem = []
 MINI_SYSROOT
