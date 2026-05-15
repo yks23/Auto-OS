@@ -123,11 +123,61 @@ if [[ ! -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
     (cd "$(dirname "${_RUSTLIB_SRC}")" && tar xzf /opt/rust-src-for-rootfs.tar.gz)
     if [[ -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
       echo "[M6] rust-src extracted OK"
+      cat > "${_RUSTLIB_SRC}/library/Cargo.lock" << 'BUILDSTD_LOCK'
+# Minimal Cargo.lock for -Z build-std=core,alloc,compiler_builtins
+version = 3
+
+[[package]]
+name = "alloc"
+version = "0.0.0"
+dependencies = ["compiler_builtins", "core"]
+
+[[package]]
+name = "compiler_builtins"
+version = "0.1.160"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+version = "0.0.0"
+
+[[package]]
+name = "sysroot"
+version = "0.0.0"
+dependencies = ["alloc", "compiler_builtins", "core"]
+BUILDSTD_LOCK
     else
       echo "[M6] warn: rust-src extraction failed"
     fi
   else
     echo "[M6] warn: /opt/rust-src-for-rootfs.tar.gz not found; -Z build-std may fail"
+  fi
+elif [[ -f "${_RUSTLIB_SRC}/library/Cargo.lock" ]]; then
+  _head="$(head -5 "${_RUSTLIB_SRC}/library/Cargo.lock" 2>/dev/null)"
+  if ! echo "$_head" | grep -q "Minimal"; then
+    cat > "${_RUSTLIB_SRC}/library/Cargo.lock" << 'BUILDSTD_LOCK'
+# Minimal Cargo.lock for -Z build-std=core,alloc,compiler_builtins
+version = 3
+
+[[package]]
+name = "alloc"
+version = "0.0.0"
+dependencies = ["compiler_builtins", "core"]
+
+[[package]]
+name = "compiler_builtins"
+version = "0.1.160"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+version = "0.0.0"
+
+[[package]]
+name = "sysroot"
+version = "0.0.0"
+dependencies = ["alloc", "compiler_builtins", "core"]
+BUILDSTD_LOCK
   fi
 fi
 _BS_FLAG="-Z build-std=core,alloc,compiler_builtins"

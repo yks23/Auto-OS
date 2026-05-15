@@ -122,6 +122,7 @@ _ensure_rust_src() {
     (cd "$(dirname "${_RUSTLIB_SRC}")" && tar xzf /opt/rust-src-for-rootfs.tar.gz)
     if [[ -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
       echo "[onecrate] rust-src extracted OK"
+      _strip_buildstd_lock
     else
       echo "[onecrate] warn: rust-src extraction failed or incomplete"
     fi
@@ -129,7 +130,40 @@ _ensure_rust_src() {
     echo "[onecrate] warn: /opt/rust-src-for-rootfs.tar.gz not found"
   fi
 }
+# Strip the Cargo.lock to only core/alloc/compiler_builtins/sysroot (no crates.io deps).
+_strip_buildstd_lock() {
+  local _lock="${_RUSTLIB_SRC}/library/Cargo.lock"
+  [[ -f "${_lock}" ]] || return 0
+  cat > "${_lock}" << 'BUILDSTD_LOCK'
+# Minimal Cargo.lock for -Z build-std=core,alloc,compiler_builtins
+version = 3
+
+[[package]]
+name = "alloc"
+version = "0.0.0"
+dependencies = ["compiler_builtins", "core"]
+
+[[package]]
+name = "compiler_builtins"
+version = "0.1.160"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+version = "0.0.0"
+
+[[package]]
+name = "sysroot"
+version = "0.0.0"
+dependencies = ["alloc", "compiler_builtins", "core"]
+BUILDSTD_LOCK
+}
 _ensure_rust_src
+
+# Strip Cargo.lock if building bare-metal (Alpine rust-src has full lock with dlmalloc etc.)
+if [[ "${TARGET}" == *"-none-"* ]]; then
+  _strip_buildstd_lock
+fi
 
 # Determine if we need -Z build-std for the target (bare-metal / no_std)
 _NEEDS_BUILD_STD=0

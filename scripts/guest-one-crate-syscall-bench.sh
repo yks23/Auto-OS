@@ -116,6 +116,32 @@ if [[ ! -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
     (cd "$(dirname "${_RUSTLIB_SRC}")" && tar xzf /opt/rust-src-for-rootfs.tar.gz)
   fi
 fi
+# Strip Cargo.lock to minimal for -Z build-std (no crates.io deps needed)
+if [[ -f "${_RUSTLIB_SRC}/library/Cargo.lock" ]]; then
+  cat > "${_RUSTLIB_SRC}/library/Cargo.lock" << 'BUILDSTD_LOCK'
+# Minimal Cargo.lock for -Z build-std=core,alloc,compiler_builtins
+version = 3
+
+[[package]]
+name = "alloc"
+version = "0.0.0"
+dependencies = ["compiler_builtins", "core"]
+
+[[package]]
+name = "compiler_builtins"
+version = "0.1.160"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+version = "0.0.0"
+
+[[package]]
+name = "sysroot"
+version = "0.0.0"
+dependencies = ["alloc", "compiler_builtins", "core"]
+BUILDSTD_LOCK
+fi
 
 cd /opt/tgoskits
 T0=$(date +%s)
