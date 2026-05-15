@@ -478,6 +478,41 @@ M6_CARGO_VV="${M6_CARGO_VV:-1}"
 if [ "$M6_CARGO_VV" = "1" ]; then _CARGO_V="-vv"; else _CARGO_V="-v"; fi
 RUSTC=/opt/alpine-rust/usr/bin/rustc
 CARGO=/opt/alpine-rust/usr/bin/cargo
+# Strip rust-src workspace for -Z build-std (remove std/test members to avoid crates.io deps)
+_strip_buildstd_ws() {
+  [[ -f "${_RUSTLIB_SRC}/library/Cargo.lock" ]] || return 0
+  cp -f "${_RUSTLIB_SRC}/library/Cargo.toml" "${_RUSTLIB_SRC}/library/Cargo.toml.orig" 2>/dev/null || true
+  cat > "${_RUSTLIB_SRC}/library/Cargo.toml" << 'MINI_WS'
+cargo-features = ["profile-rustflags"]
+[workspace]
+resolver = "1"
+members = ["sysroot"]
+exclude = ["stdarch", "windows_link"]
+[profile.release.package.compiler_builtins]
+codegen-units = 10000
+MINI_WS
+  cp -f "${_RUSTLIB_SRC}/library/sysroot/Cargo.toml" "${_RUSTLIB_SRC}/library/sysroot/Cargo.toml.orig" 2>/dev/null || true
+  cat > "${_RUSTLIB_SRC}/library/sysroot/Cargo.toml" << 'MINI_SYSROOT'
+cargo-features = ["public-dependency"]
+[package]
+name = "sysroot"
+version = "0.0.0"
+edition = "2024"
+[lib]
+test = false
+bench = false
+doc = false
+[dependencies]
+core = { path = "../core", public = true }
+alloc = { path = "../alloc", public = true }
+compiler_builtins = { path = "../compiler-builtins/compiler-builtins" }
+[features]
+default = []
+compiler-builtins-c = []
+compiler-builtins-mem = []
+MINI_SYSROOT
+  rm -f "${_RUSTLIB_SRC}/library/Cargo.lock"
+}
 # ── Ensure rust-src is available for -Z build-std (bare-metal target) ──
 _SYSROOT="$("$RUSTC" --print sysroot 2>/dev/null || echo "/opt/alpine-rust/usr")"
 _RUSTLIB_SRC="${_SYSROOT}/lib/rustlib/src/rust"
@@ -489,30 +524,7 @@ if [[ ! -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
     (cd "$(dirname "${_RUSTLIB_SRC}")" && tar xzf /opt/rust-src-for-rootfs.tar.gz)
     if [[ -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
       echo "[M6] rust-src extracted OK"
-      # Strip Cargo.lock to minimal for -Z build-std (no crates.io deps needed)
-      cat > "${_RUSTLIB_SRC}/library/Cargo.lock" << 'BUILDSTD_LOCK'
-# Minimal Cargo.lock for -Z build-std=core,alloc,compiler_builtins
-version = 3
-
-[[package]]
-name = "alloc"
-version = "0.0.0"
-dependencies = ["compiler_builtins", "core"]
-
-[[package]]
-name = "compiler_builtins"
-version = "0.1.160"
-dependencies = ["core"]
-
-[[package]]
-name = "core"
-version = "0.0.0"
-
-[[package]]
-name = "sysroot"
-version = "0.0.0"
-dependencies = ["alloc", "compiler_builtins", "core"]
-BUILDSTD_LOCK
+      _strip_buildstd_ws
     else
       echo "[M6] warn: rust-src extraction failed"
     fi
@@ -520,33 +532,7 @@ BUILDSTD_LOCK
     echo "[M6] warn: /opt/rust-src-for-rootfs.tar.gz not found; -Z build-std may fail"
   fi
 elif [[ -f "${_RUSTLIB_SRC}/library/Cargo.lock" ]]; then
-  # Alpine rust-src present but may have full Cargo.lock; strip it
-  _head="$(head -5 "${_RUSTLIB_SRC}/library/Cargo.lock" 2>/dev/null)"
-  if ! echo "$_head" | grep -q "Minimal"; then
-    cat > "${_RUSTLIB_SRC}/library/Cargo.lock" << 'BUILDSTD_LOCK'
-# Minimal Cargo.lock for -Z build-std=core,alloc,compiler_builtins
-version = 3
-
-[[package]]
-name = "alloc"
-version = "0.0.0"
-dependencies = ["compiler_builtins", "core"]
-
-[[package]]
-name = "compiler_builtins"
-version = "0.1.160"
-dependencies = ["core"]
-
-[[package]]
-name = "core"
-version = "0.0.0"
-
-[[package]]
-name = "sysroot"
-version = "0.0.0"
-dependencies = ["alloc", "compiler_builtins", "core"]
-BUILDSTD_LOCK
-  fi
+  _strip_buildstd_ws
 fi
 _BS_FLAG="-Z build-std=core,alloc,compiler_builtins"
 # 不用 stdbuf：其在 glibc 下依赖 LD_PRELOAD(libstdbuf)，在 Starry 访客里会异常退出/被报成 not found。

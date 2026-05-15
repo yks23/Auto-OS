@@ -133,30 +133,53 @@ _ensure_rust_src() {
 # Strip the Cargo.lock to only core/alloc/compiler_builtins/sysroot (no crates.io deps).
 _strip_buildstd_lock() {
   local _lock="${_RUSTLIB_SRC}/library/Cargo.lock"
+  local _ws="${_RUSTLIB_SRC}/library/Cargo.toml"
   [[ -f "${_lock}" ]] || return 0
-  cat > "${_lock}" << 'BUILDSTD_LOCK'
-# Minimal Cargo.lock for -Z build-std=core,alloc,compiler_builtins
-version = 3
+  # Replace workspace Cargo.toml with minimal version (no std/coretests/alloctests members)
+  if [[ -f "${_ws}" ]]; then
+    cp -f "${_ws}" "${_ws}.orig" 2>/dev/null || true
+    cat > "${_ws}" << 'MINI_WS'
+cargo-features = ["profile-rustflags"]
 
-[[package]]
-name = "alloc"
-version = "0.0.0"
-dependencies = ["compiler_builtins", "core"]
+[workspace]
+resolver = "1"
+members = ["sysroot"]
+exclude = ["stdarch", "windows_link"]
 
-[[package]]
-name = "compiler_builtins"
-version = "0.1.160"
-dependencies = ["core"]
+[profile.release.package.compiler_builtins]
+codegen-units = 10000
+MINI_WS
+  fi
+  # Replace sysroot to only depend on core+alloc+compiler_builtins (not std/test/proc_macro)
+  local _sysroot="${_RUSTLIB_SRC}/library/sysroot/Cargo.toml"
+  if [[ -f "${_sysroot}" ]]; then
+    cp -f "${_sysroot}" "${_sysroot}.orig" 2>/dev/null || true
+    cat > "${_sysroot}" << 'MINI_SYSROOT'
+cargo-features = ["public-dependency"]
 
-[[package]]
-name = "core"
-version = "0.0.0"
-
-[[package]]
+[package]
 name = "sysroot"
 version = "0.0.0"
-dependencies = ["alloc", "compiler_builtins", "core"]
-BUILDSTD_LOCK
+edition = "2024"
+
+[lib]
+test = false
+bench = false
+doc = false
+
+[dependencies]
+core = { path = "../core", public = true }
+alloc = { path = "../alloc", public = true }
+compiler_builtins = { path = "../compiler-builtins/compiler-builtins" }
+
+[features]
+default = []
+compiler-builtins-c = []
+compiler-builtins-mem = []
+MINI_SYSROOT
+  fi
+  # Remove Cargo.lock — cargo will regenerate from the minimal workspace
+  rm -f "${_lock}"
 }
 _ensure_rust_src
 

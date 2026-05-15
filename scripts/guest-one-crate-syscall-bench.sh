@@ -116,31 +116,39 @@ if [[ ! -f "${_RUSTLIB_SRC}/library/core/Cargo.toml" ]]; then
     (cd "$(dirname "${_RUSTLIB_SRC}")" && tar xzf /opt/rust-src-for-rootfs.tar.gz)
   fi
 fi
-# Strip Cargo.lock to minimal for -Z build-std (no crates.io deps needed)
+# Strip workspace for -Z build-std (remove std from workspace, no crates.io deps)
 if [[ -f "${_RUSTLIB_SRC}/library/Cargo.lock" ]]; then
-  cat > "${_RUSTLIB_SRC}/library/Cargo.lock" << 'BUILDSTD_LOCK'
-# Minimal Cargo.lock for -Z build-std=core,alloc,compiler_builtins
-version = 3
-
-[[package]]
-name = "alloc"
-version = "0.0.0"
-dependencies = ["compiler_builtins", "core"]
-
-[[package]]
-name = "compiler_builtins"
-version = "0.1.160"
-dependencies = ["core"]
-
-[[package]]
-name = "core"
-version = "0.0.0"
-
-[[package]]
+  cp -f "${_RUSTLIB_SRC}/library/Cargo.toml" "${_RUSTLIB_SRC}/library/Cargo.toml.orig" 2>/dev/null || true
+  cat > "${_RUSTLIB_SRC}/library/Cargo.toml" << 'MINI_WS'
+cargo-features = ["profile-rustflags"]
+[workspace]
+resolver = "1"
+members = ["sysroot"]
+exclude = ["stdarch", "windows_link"]
+[profile.release.package.compiler_builtins]
+codegen-units = 10000
+MINI_WS
+  cp -f "${_RUSTLIB_SRC}/library/sysroot/Cargo.toml" "${_RUSTLIB_SRC}/library/sysroot/Cargo.toml.orig" 2>/dev/null || true
+  cat > "${_RUSTLIB_SRC}/library/sysroot/Cargo.toml" << 'MINI_SYSROOT'
+cargo-features = ["public-dependency"]
+[package]
 name = "sysroot"
 version = "0.0.0"
-dependencies = ["alloc", "compiler_builtins", "core"]
-BUILDSTD_LOCK
+edition = "2024"
+[lib]
+test = false
+bench = false
+doc = false
+[dependencies]
+core = { path = "../core", public = true }
+alloc = { path = "../alloc", public = true }
+compiler_builtins = { path = "../compiler-builtins/compiler-builtins" }
+[features]
+default = []
+compiler-builtins-c = []
+compiler-builtins-mem = []
+MINI_SYSROOT
+  rm -f "${_RUSTLIB_SRC}/library/Cargo.lock"
 fi
 
 cd /opt/tgoskits
