@@ -1,0 +1,110 @@
+#!/bin/bash
+# 由 guest-sterile-phase2-evidence.sh 拷入 rootfs /opt/；init 通过 /opt/run-tests.sh 调用。
+#
+# 环境变量：
+#   STERILE_P2_MODE=cargo|rustc — 默认 cargo：在 /opt/sterile/minimal-workspace 执行
+#     cargo check -p app --target … --offline；rustc=同目录下先 lib rlib 再 app --emit=obj（无 cargo、无 registry）。
+#   STERILE_P2_ALLOW_FETCH=0|1 — 默认 0：不跑 cargo fetch。
+#   STERILE_P2_TARGET — 仅 cargo；默认 riscv64gc-unknown-none-elf。
+#   STERILE_P2_SAMPLE_SLEEP — syscall 采样间隔秒，默认 0.5。
+set -eo pipefail
+MODE="${STERILE_P2_MODE:-cargo}"
+ALLOW_FETCH="${STERILE_P2_ALLOW_FETCH:-0}"
+TARGET="${STERILE_P2_TARGET:-riscv64gc-unknown-none-elf}"
+SLEEP_SEC="${STERILE_P2_SAMPLE_SLEEP:-0.5}"
+WS="/opt/sterile/minimal-workspace"
+
+echo "===STERILE_P2_BEGIN mode=${MODE} target=${TARGET} allow_fetch=${ALLOW_FETCH} ws=${WS}==="
+date -u
+
+if ! test -w /proc/syscall_stats_reset 2>/dev/null; then
+  echo "===STERILE_P2_FAIL no /proc/syscall_stats_reset==="
+  exit 2
+fi
+echo x >/proc/syscall_stats_reset
+
+export PATH="/opt/ccwrap:/opt/alpine-rust/usr/bin:/usr/bin:/usr/sbin:/bin:/sbin"
+export LD_LIBRARY_PATH="/opt/alpine-rust/lib:/opt/alpine-rust/usr/lib"
+export SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp
+export TMPDIR=/opt/tgoskits/.m6-tmp
+export TMP=/opt/tgoskits/.m6-tmp
+export TEMP=/opt/tgoskits/.m6-tmp
+/bin/mkdir -p "$TMPDIR" /opt/tgoskits/m6-cargo-home/registry 2>/dev/null || true
+export CARGO_HOME="${CARGO_HOME:-/opt/tgoskits/m6-cargo-home}"
+export CC="${CC:-/opt/ccwrap/cc}"
+export CXX="${CXX:-/opt/ccwrap/c++}"
+export RUST_MIN_STACK="${RUST_MIN_STACK:-16777216}"
+_NPROC="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)"
+export RAYON_NUM_THREADS="${RAYON_NUM_THREADS:-$_NPROC}"
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-$_NPROC}"
+export CARGO_TERM_PROGRESS="${CARGO_TERM_PROGRESS:-wide}"
+export CARGO_TERM_VERBOSE="${CARGO_TERM_VERBOSE:-true}"
+
+# Prevent vec_cache.rs:201 ICE: disable rustc parallel frontend under QEMU TCG.
+export RUSTC_BOOTSTRAP=1
+_SERIAL_RF="-Z threads=0"
+
+: >/tmp/guest-sterile-p2.log
+
+if [[ "${MODE}" == "rustc" ]]; then
+  echo "[sterile_p2] rustc rlib+obj under ${WS} (no cargo/fetch/registry; no guest link)"
+  ulimit -s unlimited 2>/dev/null || true
+  T0=$(date +%s)
+  (
+    set -e
+    cd "${WS}"
+    env PATH="/usr/bin:/usr/sbin:/bin:/sbin:/opt/alpine-rust/usr/bin" \
+      LD_LIBRARY_PATH="$LD_LIBRARY_PATH" SQLITE_TMPDIR="$SQLITE_TMPDIR" TMPDIR="$TMPDIR" \
+      /opt/alpine-rust/usr/bin/rustc ${_SERIAL_RF} --edition 2021 crates/libfoo/src/lib.rs --crate-type=rlib -o /tmp/liblibfoo.rlib
+    env PATH="/usr/bin:/usr/sbin:/bin:/sbin:/opt/alpine-rust/usr/bin" \
+      LD_LIBRARY_PATH="$LD_LIBRARY_PATH" SQLITE_TMPDIR="$SQLITE_TMPDIR" TMPDIR="$TMPDIR" \
+      /opt/alpine-rust/usr/bin/rustc ${_SERIAL_RF} --edition 2021 crates/app/src/main.rs \
+        --extern "libfoo=/tmp/liblibfoo.rlib" --emit=obj -o /tmp/app-p2.o
+  ) >>/tmp/guest-sterile-p2.log 2>&1 &
+  CPID=$!
+elif [[ "${MODE}" == "cargo" ]]; then
+  cd "${WS}"
+  export RUSTFLAGS="${_SERIAL_RF} -C debuginfo=2 ${RUSTFLAGS:-}"
+  if [[ "${ALLOW_FETCH}" == "1" ]]; then
+    echo "[sterile_p2] cargo fetch --target ${TARGET} (network; ALLOW_FETCH=1)"
+    /opt/alpine-rust/usr/bin/cargo fetch --target "${TARGET}" >>/tmp/guest-sterile-p2.log 2>&1 || true
+  else
+    echo "[sterile_p2] skip cargo fetch (ALLOW_FETCH=${ALLOW_FETCH}; offline-only)"
+  fi
+  T0=$(date +%s)
+  echo "[sterile_p2] cargo check -p app --target ${TARGET} --offline (sampled)"
+  env PATH="$PATH" LD_LIBRARY_PATH="$LD_LIBRARY_PATH" SQLITE_TMPDIR="$SQLITE_TMPDIR" TMPDIR="$TMPDIR" \
+    /opt/alpine-rust/usr/bin/cargo check -p app --target "${TARGET}" --offline >>/tmp/guest-sterile-p2.log 2>&1 &
+  CPID=$!
+else
+  echo "===STERILE_P2_FAIL unknown STERILE_P2_MODE=${MODE}==="
+  exit 3
+fi
+
+while kill -0 "${CPID}" 2>/dev/null; do
+  _w=$(( $(date +%s) - T0 ))
+  _tot="?"
+  if [ -r /proc/syscall_stats ]; then
+    _tot="$(head -1 /proc/syscall_stats 2>/dev/null | awk '{print $2}')"
+  fi
+  echo "===STERILE_P2_SYSCALL_SAMPLE rel_s=${_w} total=${_tot}"
+  sleep "${SLEEP_SEC}"
+done
+set +e
+wait "${CPID}"
+RC=$?
+set -e
+T1=$(date +%s)
+EL=$((T1 - T0))
+echo "===STERILE_P2_CHECK_RC ${RC}==="
+echo "===STERILE_P2_ELAPSED_S ${EL}==="
+if [[ "${RC}" -ne 0 ]]; then
+  echo "===STERILE_P2_LOG_TAIL_BEGIN==="
+  tail -80 /tmp/guest-sterile-p2.log 2>/dev/null || true
+  echo "===STERILE_P2_LOG_TAIL_END==="
+fi
+echo "===SYSCALL_STATS_AFTER_BEGIN==="
+cat /proc/syscall_stats
+echo "===SYSCALL_STATS_AFTER_END==="
+echo "===STERILE_P2_END==="
+exit "${RC}"

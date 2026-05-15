@@ -96,6 +96,14 @@ else
   unset LD_LIBRARY_PATH 2>/dev/null || true
 fi
 echo "[onecrate] toolchain: cargo=${_CARGO_BIN:-<not found>} rustc=${_RUSTC_BIN:-<not found>} rust-lld=${_RUST_LLD:-<not found>}"
+# Prevent vec_cache.rs:201 ICE: disable rustc parallel frontend under QEMU TCG timing.
+# Set GUEST_ONECRATE_NO_SERIAL_RUSTC=1 to disable.
+if [[ "${GUEST_ONECRATE_NO_SERIAL_RUSTC:-}" != "1" && -n "${_RUSTC_BIN}" ]]; then
+  export RUSTC_BOOTSTRAP=1
+  _SERIAL_RF="-Z threads=0"
+else
+  _SERIAL_RF=""
+fi
 export SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp
 export TMPDIR=/opt/tgoskits/.m6-tmp
 export TMP=/opt/tgoskits/.m6-tmp
@@ -332,6 +340,9 @@ if [[ "${MODE}" == "m6-build" ]]; then
   export CARGO_TERM_PROGRESS="wide"
   export CARGO_TERM_VERBOSE="true"
   export CARGO_CACHE_AUTO_CLEAN_FREQUENCY="never"
+  if [[ "${GUEST_ONECRATE_NO_SERIAL_RUSTC:-}" != "1" ]]; then
+    export RUSTC_BOOTSTRAP=1
+  fi
   /bin/mkdir -p "$TMPDIR" "$CARGO_HOME" 2>/dev/null || true
   exec /bin/bash --noprofile --norc /opt/build-starry-kernel.sh
 fi
@@ -360,7 +371,7 @@ elif [[ "${MODE}" == "rustc" ]]; then
   # 访客里 ccwrap/clang 链接 pie 会 SIGSEGV；冒烟只验证 rustc 前端+后端到 object，避免依赖系统链接器。
   ulimit -s unlimited 2>/dev/null || true
   T0=$(date +%s)
-  _RF_ONECRATE="${RUSTFLAGS:-}"
+  _RF_ONECRATE="${_SERIAL_RF} ${RUSTFLAGS:-}"
   env PATH="/usr/bin:/usr/sbin:/bin:/sbin:/opt/alpine-rust/usr/bin" \
     LD_LIBRARY_PATH="$LD_LIBRARY_PATH" SQLITE_TMPDIR="$SQLITE_TMPDIR" TMPDIR="$TMPDIR" \
     RUSTFLAGS="${_RF_ONECRATE}" \
@@ -381,7 +392,7 @@ elif [[ "${MODE}" == "cargo-hello" ]]; then
     echo "[onecrate] cargo trace logs enabled CARGO_LOG=${CARGO_LOG} RUST_LOG=${RUST_LOG}"
   fi
   _GUEST_ONECRATE_RF_DEFAULT="-C debuginfo=0"
-  export RUSTFLAGS="${GUEST_ONECRATE_RUSTFLAGS:-${_GUEST_ONECRATE_RF_DEFAULT}} ${RUSTFLAGS:-}"
+  export RUSTFLAGS="${GUEST_ONECRATE_RUSTFLAGS:-${_GUEST_ONECRATE_RF_DEFAULT}} ${_SERIAL_RF} ${RUSTFLAGS:-}"
   T0=$(date +%s)
   case "${CARGO_PHASE}" in
     metadata)
@@ -487,7 +498,7 @@ elif [[ "${MODE}" == "cargo" ]]; then
   # 默认不加完整 debuginfo，减轻 rustc 工作线程栈占用（musl + stack protector 下易触发
   # 「stack smashing」）；需要时 export GUEST_ONECRATE_RUSTFLAGS='-C debuginfo=2' 等覆盖。
   _GUEST_ONECRATE_RF_DEFAULT="-C debuginfo=0"
-  export RUSTFLAGS="${GUEST_ONECRATE_RUSTFLAGS:-${_GUEST_ONECRATE_RF_DEFAULT}} ${RUSTFLAGS:-}"
+  export RUSTFLAGS="${GUEST_ONECRATE_RUSTFLAGS:-${_GUEST_ONECRATE_RF_DEFAULT}} ${_SERIAL_RF} ${RUSTFLAGS:-}"
   _mf="/opt/tgoskits/components/axerrno/Cargo.toml"
   if [[ "${ALLOW_FETCH}" == "1" ]]; then
     # 访客内 cargo 可能较旧，不支持 `cargo fetch -p`；用 manifest-path 限定 ax-errno 子树，避免全 workspace fetch 过久。

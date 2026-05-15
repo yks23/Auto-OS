@@ -227,6 +227,15 @@ c++|g++) exec /usr/bin/clang++ "$@" ;;
 esac
 CCWRAP
 $SUDO chmod +x /tmp/rfsmnt-m6/opt/ccwrap/cc
+# rustc wrapper: inject -Z threads=0 to prevent vec_cache.rs:201 ICE under QEMU TCG.
+# RUSTC_BOOTSTRAP=1 enables -Z on stable rustc. Set M6_NO_SERIAL_RUSTC=1 to disable.
+if [[ "${M6_NO_SERIAL_RUSTC:-}" != "1" ]]; then
+    $SUDO tee /tmp/rfsmnt-m6/opt/ccwrap/rustc > /dev/null <<'RUSTWRAP'
+#!/bin/sh
+exec env RUSTC_BOOTSTRAP=1 /opt/alpine-rust/usr/bin/rustc -Z threads=0 "$@"
+RUSTWRAP
+    $SUDO chmod +x /tmp/rfsmnt-m6/opt/ccwrap/rustc
+fi
 $SUDO umount /tmp/rfsmnt-m6
 echo "[+] inject done"
 
