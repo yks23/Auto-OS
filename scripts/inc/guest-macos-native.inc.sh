@@ -319,6 +319,12 @@ EOF
 chmod +x "\${MNT}/opt/run-tests.sh"
 cp -f "/work/scripts/guest-onecrate-inner.sh" "\${MNT}/opt/guest-onecrate-inner.sh"
 chmod +x "\${MNT}/opt/guest-onecrate-inner.sh"
+# Replace libscudo.so with musl symlink — Alpine rustc links Scudo allocator
+# which crashes under QEMU TCG due to atomics/memory corruption.
+if [[ -f "\${MNT}/opt/alpine-rust/usr/lib/libscudo.so" && ! -L "\${MNT}/opt/alpine-rust/usr/lib/libscudo.so" ]]; then
+  rm -f "\${MNT}/opt/alpine-rust/usr/lib/libscudo.so"
+  ln -sf /lib/libc.musl-riscv64.so.1 "\${MNT}/opt/alpine-rust/usr/lib/libscudo.so"
+fi
 umount "\${MNT}" || { echo "umount failed"; exit 1; }
 echo "inject-done"
 RUN_TESTS_EOF

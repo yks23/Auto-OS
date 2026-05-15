@@ -147,6 +147,12 @@ umount "$MNT" 2>/dev/null || true
 mkdir -p "$MNT"
 mount -o loop,rw "$ROOTFS" "$MNT"
 
+# Replace libscudo.so with musl symlink — crashes under QEMU TCG
+if [[ -f "${MNT}/opt/alpine-rust/usr/lib/libscudo.so" && ! -L "${MNT}/opt/alpine-rust/usr/lib/libscudo.so" ]]; then
+  rm -f "${MNT}/opt/alpine-rust/usr/lib/libscudo.so"
+  ln -sf /lib/libc.musl-riscv64.so.1 "${MNT}/opt/alpine-rust/usr/lib/libscudo.so"
+fi
+
 CRATE="${GUEST_ONECRATE_CRATE:-ax-errno}"
 TARGET="${GUEST_ONECRATE_TARGET:-riscv64gc-unknown-none-elf}"
 SLEEP="${GUEST_ONECRATE_SAMPLE_SLEEP:-0.5}"

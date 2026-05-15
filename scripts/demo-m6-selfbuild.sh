@@ -172,6 +172,11 @@ echo "[+] injecting /opt/run-tests.sh into rootfs..."
 $SUDO umount /tmp/rfsmnt-m6 2>/dev/null || true
 $SUDO mkdir -p /tmp/rfsmnt-m6
 $SUDO mount -o loop "$ROOTFS" /tmp/rfsmnt-m6
+# Replace libscudo.so with musl symlink — crashes under QEMU TCG
+if [[ -f "/tmp/rfsmnt-m6/opt/alpine-rust/usr/lib/libscudo.so" && ! -L "/tmp/rfsmnt-m6/opt/alpine-rust/usr/lib/libscudo.so" ]]; then
+    $SUDO rm -f /tmp/rfsmnt-m6/opt/alpine-rust/usr/lib/libscudo.so
+    $SUDO ln -sf /lib/libc.musl-riscv64.so.1 /tmp/rfsmnt-m6/opt/alpine-rust/usr/lib/libscudo.so
+fi
 # 与镜像 bake 时脚本保持一致：每次 demo 从 build-selfbuild-rootfs.sh 抽出 GUESTSH，避免只改仓库未改盘。
 SELFBUILD_SH="$ROOT/tests/selfhost/build-selfbuild-rootfs.sh"
 if [[ "${M6_SKIP_SYNC_GUESTSH:-}" != "1" && -f "$SELFBUILD_SH" ]]; then

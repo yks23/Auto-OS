@@ -72,6 +72,11 @@ inject_bench_runner() {
     $SUDO umount "$MNT" 2>/dev/null || true
     $SUDO mkdir -p "$MNT"
     $SUDO mount -o loop "$ROOTFS" "$MNT"
+    # Replace libscudo.so with musl symlink — crashes under QEMU TCG
+    if [[ -f "${MNT}/opt/alpine-rust/usr/lib/libscudo.so" && ! -L "${MNT}/opt/alpine-rust/usr/lib/libscudo.so" ]]; then
+      $SUDO rm -f "${MNT}/opt/alpine-rust/usr/lib/libscudo.so"
+      $SUDO ln -sf /lib/libc.musl-riscv64.so.1 "${MNT}/opt/alpine-rust/usr/lib/libscudo.so"
+    fi
     $SUDO mkdir -p "$MNT/opt/ccwrap"
     $SUDO tee "$MNT/opt/ccwrap/cc" > /dev/null <<'CCWRAP'
 #!/bin/sh

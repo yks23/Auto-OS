@@ -96,14 +96,8 @@ else
   unset LD_LIBRARY_PATH 2>/dev/null || true
 fi
 echo "[onecrate] toolchain: cargo=${_CARGO_BIN:-<not found>} rustc=${_RUSTC_BIN:-<not found>} rust-lld=${_RUST_LLD:-<not found>}"
-# Prevent vec_cache.rs:201 ICE: disable rustc parallel frontend under QEMU TCG timing.
-# Set GUEST_ONECRATE_NO_SERIAL_RUSTC=1 to disable.
-if [[ "${GUEST_ONECRATE_NO_SERIAL_RUSTC:-}" != "1" && -n "${_RUSTC_BIN}" ]]; then
-  export RUSTC_BOOTSTRAP=1
-  _SERIAL_RF="-Z threads=0"
-else
-  _SERIAL_RF=""
-fi
+# RUSTC_BOOTSTRAP=1 is required for -Z build-std on stable rustc.
+[[ -n "${_RUSTC_BIN}" ]] && export RUSTC_BOOTSTRAP=1
 
 # ── Ensure rust-src is available for -Z build-std (bare-metal targets) ──
 _RUSTLIB_SRC=""
@@ -217,6 +211,12 @@ fi
 _NEEDS_BUILD_STD=0
 if [[ "${TARGET}" == *"-none-"* ]]; then
   _NEEDS_BUILD_STD=1
+fi
+# Prevent vec_cache.rs:201 ICE: disable rustc parallel frontend under QEMU TCG timing.
+if [[ "${GUEST_ONECRATE_NO_SERIAL_RUSTC:-}" != "1" && -n "${_RUSTC_BIN}" ]]; then
+  _SERIAL_RF="-Z threads=0"
+else
+  _SERIAL_RF=""
 fi
 export SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp
 export TMPDIR=/opt/tgoskits/.m6-tmp

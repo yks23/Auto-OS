@@ -222,6 +222,11 @@ if [[ "$CAN_MOUNT" == "1" ]]; then
   mkdir -p "$MNT"
   mount -o loop,rw "$ROOTFS" "$MNT" 2>/dev/null || CAN_MOUNT=0
   if [[ "$CAN_MOUNT" == "1" ]]; then
+    # Replace libscudo.so with musl symlink — crashes under QEMU TCG
+    if [[ -f "${MNT}/opt/alpine-rust/usr/lib/libscudo.so" && ! -L "${MNT}/opt/alpine-rust/usr/lib/libscudo.so" ]]; then
+      rm -f "${MNT}/opt/alpine-rust/usr/lib/libscudo.so"
+      ln -sf /lib/libc.musl-riscv64.so.1 "${MNT}/opt/alpine-rust/usr/lib/libscudo.so"
+    fi
     inject_run_tests "$MNT" "$MODE"
     umount "$MNT" || true
     rmdir "$MNT" 2>/dev/null || true
