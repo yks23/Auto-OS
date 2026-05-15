@@ -172,6 +172,15 @@ echo "[+] injecting /opt/run-tests.sh into rootfs..."
 $SUDO umount /tmp/rfsmnt-m6 2>/dev/null || true
 $SUDO mkdir -p /tmp/rfsmnt-m6
 $SUDO mount -o loop "$ROOTFS" /tmp/rfsmnt-m6
+# Replace guest-onecrate-inner.sh with a delegate to run-tests.sh so kernel
+# init.sh takes the direct exec path (instead of interactive shell which panics).
+$SUDO tee /tmp/rfsmnt-m6/opt/guest-onecrate-inner.sh > /dev/null <<'GOCDELEGATE'
+#!/bin/bash
+exec /bin/bash --noprofile --norc /opt/run-tests.sh
+GOCDELEGATE
+$SUDO chmod +x /tmp/rfsmnt-m6/opt/guest-onecrate-inner.sh
+# Clear one-crate env vars that would confuse build-starry-kernel.sh
+$SUDO rm -f /tmp/rfsmnt-m6/opt/guest-onecrate-env.sh
 # Replace libscudo.so with musl symlink — crashes under QEMU TCG
 if [[ -f "/tmp/rfsmnt-m6/opt/alpine-rust/usr/lib/libscudo.so" && ! -L "/tmp/rfsmnt-m6/opt/alpine-rust/usr/lib/libscudo.so" ]]; then
     $SUDO rm -f /tmp/rfsmnt-m6/opt/alpine-rust/usr/lib/libscudo.so
@@ -227,8 +236,8 @@ $SUDO tee /tmp/rfsmnt-m6/opt/ccwrap/cc > /dev/null <<'CCWRAP'
 #!/bin/sh
 unset LD_LIBRARY_PATH
 case "$(basename "$0")" in
-c++|g++) exec /usr/bin/clang++ "$@" ;;
-*) exec /usr/bin/clang "$@" ;;
+c++|g++) exec /opt/alpine-rust/usr/bin/riscv64-alpine-linux-musl-g++ "$@" ;;
+*) exec /opt/alpine-rust/usr/bin/riscv64-alpine-linux-musl-gcc "$@" ;;
 esac
 CCWRAP
 $SUDO chmod +x /tmp/rfsmnt-m6/opt/ccwrap/cc

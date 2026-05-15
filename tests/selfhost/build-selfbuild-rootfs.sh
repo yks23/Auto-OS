@@ -571,9 +571,9 @@ _BS_FLAG="-Z build-std=core,alloc,compiler_builtins"
 _run_cargo() {
     if [ "${M6_CARGO_PTY:-0}" = "1" ] && command -v script >/dev/null 2>&1; then
         _M6_CARGO_Q=$(printf ' %q' "$@")
-        script -qefc "/usr/bin/env PATH=\"/opt/ccwrap:/opt/alpine-rust/usr/bin:/usr/bin:/usr/sbin:/bin:/sbin\" LD_LIBRARY_PATH=\"/opt/alpine-rust/lib:/opt/alpine-rust/usr/lib\" SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp TMPDIR=/opt/tgoskits/.m6-tmp /opt/alpine-rust/usr/bin/cargo${_M6_CARGO_Q}" /dev/null
+        script -qefc "/usr/bin/env RUSTC_BOOTSTRAP=1 PATH=\"/opt/ccwrap:/opt/alpine-rust/usr/bin:/usr/bin:/usr/sbin:/bin:/sbin\" LD_LIBRARY_PATH=\"/opt/alpine-rust/lib:/opt/alpine-rust/usr/lib\" SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp TMPDIR=/opt/tgoskits/.m6-tmp /opt/alpine-rust/usr/bin/cargo${_M6_CARGO_Q}" /dev/null
     else
-        env PATH="/opt/ccwrap:/opt/alpine-rust/usr/bin:/usr/bin:/usr/sbin:/bin:/sbin" \
+        env RUSTC_BOOTSTRAP=1 PATH="/opt/ccwrap:/opt/alpine-rust/usr/bin:/usr/bin:/usr/sbin:/bin:/sbin" \
             LD_LIBRARY_PATH="/opt/alpine-rust/lib:/opt/alpine-rust/usr/lib" \
             SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp \
             TMPDIR=/opt/tgoskits/.m6-tmp \
