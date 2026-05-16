@@ -1,0 +1,13 @@
+stamp=20260424T074215Z
+mode=second-pass-only
+host=Linux 6.12.76-linuxkit #1 SMP Sun Mar  8 14:41:59 UTC 2026 aarch64 GNU/Linux
+git=b71adc86acbe071ff5f16b81c99f5e9065a23ed9
+[build-dual] manifest -> /work/.guest-runs/kernels/MANIFEST-20260424T074215Z.txt
+[build-dual] mode=second-pass-only — skip first archive, expect existing target/.../starryos
+[build-dual] === cargo clean -p starryos (tgoskits workspace) ===
+[build-dual] === ARCH=riscv64 (after-clean) ===
+[build-dual] archived tgoskits/target/riscv64gc-unknown-none-elf/release/starryos -> .guest-runs/kernels/starryos-riscv64-20260424T074215Z-after-clean.elf
+4df2fb70a930edfaf735033fcb2321f4016c1f72970ee443bb23b36cc7dbee87  /work/.guest-runs/kernels/starryos-riscv64-20260424T074215Z-after-clean.elf
+[build-dual] === ARCH=x86_64 (after-clean) ===
+[build-dual] archived tgoskits/target/x86_64-unknown-none/release/starryos -> .guest-runs/kernels/starryos-x86_64-20260424T074215Z-after-clean.elf
+104b4d460a2548b3f4f1051c02737e2736b2837dc8ffc2e57c23df42565fab3b  /work/.guest-runs/kernels/starryos-x86_64-20260424T074215Z-after-clean.elf

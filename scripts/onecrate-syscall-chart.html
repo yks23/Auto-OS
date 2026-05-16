@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>onecrate 系统调用 5s 采样图</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e6edf3;
+      --muted: #8b9cb3;
+      --accent: #58a6ff;
+      --line: #3fb950;
+      --bar: #d29922;
+      --err: #f85149;
+      --border: #30363d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 1rem 1.25rem 2rem;
+    }
+    h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 0.5rem; }
+    .intro {
+      color: var(--muted);
+      font-size: 0.875rem;
+      max-width: 52rem;
+      margin-bottom: 1rem;
+    }
+    .intro ol { margin: 0.35rem 0 0 1.1rem; padding: 0; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.35rem; }
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.6rem;
+      font-family: ui-monospace, "Cascadia Code", monospace;
+      font-size: 0.75rem;
+      resize: vertical;
+    }
+    input[type="file"] {
+      width: 100%;
+      margin-bottom: 0.75rem;
+      font-size: 0.85rem;
+    }
+    button {
+      background: var(--accent);
+      color: #0d1117;
+      border: none;
+      padding: 0.5rem 1.1rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-top: 0.75rem;
+    }
+    button:hover { filter: brightness(1.08); }
+    button:active { filter: brightness(0.95); }
+    .charts { display: grid; gap: 1rem; margin-top: 1rem; }
+    @media (min-width: 900px) {
+      .charts { grid-template-columns: 1fr 1fr; }
+    }
+    .chart-wrap {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.5rem 0.25rem;
+      background: var(--bg);
+    }
+    .chart-wrap h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin: 0 0 0.35rem 0.25rem;
+      color: var(--muted);
+    }
+    canvas { display: block; width: 100%; height: 260px; }
+    .msg { color: var(--err); font-size: 0.85rem; margin-top: 0.5rem; }
+    .msg.ok { color: var(--line); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      margin-top: 1rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.5rem;
+      text-align: right;
+    }
+    th:first-child, td:first-child { text-align: left; }
+    th { background: var(--panel); color: var(--muted); font-weight: 600; }
+    tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+    details { margin-top: 1rem; }
+    details summary { cursor: pointer; color: var(--accent); font-size: 0.9rem; }
+    .stats-block {
+      margin-top: 0.5rem;
+      max-height: 240px;
+      overflow: auto;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem;
+      font-family: ui-monospace, monospace;
+      font-size: 0.7rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .stats-block + .stats-block { margin-top: 0.75rem; }
+    .block-title { font-size: 0.75rem; color: var(--muted); margin: 0.5rem 0 0.25rem; }
+  </style>
+</head>
+<body>
+  <h1>onecrate 串口日志：5 秒 syscall 采样</h1>
+  <div class="intro">
+    <p>从 <code>results.txt</code> 或其它串口日志中解析 <code>===ONECRATE_SYSCALL_5S===</code> 行并绘图（纯 Canvas，无需联网）。</p>
+    <ol>
+      <li>用「选择文件」载入日志，或把全文粘贴到文本框。</li>
+      <li>点击「解析并绘图」：折线为累计 <code>total</code> 相对 <code>t_rel</code>；柱状图为各区间 <code>delta</code>（跳过 <code>delta=-</code>）。</li>
+      <li>表格列与 <code>scripts/onecrate-syscall-5s-table.py</code> 的 Markdown 表一致。</li>
+    </ol>
+  </div>
+
+  <div class="panel">
+    <label for="file">选择 results.txt（可选）</label>
+    <input type="file" id="file" accept=".txt,.log,text/*,*/*" />
+    <label for="paste">或粘贴日志全文</label>
+    <textarea id="paste" placeholder="粘贴含 ===ONECRATE_SYSCALL_5S ...=== 的串口输出…"></textarea>
+    <button type="button" id="run">解析并绘图</button>
+    <div id="feedback" class="msg" style="display:none"></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart-wrap">
+      <h2>累计 total（相对 t_rel）</h2>
+      <canvas id="cLine" width="800" height="520"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h2>区间 delta（跳过 delta=-）</h2>
+      <canvas id="cBar" width="800" height="520"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 style="font-size:0.95rem;margin:0 0 0.5rem">数据表</h2>
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th>interval_end_t</th>
+          <th>total</th>
+          <th>delta</th>
+          <th>dps</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <details id="fullStatsWrap" style="display:none">
+      <summary>完整 ===ONECRATE_SYSCALL_STATS_*=== 块（可选）</summary>
+      <div id="fullStats"></div>
+    </details>
+  </div>
+
+  <script>
+(function () {
+  'use strict';
+
+  var ROW_RE = /===ONECRATE_SYSCALL_5S\s+t_rel=([^=\s]+)\s+total=([^=\s]+)\s+delta=([^=\s]+)\s+dps=([^=\s]+)\s*===/g;
+
+  function stripAnsi(s) {
+    return String(s).replace(/\x1b\[[\d;?]*[ -/]*[@-~]/g, '');
+  }
+
+  function parseRows(text) {
+    var rows = [];
+    var t = stripAnsi(text);
+    var m;
+    ROW_RE.lastIndex = 0;
+    while ((m = ROW_RE.exec(t)) !== null) {
+      rows.push({
+        t_rel: m[1],
+        total: m[2],
+        delta: m[3],
+        dps: m[4],
+        t_relN: parseFloat(m[1]),
+        totalN: parseFloat(m[2]),
+        deltaN: m[3] === '-' ? NaN : parseFloat(m[3]),
+        dpsN: m[4] === '-' ? NaN : parseFloat(m[4])
+      });
+    }
+    return rows;
+  }
+
+  function extractStatsBlocks(text) {
+    var t = stripAnsi(text);
+    var begin = '===ONECRATE_SYSCALL_STATS_BEGIN===';
+    var end = '===ONECRATE_SYSCALL_STATS_END===';
+    var out = [];
+    var i = 0;
+    while (true) {
+      var a = t.indexOf(begin, i);
+      if (a === -1) break;
+      a += begin.length;
+      var b = t.indexOf(end, a);
+      if (b === -1) break;
+      out.push(t.slice(a, b).replace(/^\n+|\n+$/g, ''));
+      i = b + end.length;
+    }
+    return out;
+  }
+
+  function setupCanvas(canvas) {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var rect = canvas.getBoundingClientRect();
+    var w = Math.floor(rect.width * dpr);
+    var h = Math.floor(rect.height * dpr);
+    if (w < 80) w = 800;
+    if (h < 80) h = 520;
+    canvas.width = w;
+    canvas.height = h;
+    return dpr;
+  }
+
+  function drawAxes(ctx, pad, innerW, innerH, xLabel, yLabel) {
+    ctx.strokeStyle = '#30363d';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, pad.t);
+    ctx.lineTo(pad.l, pad.t + innerH);
+    ctx.lineTo(pad.l + innerW, pad.t + innerH);
+    ctx.stroke();
+    ctx.fillStyle = '#8b9cb3';
+    ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(xLabel, pad.l + innerW / 2, pad.t + innerH + 32);
+    ctx.save();
+    ctx.translate(14, pad.t + innerH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(yLabel, 0, 0);
+    ctx.restore();
+  }
+
+  function niceStep(range, approx) {
+    var raw = range / approx;
+    var pow10 = Math.pow(10, Math.floor(Math.log10(raw)));
+    var f = raw / pow10;
+    var nf = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10;
+    return nf * pow10;
+  }
+
+  function drawLineChart(canvas, rows) {
+    var dpr = setupCanvas(canvas);
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+    var cssW = W / dpr, cssH = H / dpr;
+    ctx.clearRect(0, 0, cssW, cssH);
+    ctx.fillStyle = '#0f1419';
+    ctx.fillRect(0, 0, cssW, cssH);
+
+    var valid = rows.filter(function (r) { return !isNaN(r.t_relN) && !isNaN(r.totalN); });
+    if (valid.length === 0) {
+      ctx.fillStyle = '#8b9cb3';
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('无有效 total / t_rel 数据', cssW / 2, cssH / 2);
+      return;
+    }
+
+    var pad = { l: 52, r: 16, t: 18, b: 44 };
+    var innerW = cssW - pad.l - pad.r;
+    var innerH = cssH - pad.t - pad.b;
+    var xs = valid.map(function (r) { return r.t_relN; });
+    var ys = valid.map(function (r) { return r.totalN; });
+    var xMin = Math.min.apply(null, xs);
+    var xMax = Math.max.apply(null, xs);
+    var yMin = 0;
+    var yMax = Math.max.apply(null, ys) * 1.08;
+    if (xMax === xMin) { xMax = xMin + 1; }
+    if (yMax <= yMin) { yMax = yMin + 1; }
+
+    drawAxes(ctx, pad, innerW, innerH, 't_rel (s)', 'total');
+
+    function xScale(x) { return pad.l + (x - xMin) / (xMax - xMin) * innerW; }
+    function yScale(y) { return pad.t + innerH - (y - yMin) / (yMax - yMin) * innerH; }
+
+    var gx = niceStep(xMax - xMin, 5);
+    var gy = niceStep(yMax - yMin, 5);
+    ctx.strokeStyle = '#21262d';
+    ctx.lineWidth = 1;
+    for (var gx0 = Math.ceil(xMin / gx) * gx; gx0 <= xMax + 1e-9; gx0 += gx) {
+      var px = xScale(gx0);
+      ctx.beginPath();
+      ctx.moveTo(px, pad.t);
+      ctx.lineTo(px, pad.t + innerH);
+      ctx.stroke();
+      ctx.fillStyle = '#6e7681';
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(Math.round(gx0 * 100) / 100), px, pad.t + innerH + 16);
+    }
+    for (var gy0 = Math.ceil(yMin / gy) * gy; gy0 <= yMax + 1e-9; gy0 += gy) {
+      var py = yScale(gy0);
+      ctx.beginPath();
+      ctx.moveTo(pad.l, py);
+      ctx.lineTo(pad.l + innerW, py);
+      ctx.stroke();
+      ctx.textAlign = 'right';
+      ctx.fillText(String(Math.round(gy0)), pad.l - 6, py + 4);
+    }
+
+    ctx.strokeStyle = '#3fb950';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (var i = 0; i < valid.length; i++) {
+      var px = xScale(valid[i].t_relN);
+      var py = yScale(valid[i].totalN);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.fillStyle = '#58a6ff';
+    for (i = 0; i < valid.length; i++) {
+      px = xScale(valid[i].t_relN);
+      py = yScale(valid[i].totalN);
+      ctx.beginPath();
+      ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawBarChart(canvas, rows) {
+    var dpr = setupCanvas(canvas);
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+    var cssW = W / dpr, cssH = H / dpr;
+    ctx.clearRect(0, 0, cssW, cssH);
+    ctx.fillStyle = '#0f1419';
+    ctx.fillRect(0, 0, cssW, cssH);
+
+    var bars = rows.filter(function (r) { return !isNaN(r.deltaN); });
+    if (bars.length === 0) {
+      ctx.fillStyle = '#8b9cb3';
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('无有效 delta（均为 -）', cssW / 2, cssH / 2);
+      return;
+    }
+
+    var pad = { l: 48, r: 12, t: 18, b: 56 };
+    var innerW = cssW - pad.l - pad.r;
+    var innerH = cssH - pad.t - pad.b;
+    var dmax = Math.max.apply(null, bars.map(function (b) { return b.deltaN; })) * 1.1;
+    if (dmax <= 0) dmax = 1;
+    var n = bars.length;
+    var gap = Math.min(8, innerW / (n * 3));
+    var bw = (innerW - gap * (n + 1)) / n;
+    if (bw < 2) {
+      gap = 2;
+      bw = (innerW - gap * (n + 1)) / n;
+    }
+
+    drawAxes(ctx, pad, innerW, innerH, 'interval_end_t (t_rel)', 'delta');
+
+    for (var i = 0; i < n; i++) {
+      var h = (bars[i].deltaN / dmax) * innerH;
+      var x0 = pad.l + gap + i * (bw + gap);
+      var y0 = pad.t + innerH - h;
+      ctx.fillStyle = '#d29922';
+      ctx.fillRect(x0, y0, bw, h);
+      ctx.fillStyle = '#8b9cb3';
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'center';
+      var lbl = String(bars[i].t_rel);
+      if (lbl.length > 6) lbl = lbl.slice(0, 5) + '…';
+      ctx.fillText(lbl, x0 + bw / 2, pad.t + innerH + 14);
+    }
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#6e7681';
+    ctx.font = '10px monospace';
+    ctx.fillText('0', pad.l - 4, pad.t + innerH + 4);
+    ctx.fillText(String(Math.round(dmax)), pad.l - 4, pad.t + 12);
+  }
+
+  function fillTable(tbody, rows) {
+    tbody.textContent = '';
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var tr = document.createElement('tr');
+      ['t_rel', 'total', 'delta', 'dps'].forEach(function (k) {
+        var td = document.createElement('td');
+        td.textContent = r[k];
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+  }
+
+  function renderFullStats(container, blocks) {
+    container.textContent = '';
+    if (!blocks.length) return;
+    for (var i = 0; i < blocks.length; i++) {
+      var title = document.createElement('div');
+      title.className = 'block-title';
+      title.textContent = '块 #' + (i + 1) + '（/proc/syscall_stats 快照）';
+      var pre = document.createElement('pre');
+      pre.className = 'stats-block';
+      pre.textContent = blocks[i] || '（空）';
+      container.appendChild(title);
+      container.appendChild(pre);
+    }
+  }
+
+  function showFeedback(el, ok, text) {
+    el.style.display = 'block';
+    el.className = 'msg' + (ok ? ' ok' : '');
+    el.textContent = text;
+  }
+
+  document.getElementById('file').addEventListener('change', function (ev) {
+    var f = ev.target.files && ev.target.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      document.getElementById('paste').value = String(r.result || '');
+    };
+    r.readAsText(f, 'UTF-8');
+  });
+
+  document.getElementById('run').addEventListener('click', function () {
+    var raw = document.getElementById('paste').value;
+    var fb = document.getElementById('feedback');
+    var rows = parseRows(raw);
+    if (rows.length === 0) {
+      showFeedback(fb, false, '未匹配到 ===ONECRATE_SYSCALL_5S=== 行；请确认日志内容或 ANSI 已可被解析。');
+      drawLineChart(document.getElementById('cLine'), []);
+      drawBarChart(document.getElementById('cBar'), []);
+      fillTable(document.querySelector('#tbl tbody'), []);
+      document.getElementById('fullStatsWrap').style.display = 'none';
+      return;
+    }
+    showFeedback(fb, true, '已解析 ' + rows.length + ' 行 ONECRATE_SYSCALL_5S。');
+    drawLineChart(document.getElementById('cLine'), rows);
+    drawBarChart(document.getElementById('cBar'), rows);
+    fillTable(document.querySelector('#tbl tbody'), rows);
+
+    var blocks = extractStatsBlocks(raw);
+    var wrap = document.getElementById('fullStatsWrap');
+    var host = document.getElementById('fullStats');
+    if (blocks.length) {
+      wrap.style.display = 'block';
+      renderFullStats(host, blocks);
+    } else {
+      wrap.style.display = 'none';
+    }
+  });
+
+  window.addEventListener('resize', function () {
+    /* redraw if we had data — optional skip for simplicity */
+  });
+})();
+  </script>
+</body>
+</html>
