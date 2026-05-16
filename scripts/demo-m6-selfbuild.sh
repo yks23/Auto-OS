@@ -65,7 +65,7 @@ if [[ "$BOOT_SUBSET" -eq 1 && "$BOOT_TWICE" -eq 1 ]]; then
     BOOT_TWICE=0
 fi
 
-# 在 Docker（root）内无需 sudo；本机非 root 时保留 sudo。
+# 在 Docker（root）内无需 sudo；本机非 root 时保留 sudo（仅用于 mount 操作）。
 SUDO=""
 [[ "$(id -u)" -ne 0 ]] && SUDO="sudo"
 
