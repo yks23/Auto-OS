@@ -477,7 +477,7 @@ export CARGO_INCREMENTAL=0
 M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON:--C debuginfo=2}"
 M6_CARGO_VV="${M6_CARGO_VV:-1}"
 if [ "$M6_CARGO_VV" = "1" ]; then _CARGO_V="-vv"; else _CARGO_V="-v"; fi
-RUSTC=/opt/alpine-rust/usr/bin/rustc
+RUSTC=/opt/ccwrap/rustc
 CARGO=/opt/alpine-rust/usr/bin/cargo
 # Strip rust-src workspace for -Z build-std (remove std/test members to avoid crates.io deps)
 _strip_buildstd_ws() {
