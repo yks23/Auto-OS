@@ -82,7 +82,7 @@ for re in \
   '^[[:space:]]*phys-virt-offset[[:space:]]*='; do
   $SUDO grep -qE "$re" "$AXCFG" || err "axconfig missing expected field matching: $re"
 done
-max_cpu=$($SUDO awk -F= '$1 ~ /^[[:space:]]*max-cpu-num[[:space:]]*$/ {gsub(/[ #].*/, "", $2); gsub(/[[:space:]]/, "", $2); print $2; exit}' "$AXCFG")
+max_cpu=$($SUDO awk -F= '$1 ~ /^[[:space:]]*max-cpu-num[[:space:]]*$/ {gsub(/#.*/, "", $2); gsub(/[[:space:]]/, "", $2); print $2; exit}' "$AXCFG")
 case "${max_cpu:-}" in ''|*[!0-9]*) err "cannot parse plat.max-cpu-num from .axconfig.toml: ${max_cpu:-<empty>}" ;; esac
 [[ "$M6_QEMU_SMP" -le "$max_cpu" ]] || err "M6_QEMU_SMP=$M6_QEMU_SMP exceeds plat.max-cpu-num=$max_cpu"
 

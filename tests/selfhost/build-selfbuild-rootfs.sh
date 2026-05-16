@@ -577,7 +577,27 @@ _BS_FLAG="-Z build-std=core,alloc,compiler_builtins"
 # 默认 **关闭**：在 Starry 访客 + musl cargo 下曾触发 axtask「atomic context sleep」panic（见 wait_queue.rs）。
 # **断点续编**：`M6_RESUME=1` 时若 virtio 盘上已有阶段产物或 `.m6-done-*` 标记，则跳过已完成阶段（见下方）。
 # 仅对 musl cargo 进程注入 LD_LIBRARY_PATH（勿污染当前 glibc bash）。
+# rsext4 metadata_csum bug: directory block checksums are sometimes wrong,
+# causing newly-created cargo outputs to appear as directories on lookup.
+# Remove such phantom directories before cargo invocations so rustc/cargo can
+# rewrite them instead of failing with os error 21 or output path conflicts.
+_fix_rsext4_corruption() {
+    for _d in target/release/deps target/riscv64gc-unknown-none-elf/release/deps; do
+        [ -d "$_d" ] || continue
+        find "$_d" -maxdepth 1 \( -name '*.rmeta' -o -name '*.rlib' -o -name '*.d' \) -type d -exec rm -rf {} + 2>/dev/null || true
+    done
+    for _d in target/release/build target/riscv64gc-unknown-none-elf/release/build; do
+        [ -d "$_d" ] || continue
+        find "$_d" -mindepth 2 -maxdepth 2 -type d -name build-script-build -exec rm -rf {} + 2>/dev/null || true
+    done
+}
+
+_is_rsext4_corruption_error() {
+    grep -Eq 'conflicts with the existing directory|Is a directory \(os error 21\)|failed to remove file .*/build-script-build' "$1" 2>/dev/null
+}
+
 _run_cargo() {
+    _fix_rsext4_corruption
     if [ "${M6_CARGO_PTY:-0}" = "1" ] && command -v script >/dev/null 2>&1; then
         _M6_CARGO_Q=$(printf ' %q' "$@")
         script -qefc "/usr/bin/env RUSTC_BOOTSTRAP=1 PATH=\"/opt/ccwrap:/opt/alpine-rust/usr/bin:/usr/bin:/usr/sbin:/bin:/sbin\" LD_LIBRARY_PATH=\"/opt/alpine-rust/lib:/opt/alpine-rust/usr/lib\" SQLITE_TMPDIR=/opt/tgoskits/.m6-tmp TMPDIR=/opt/tgoskits/.m6-tmp /opt/alpine-rust/usr/bin/cargo${_M6_CARGO_Q}" /dev/null
@@ -770,15 +790,34 @@ if [ "$RESUME_SKIP_KERNEL" != "1" ]; then
     export RUSTFLAGS="$M6_RUSTFLAGS_COMMON ${RUSTFLAGS:-}"
     m6_hb_start
     m6_syscall_stats_watch_start
-    set -o pipefail
-    _run_cargo build $_CARGO_V --offline -p starry-kernel \
-        $SK_KERNEL_FEAT \
-        --target riscv64gc-unknown-none-elf --release ${_BS_FLAG} 2>&1 | tee /tmp/m6-cargo-kernel.log
-    RC=${PIPESTATUS[0]}
-    set +o pipefail
+    _KERNEL_MAX_RETRY=5
+    _kernel_attempt=1
+    RC=1
+    while [ "$_kernel_attempt" -le "$_KERNEL_MAX_RETRY" ]; do
+        _fix_rsext4_corruption
+        set -o pipefail
+        _run_cargo build $_CARGO_V --offline -p starry-kernel \
+            $SK_KERNEL_FEAT \
+            --target riscv64gc-unknown-none-elf --release ${_BS_FLAG} 2>&1 | tee /tmp/m6-cargo-kernel.log
+        RC=${PIPESTATUS[0]}
+        set +o pipefail
+        if [ "$RC" -eq 0 ]; then
+            break
+        fi
+        if _is_rsext4_corruption_error /tmp/m6-cargo-kernel.log; then
+            m6_ts "[2] starry-kernel attempt $_kernel_attempt failed (rsext4 dir corruption), cleaning and retrying"
+            echo "[2] rsext4 corruption detected — cleaning deps/ and retrying (attempt $_kernel_attempt/$_KERNEL_MAX_RETRY)"
+            # Clean fingerprints for the failed crate so cargo retries it
+            rm -rf target/release/.fingerprint target/release/build
+            rm -rf target/riscv64gc-unknown-none-elf/release/.fingerprint target/riscv64gc-unknown-none-elf/release/build
+        else
+            break
+        fi
+        _kernel_attempt=$((_kernel_attempt + 1))
+    done
     m6_syscall_stats_watch_stop
     m6_hb_stop
-    m6_ts "[2] starry-kernel lib finished rc=$RC"
+    m6_ts "[2] starry-kernel lib finished rc=$RC (attempts=$_kernel_attempt)"
     echo "starry-kernel-build exit=$RC"
     if [ "$RC" -ne 0 ]; then
         exit "$RC"
@@ -806,15 +845,33 @@ if [ "$RESUME_SKIP_PASS1" != "1" ]; then
     export RUSTFLAGS="$M6_RUSTFLAGS_COMMON ${RUSTFLAGS:-}"
     m6_hb_start
     m6_syscall_stats_watch_start
-    set -o pipefail
-    _run_cargo build $_CARGO_V --offline -p starryos \
-        --target riscv64gc-unknown-none-elf --release \
-        --features starryos/qemu,smp ${_BS_FLAG} 2>&1 | tee /tmp/m6-cargo-pass1.log
-    RC1=${PIPESTATUS[0]}
-    set +o pipefail
+    _PASS1_MAX_RETRY=5
+    _p1_attempt=1
+    RC1=1
+    while [ "$_p1_attempt" -le "$_PASS1_MAX_RETRY" ]; do
+        _fix_rsext4_corruption
+        set -o pipefail
+        _run_cargo build $_CARGO_V --offline -p starryos \
+            --target riscv64gc-unknown-none-elf --release \
+            --features starryos/qemu,smp ${_BS_FLAG} 2>&1 | tee /tmp/m6-cargo-pass1.log
+        RC1=${PIPESTATUS[0]}
+        set +o pipefail
+        if [ "$RC1" -eq 0 ]; then
+            break
+        fi
+        if _is_rsext4_corruption_error /tmp/m6-cargo-pass1.log; then
+            m6_ts "[3] pass1 attempt $_p1_attempt failed (rsext4 dir corruption), cleaning and retrying"
+            echo "[3] rsext4 corruption detected — retrying (attempt $_p1_attempt/$_PASS1_MAX_RETRY)"
+            rm -rf target/release/.fingerprint target/release/build
+            rm -rf target/riscv64gc-unknown-none-elf/release/.fingerprint target/riscv64gc-unknown-none-elf/release/build
+        else
+            break
+        fi
+        _p1_attempt=$((_p1_attempt + 1))
+    done
     m6_syscall_stats_watch_stop
     m6_hb_stop
-    m6_ts "[3] starryos pass1 finished rc=$RC1"
+    m6_ts "[3] starryos pass1 finished rc=$RC1 (attempts=$_p1_attempt)"
     echo "starryos pass1 exit=$RC1"
     if [ "$RC1" -ne 0 ]; then
         exit "$RC1"
@@ -841,16 +898,34 @@ echo "[4] pass2 starryos $_CARGO_V (RUSTFLAGS: debuginfo + linker script)"
 export M6_PHASE=starryos-pass2
 m6_hb_start
 m6_syscall_stats_watch_start
-set -o pipefail
-export RUSTFLAGS="$M6_RUSTFLAGS_COMMON -C link-arg=-T$(pwd)/$LD -C link-arg=-no-pie -C link-arg=-znostart-stop-gc"
-_run_cargo build $_CARGO_V --offline -p starryos \
-    --target riscv64gc-unknown-none-elf --release \
-    --features starryos/qemu,smp ${_BS_FLAG} 2>&1 | tee /tmp/m6-cargo-pass2.log
-RC2=${PIPESTATUS[0]}
-set +o pipefail
+_PASS2_MAX_RETRY=5
+_p2_attempt=1
+RC2=1
+while [ "$_p2_attempt" -le "$_PASS2_MAX_RETRY" ]; do
+    _fix_rsext4_corruption
+    set -o pipefail
+    export RUSTFLAGS="$M6_RUSTFLAGS_COMMON -C link-arg=-T$(pwd)/$LD -C link-arg=-no-pie -C link-arg=-znostart-stop-gc"
+    _run_cargo build $_CARGO_V --offline -p starryos \
+        --target riscv64gc-unknown-none-elf --release \
+        --features starryos/qemu,smp ${_BS_FLAG} 2>&1 | tee /tmp/m6-cargo-pass2.log
+    RC2=${PIPESTATUS[0]}
+    set +o pipefail
+    if [ "$RC2" -eq 0 ]; then
+        break
+    fi
+    if _is_rsext4_corruption_error /tmp/m6-cargo-pass2.log; then
+        m6_ts "[4] pass2 attempt $_p2_attempt failed (rsext4 dir corruption), cleaning and retrying"
+        echo "[4] rsext4 corruption detected — retrying (attempt $_p2_attempt/$_PASS2_MAX_RETRY)"
+        rm -rf target/release/.fingerprint target/release/build
+        rm -rf target/riscv64gc-unknown-none-elf/release/.fingerprint target/riscv64gc-unknown-none-elf/release/build
+    else
+        break
+    fi
+    _p2_attempt=$((_p2_attempt + 1))
+done
 m6_syscall_stats_watch_stop
 m6_hb_stop
-m6_ts "[4] starryos pass2 finished rc=$RC2"
+m6_ts "[4] starryos pass2 finished rc=$RC2 (attempts=$_p2_attempt)"
 echo "starryos pass2 exit=$RC2"
 if [ -f "$ELF" ]; then
     touch "$M6_DONE_P2"
