@@ -38,13 +38,14 @@
 #   M6_QEMU_TIMEOUT_SEC — outer timeout(1) for qemu（默认 4200）
 #   M6_STALL_SEC — results.txt 字节数连续多久**完全不变**则判死锁/假死并杀 QEMU。
 #     默认 **0**（关闭）：多进程 rustc 下串口可能长时间无新字节，易误杀；需要时再设正数。
-#   M6_HOST_HEARTBEAT_SEC — 宿主轮询时向 stderr 打印进度间隔秒数（默认 120）
-#   M6_GUEST_HEARTBEAT_SEC — 注入访客：cargo 静默阶段串口心跳间隔秒数（默认 120；写入 /opt/run-tests.sh）
-#   M6_SYSCALL_STATS_INTERVAL_SEC — 访客内 syscall_stats dump 间隔秒数（默认 10；与宿主 m6-selfbuild-progress-http.py 对齐）
+#   M6_HOST_HEARTBEAT_SEC — 宿主轮询时向 stderr 打印进度间隔秒数（快速反馈默认 60）
+#   M6_GUEST_HEARTBEAT_SEC — 注入访客：cargo 静默阶段串口心跳间隔秒数（快速反馈默认 60；写入 /opt/run-tests.sh）
+#   M6_SYSCALL_STATS_INTERVAL_SEC — 访客内 syscall_stats dump 间隔秒数（默认 60；与宿主 m6-selfbuild-progress-http.py 对齐）
 #   M6_SKIP_SYNC_GUESTSH=1 — 不从仓库覆盖镜像内 /opt/build-starry-kernel.sh（默认每次 demo 同步 GUESTSH）
 #   M6_RESUME=1 — 访客内根据盘上 target/（rlib、linker_*.lds、ELF）与 touch 的
 #     /opt/tgoskits/.m6-done-{kernel-lib,pass1,pass2} 跳过已完成阶段（须同一 ROOTFS 可写）
 #   M6_PROGRESS_LOG=path — 覆盖默认 .guest-runs/riscv64-m6/m6-progress.log
+#   M6_FAST_FEEDBACK=1 — 默认：续跑、少日志、低 debuginfo、较低 syscall dump 频率；设 0 回到详细诊断模式
 set -e
 
 BOOT_TWICE=0
@@ -81,9 +82,22 @@ M6_STALL_GRACE_SEC="${M6_STALL_GRACE_SEC:-120}"
 # The kernel handles runtime CPU detection, so booting with fewer harts is safe.
 M6_QEMU_SMP="${M6_QEMU_SMP:-1}"
 M6_QEMU_MEM="${M6_QEMU_MEM:-5G}"
-M6_HOST_HEARTBEAT_SEC="${M6_HOST_HEARTBEAT_SEC:-120}"
-M6_GUEST_HEARTBEAT_SEC="${M6_GUEST_HEARTBEAT_SEC:-120}"
-M6_SYSCALL_STATS_INTERVAL_SEC="${M6_SYSCALL_STATS_INTERVAL_SEC:-10}"
+M6_FAST_FEEDBACK="${M6_FAST_FEEDBACK:-1}"
+if [[ "$M6_FAST_FEEDBACK" == "1" ]]; then
+    M6_RESUME="${M6_RESUME:-1}"
+    M6_CARGO_VV="${M6_CARGO_VV:-0}"
+    M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON:--C debuginfo=0}"
+    M6_HOST_HEARTBEAT_SEC="${M6_HOST_HEARTBEAT_SEC:-60}"
+    M6_GUEST_HEARTBEAT_SEC="${M6_GUEST_HEARTBEAT_SEC:-60}"
+    M6_SYSCALL_STATS_INTERVAL_SEC="${M6_SYSCALL_STATS_INTERVAL_SEC:-60}"
+else
+    M6_RESUME="${M6_RESUME:-0}"
+    M6_CARGO_VV="${M6_CARGO_VV:-1}"
+    M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON:--C debuginfo=2}"
+    M6_HOST_HEARTBEAT_SEC="${M6_HOST_HEARTBEAT_SEC:-120}"
+    M6_GUEST_HEARTBEAT_SEC="${M6_GUEST_HEARTBEAT_SEC:-120}"
+    M6_SYSCALL_STATS_INTERVAL_SEC="${M6_SYSCALL_STATS_INTERVAL_SEC:-10}"
+fi
 
 mkdir -p "$WORK"
 [[ -f "$ROOTFS" ]] || { echo "rootfs not found: $ROOTFS"; exit 1; }
@@ -196,15 +210,27 @@ if [[ "${M6_SKIP_SYNC_GUESTSH:-}" != "1" && -f "$SELFBUILD_SH" ]]; then
 elif [[ "${M6_SKIP_SYNC_GUESTSH:-}" == "1" ]]; then
     echo "[+] M6_SKIP_SYNC_GUESTSH=1 — using existing /opt/build-starry-kernel.sh on disk"
 fi
+AXCFG=/tmp/rfsmnt-m6/opt/tgoskits/os/StarryOS/.axconfig.toml
+if [[ -f "$AXCFG" ]] && ! $SUDO grep -qE '^[[:space:]]*task-stack-size[[:space:]]*=' "$AXCFG"; then
+    echo "[+] patch baked .axconfig.toml: add missing task-stack-size"
+    _tmpcfg=$(mktemp)
+    {
+        echo '# Stack size of each task.'
+        echo 'task-stack-size = 0x40000 # uint'
+        $SUDO cat "$AXCFG"
+    } > "$_tmpcfg"
+    $SUDO cp "$_tmpcfg" "$AXCFG"
+    rm -f "$_tmpcfg"
+fi
 if [[ "$BOOT_SUBSET" -eq 1 ]]; then
     $SUDO tee /tmp/rfsmnt-m6/opt/run-tests.sh > /dev/null <<EOF
 #!/bin/sh
 export M6_GUEST_HEARTBEAT_SEC="${M6_GUEST_HEARTBEAT_SEC}"
 export M6_SYSCALL_STATS_INTERVAL_SEC="${M6_SYSCALL_STATS_INTERVAL_SEC}"
-export M6_CARGO_VV="${M6_CARGO_VV:-1}"
+export M6_CARGO_VV="${M6_CARGO_VV}"
 export M6_CARGO_PTY="${M6_CARGO_PTY:-0}"
-export M6_RESUME="${M6_RESUME:-0}"
-export M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON:--C debuginfo=2}"
+export M6_RESUME="${M6_RESUME}"
+export M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON}"
 export CARGO_TERM_PROGRESS="${CARGO_TERM_PROGRESS:-wide}"
 export CARGO_TERM_VERBOSE="${CARGO_TERM_VERBOSE:-true}"
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-}"
@@ -217,10 +243,10 @@ else
 #!/bin/sh
 export M6_GUEST_HEARTBEAT_SEC="${M6_GUEST_HEARTBEAT_SEC}"
 export M6_SYSCALL_STATS_INTERVAL_SEC="${M6_SYSCALL_STATS_INTERVAL_SEC}"
-export M6_CARGO_VV="${M6_CARGO_VV:-1}"
+export M6_CARGO_VV="${M6_CARGO_VV}"
 export M6_CARGO_PTY="${M6_CARGO_PTY:-0}"
-export M6_RESUME="${M6_RESUME:-0}"
-export M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON:--C debuginfo=2}"
+export M6_RESUME="${M6_RESUME}"
+export M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON}"
 export CARGO_TERM_PROGRESS="${CARGO_TERM_PROGRESS:-wide}"
 export CARGO_TERM_VERBOSE="${CARGO_TERM_VERBOSE:-true}"
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-}"
@@ -277,7 +303,7 @@ echo "[+] progress log: $M6_PROGRESS_LOG  (tail -f in another terminal)"
 # ---------- boot QEMU. Generous memory (3 GB) and configurable timeout because
 # guest cargo build of starry-kernel via emulated RISC-V is genuinely slow.
 echo "[+] launching qemu (timeout ${M6_QEMU_TIMEOUT_SEC}s — guest cargo build)..."
-echo "[+] diag: M6_QEMU_SMP=$M6_QEMU_SMP M6_QEMU_MEM=$M6_QEMU_MEM M6_STALL_SEC=$M6_STALL_SEC M6_HOST_HEARTBEAT_SEC=$M6_HOST_HEARTBEAT_SEC M6_GUEST_HEARTBEAT_SEC=$M6_GUEST_HEARTBEAT_SEC M6_SYSCALL_STATS_INTERVAL_SEC=$M6_SYSCALL_STATS_INTERVAL_SEC M6_RESUME=${M6_RESUME:-0}"
+echo "[+] diag: M6_FAST_FEEDBACK=$M6_FAST_FEEDBACK M6_QEMU_SMP=$M6_QEMU_SMP M6_QEMU_MEM=$M6_QEMU_MEM M6_STALL_SEC=$M6_STALL_SEC M6_HOST_HEARTBEAT_SEC=$M6_HOST_HEARTBEAT_SEC M6_GUEST_HEARTBEAT_SEC=$M6_GUEST_HEARTBEAT_SEC M6_SYSCALL_STATS_INTERVAL_SEC=$M6_SYSCALL_STATS_INTERVAL_SEC M6_RESUME=$M6_RESUME M6_CARGO_VV=$M6_CARGO_VV M6_RUSTFLAGS_COMMON='$M6_RUSTFLAGS_COMMON'"
 # -smp 须 ≤ 镜像内 .axconfig.toml 的 plat.max-cpu-num（见 tests/selfhost/build-selfbuild-rootfs.sh / scripts/build.sh）。
 # QEMU TCG LR/SC is broken under MTTCG: SC uses cmpxchg(value) instead of
 # reservation tracking, causing spurious SC success across harts.  With -smp 1

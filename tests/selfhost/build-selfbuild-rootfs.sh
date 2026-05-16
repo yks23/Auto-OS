@@ -363,6 +363,15 @@ done
     -w "plat.max-cpu-num=${M6_MAX_CPU_NUM}" \
     -w "plat.phys-memory-size=${M6_PHYS_MEM}" \
     -o "$STARRY_IMG/.axconfig.toml" )
+if ! grep -qE '^[[:space:]]*task-stack-size[[:space:]]*=' "$STARRY_IMG/.axconfig.toml"; then
+    tmp_axcfg="$(mktemp)"
+    {
+        echo '# Stack size of each task.'
+        echo 'task-stack-size = 0x40000 # uint'
+        cat "$STARRY_IMG/.axconfig.toml"
+    } > "$tmp_axcfg"
+    mv "$tmp_axcfg" "$STARRY_IMG/.axconfig.toml"
+fi
 
 # --------------------------------------------------------- 7. inject demo helper
 echo "[7/8] inject demo helper /opt/build-starry-kernel.sh ..."
@@ -377,7 +386,7 @@ m6_ts() { echo "[M6 $(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"; }
 # 串口输出 /proc/syscall_stats 供宿主 m6-selfbuild-progress-http.py 解析增量。
 # 此为 **Starry 访客内核内** 的真实计数；不得以宿主 strace 或假日志冒烟代替。
 # 旧内核无该文件时静默跳过。默认整文件 cat；若 >200KiB 则只取前 300 行以免串口洪泛。
-# M6_SYSCALL_STATS_INTERVAL_SEC — 长 cargo 阶段后台周期性 dump 的间隔秒数（默认 10）；无效值回落 10；最小 1。
+# M6_SYSCALL_STATS_INTERVAL_SEC — 长 cargo 阶段后台周期性 dump 的间隔秒数（默认 60）；无效值回落 60；最小 1。
 m6_dump_syscall_stats() {
     if [ -r /proc/syscall_stats ]; then
         echo "===SYSCALL_STATS_BEGIN==="
@@ -398,9 +407,9 @@ m6_dump_syscall_stats() {
 m6_syscall_stats_watch_start() {
     rm -f /tmp/m6-syscall-watch.pid
     (
-        _iv="${M6_SYSCALL_STATS_INTERVAL_SEC:-10}"
+        _iv="${M6_SYSCALL_STATS_INTERVAL_SEC:-60}"
         case ${_iv} in
-        '' | *[!0-9]*) _iv=10 ;;
+        '' | *[!0-9]*) _iv=60 ;;
         esac
         if [ "${_iv}" -lt 1 ]; then _iv=1; fi
         while sleep "${_iv}"; do
@@ -468,14 +477,14 @@ if [[ "${_NPROC}" -lt 1 ]]; then _NPROC=1; fi
 export RAYON_NUM_THREADS="${RAYON_NUM_THREADS:-$_NPROC}"
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-$_NPROC}"
 # 详细编译信号（宿主可通过 demo 注入覆盖）：
-#   M6_RUSTFLAGS_COMMON — 默认带 DWARF（等价 gcc -g），便于 rustc 卡住时 objdump/llvm-objcopy 仍可符号化；
-#   M6_CARGO_VV=1 — cargo -vv（每道 rustc 命令行全量打印）；=0 则仅用 -v 缩短日志。
+#   M6_RUSTFLAGS_COMMON — 默认不带 DWARF，缩短 guest rustc 工作；需要符号化诊断时设为 "-C debuginfo=2"。
+#   M6_CARGO_VV=1 — cargo -vv（每道 rustc 命令行全量打印）；默认 0 仅用 -v 缩短日志。
 #   CARGO_TERM_PROGRESS — wide 在串口上更易看出「仍在跑」。
 export CARGO_TERM_PROGRESS="${CARGO_TERM_PROGRESS:-wide}"
 export CARGO_TERM_VERBOSE="${CARGO_TERM_VERBOSE:-true}"
 export CARGO_INCREMENTAL=0
-M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON:--C debuginfo=2}"
-M6_CARGO_VV="${M6_CARGO_VV:-1}"
+M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON:--C debuginfo=0}"
+M6_CARGO_VV="${M6_CARGO_VV:-0}"
 if [ "$M6_CARGO_VV" = "1" ]; then _CARGO_V="-vv"; else _CARGO_V="-v"; fi
 RUSTC=/opt/ccwrap/rustc
 CARGO=/opt/alpine-rust/usr/bin/cargo
@@ -677,6 +686,16 @@ export AX_TARGET=riscv64gc-unknown-none-elf
 export AX_IP=10.0.2.15
 export AX_GW=10.0.2.2
 export AX_CONFIG_PATH="$(pwd)/.axconfig.toml"
+if ! grep -qE '^[[:space:]]*task-stack-size[[:space:]]*=' "$AX_CONFIG_PATH"; then
+    m6_ts "patch .axconfig.toml: add missing task-stack-size for ax_config::TASK_STACK_SIZE"
+    _cfg_tmp="$(mktemp /opt/tgoskits/.m6-tmp/axconfig.XXXXXX)"
+    {
+        echo '# Stack size of each task.'
+        echo 'task-stack-size = 0x40000 # uint'
+        cat "$AX_CONFIG_PATH"
+    } > "$_cfg_tmp"
+    mv "$_cfg_tmp" "$AX_CONFIG_PATH"
+fi
 m6_ts "AX_* exported AX_TARGET=$AX_TARGET AX_PLATFORM=$AX_PLATFORM"
 
 cd /opt/tgoskits

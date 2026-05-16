@@ -45,11 +45,18 @@ for p in "${checks[@]}"; do
   $SUDO test -e "$p" || err "missing: $p"
 done
 
-echo "[1b] ccwrap should clear LD_LIBRARY_PATH and delegate to clang (demo overwrites old images)"
-if $SUDO grep -qF 'unset LD_LIBRARY_PATH' "$MNT/opt/ccwrap/cc" 2>/dev/null && $SUDO grep -qF '/usr/bin/clang' "$MNT/opt/ccwrap/cc" 2>/dev/null; then
+echo "[1b] ccwrap should clear LD_LIBRARY_PATH and delegate to a known linker driver (demo overwrites old images)"
+if $SUDO grep -qF 'unset LD_LIBRARY_PATH' "$MNT/opt/ccwrap/cc" 2>/dev/null && \
+   { $SUDO grep -qF '/opt/alpine-rust/usr/bin/riscv64-alpine-linux-musl-gcc' "$MNT/opt/ccwrap/cc" 2>/dev/null || \
+     $SUDO grep -qF '/usr/bin/clang' "$MNT/opt/ccwrap/cc" 2>/dev/null; }; then
   echo "  OK (on-disk image already has fixed ccwrap)"
 else
   echo "  warn: on-disk ccwrap predates fix — scripts/demo-m6-selfbuild.sh overwrites /opt/ccwrap/cc when injecting run-tests"
+fi
+
+echo "[1c] axconfig must export ax_config::TASK_STACK_SIZE"
+if ! $SUDO grep -qE '^[[:space:]]*task-stack-size[[:space:]]*=' "$MNT/opt/tgoskits/os/StarryOS/.axconfig.toml"; then
+  err "missing task-stack-size in os/StarryOS/.axconfig.toml; demo script can patch it, but rebuild the rootfs for a clean image"
 fi
 
 echo "[2] cargo registry present (host cargo fetch output)"
