@@ -204,8 +204,18 @@ fi
 SELFBUILD_SH="$ROOT/tests/selfhost/build-selfbuild-rootfs.sh"
 if [[ "${M6_SKIP_SYNC_GUESTSH:-}" != "1" && -f "$SELFBUILD_SH" ]]; then
     echo "[+] sync /opt/build-starry-kernel.sh from repo GUESTSH ($SELFBUILD_SH)"
-    awk "/<<'GUESTSH'/{p=1;next} /^GUESTSH\$/{exit} p" "$SELFBUILD_SH" \
-        | $SUDO tee /tmp/rfsmnt-m6/opt/build-starry-kernel.sh >/dev/null
+    _guestsh_tmp=$(mktemp)
+    awk "/<<'GUESTSH'/{p=1;next} /^GUESTSH\$/{exit} p" "$SELFBUILD_SH" >"$_guestsh_tmp"
+    bash -n "$_guestsh_tmp"
+    for needle in 'AX_CONFIG_PATH' 'CARGO_INCREMENTAL=0' 'RUSTC_BOOTSTRAP=1' 'M6-SELFBUILD-PASS'; do
+        grep -qF "$needle" "$_guestsh_tmp" || {
+            echo "GUESTSH extraction missing expected line: $needle" >&2
+            rm -f "$_guestsh_tmp"
+            exit 1
+        }
+    done
+    $SUDO cp "$_guestsh_tmp" /tmp/rfsmnt-m6/opt/build-starry-kernel.sh
+    rm -f "$_guestsh_tmp"
     $SUDO chmod +x /tmp/rfsmnt-m6/opt/build-starry-kernel.sh
 elif [[ "${M6_SKIP_SYNC_GUESTSH:-}" == "1" ]]; then
     echo "[+] M6_SKIP_SYNC_GUESTSH=1 — using existing /opt/build-starry-kernel.sh on disk"

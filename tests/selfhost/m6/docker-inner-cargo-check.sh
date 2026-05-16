@@ -102,7 +102,18 @@ ax-config-gen \
     "$(pwd)/make/defconfig.toml" "$PLAT_CONFIG" \
     -w "arch=\"$ARCH\"" \
     -w "platform=\"$PLAT_NAME\"" \
+    -w "plat.max-cpu-num=4" \
+    -w "plat.phys-memory-size=0x100000000" \
     -o .axconfig.toml
+if ! grep -qE '^[[:space:]]*task-stack-size[[:space:]]*=' .axconfig.toml; then
+    tmp_axcfg="$(mktemp)"
+    {
+        echo '# Stack size of each task.'
+        echo 'task-stack-size = 0x40000 # uint'
+        cat .axconfig.toml
+    } > "$tmp_axcfg"
+    mv "$tmp_axcfg" .axconfig.toml
+fi
 
 export AX_ARCH="$ARCH"
 export AX_PLATFORM="$PLAT_NAME"
