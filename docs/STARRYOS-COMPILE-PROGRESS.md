@@ -126,7 +126,41 @@ phase=starry-kernel-lib
 
 这说明编译已经从“Rust 工具链可运行”推进到“真实内核 crate 可被 cargo 调度和编译”的阶段。
 
-## 5. 编译与链接链路
+## 5. 已暴露的编译报错
+
+最新长跑最后暴露出的关键报错发生在 `ax-task` crate 编译阶段：
+
+```text
+Compiling ax-task v0.5.12 (/opt/tgoskits/os/arceos/modules/axtask)
+
+error[E0425]: cannot find value `TASK_STACK_SIZE` in crate `ax_config`
+   --> os/arceos/modules/axtask/src/run_queue.rs:490:72
+
+error[E0425]: cannot find value `TASK_STACK_SIZE` in crate `ax_config`
+   --> os/arceos/modules/axtask/src/api.rs:190:35
+
+error[E0425]: cannot find value `TASK_STACK_SIZE` in crate `ax_config`
+   --> os/arceos/modules/axtask/src/api.rs:237:65
+
+error: could not compile `ax-task` (lib) due to 3 previous errors
+[host] QEMU finished after 18383s without PASS marker
+```
+
+含义：
+
+- guest 内 cargo/rustc 已经推进到真实内核任务调度模块 `ax-task`。
+- `ax-task` 依赖 `ax_config::TASK_STACK_SIZE`。
+- 当时 rootfs 中 `os/StarryOS/.axconfig.toml` 没有导出 `task-stack-size`，导致 `ax_config` 生成结果缺少这个常量。
+
+本轮已经把这个问题纳入反馈链路修正：
+
+- rootfs 构建时若 `.axconfig.toml` 缺 `task-stack-size`，自动补 `task-stack-size = 0x40000`。
+- demo 注入旧 rootfs 时也会检查并补齐该字段。
+- `verify-m6-rootfs.sh` 会把缺失 `task-stack-size` 作为明确 preflight 问题报出。
+
+因此下一轮不需要再等到 5 小时后的 `ax-task` 阶段才发现这个配置缺失。
+
+## 6. 编译与链接链路
 
 在 guest 内，cargo 是调度器，rustc 是实际编译器：
 
@@ -165,7 +199,7 @@ starryos
 
 当前重点还在 kernel crate 编译推进；最终完整 kernel ELF 链接与 boot 验证是下一层目标。
 
-## 6. 速度与反馈链路
+## 7. 速度与反馈链路
 
 StarryOS kernel/lib 长跑约为 5 小时量级。主要原因：
 
@@ -183,8 +217,9 @@ StarryOS kernel/lib 长跑约为 5 小时量级。主要原因：
 - syscall stats 判断 cargo/rustc 是否还有系统调用活动。
 - 按 hello、onecrate、build-std、starry-kernel-lib 分层验证。
 - 准备了 `codex/quiet-rsext4-m6-logs` 降日志分支，用于下一轮减少串口刷屏。
+- `TASK_STACK_SIZE` 缺失已经前移到 rootfs 构建、demo 注入和 preflight 阶段检查。
 
-## 7. 当前结论
+## 8. 当前结论
 
 当前编译推进已完成以下阶段：
 
