@@ -103,7 +103,7 @@ mkdir -p "$WORK"
 [[ -f "$ROOTFS" ]] || { echo "rootfs not found: $ROOTFS"; exit 1; }
 [[ -f "$ELF"    ]] || { echo "kernel ELF not found: $ELF"; exit 1; }
 
-if [[ -x "$SCRIPT_DIR/verify-m6-rootfs.sh" ]]; then
+if [[ "${M6_SKIP_PREFLIGHT:-}" != "1" && -x "$SCRIPT_DIR/verify-m6-rootfs.sh" ]]; then
     echo "[+] preflight: verify-m6-rootfs.sh"
     "$SCRIPT_DIR/verify-m6-rootfs.sh" || { echo "preflight failed; fix rootfs before QEMU (see scripts/verify-m6-rootfs.sh)"; exit 1; }
 fi
@@ -182,6 +182,9 @@ P2EOF
 
 # ---------- inject /opt/run-tests.sh hook into rootfs (delegates to the
 # /opt/build-starry-kernel.sh that build-selfbuild-rootfs.sh baked in)
+if [[ "${M6_SKIP_INJECT:-}" == "1" ]]; then
+    echo "[+] M6_SKIP_INJECT=1 — using existing injected files on rootfs"
+else
 echo "[+] injecting /opt/run-tests.sh into rootfs..."
 $SUDO umount /tmp/rfsmnt-m6 2>/dev/null || true
 $SUDO mkdir -p /tmp/rfsmnt-m6
@@ -288,6 +291,7 @@ RUSTWRAP
 fi
 $SUDO umount /tmp/rfsmnt-m6
 echo "[+] inject done"
+fi # M6_SKIP_INJECT
 
 # ---------- objcopy ELF -> raw binary (qemu -kernel can take ELF directly,
 # but the existing flow uses .bin; either works on riscv64-virt)
