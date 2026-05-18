@@ -1,0 +1,31 @@
+# utc_iso elapsed_s log_bytes log_lines last_signal
+2026-05-18T06:55:07Z 60 4340 97 [M6 2026-05-18T06:54:54Z] restore cargo target checkpoint from /opt/tgoskits/.m6-checkpoints/target.tar 
+2026-05-18T06:56:07Z 121 4340 97 [M6 2026-05-18T06:54:54Z] restore cargo target checkpoint from /opt/tgoskits/.m6-checkpoints/target.tar 
+2026-05-18T06:57:09Z 183 4897 103 [M6 2026-05-18T06:57:07Z] [2] start cargo build -p starry-kernel (lib)  
+2026-05-18T06:58:09Z 243 5293 109 [M6 2026-05-18T06:57:07Z] [2] start cargo build -p starry-kernel (lib)  
+2026-05-18T06:59:09Z 303 5402 110 [M6 2026-05-18T06:58:09Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:00:10Z 364 5511 111 [M6 2026-05-18T06:59:20Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:01:11Z 425 5738 114 [M6 2026-05-18T07:00:30Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:02:13Z 487 5847 115 [M6 2026-05-18T07:01:38Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:03:13Z 547 5956 116 [M6 2026-05-18T07:03:03Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:04:13Z 607 6065 117 [M6 2026-05-18T07:04:10Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:05:14Z 668 6174 118 [M6 2026-05-18T07:05:13Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:06:15Z 729 6174 119 [M6 2026-05-18T07:06:15Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:07:17Z 790 6283 119 [M6 2026-05-18T07:06:15Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:08:16Z 850 6392 120 [M6 2026-05-18T07:07:16Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:09:17Z 911 6529 122    Compiling quote v1.0.45 
+2026-05-18T07:10:18Z 972 6638 123 [M6 2026-05-18T07:09:24Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:11:19Z 1033 6747 124 [M6 2026-05-18T07:10:30Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:12:21Z 1094 6856 125 [M6 2026-05-18T07:11:34Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:13:20Z 1154 6992 127    Compiling syn v2.0.117 
+2026-05-18T07:14:21Z 1215 7101 128 [M6 2026-05-18T07:13:40Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:15:21Z 1275 7210 129 [M6 2026-05-18T07:14:47Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:16:22Z 1336 7319 130 [M6 2026-05-18T07:15:51Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:17:23Z 1397 7428 131 [M6 2026-05-18T07:16:55Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:18:24Z 1458 7537 132 [M6 2026-05-18T07:18:00Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:19:25Z 1519 7646 133 [M6 2026-05-18T07:19:04Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:20:26Z 1580 7755 134 [M6 2026-05-18T07:20:08Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:21:27Z 1641 7864 135 [M6 2026-05-18T07:21:11Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T07:55:45Z 3698 7973 136 [M6 2026-05-18T07:22:19Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T08:00:25Z 3979 7973 136 [M6 2026-05-18T07:22:19Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T08:17:48Z 5022 8082 137 [M6 2026-05-18T07:23:29Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
