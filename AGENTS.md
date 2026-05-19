@@ -10,10 +10,12 @@ For long-running background tasks such as M6 guest builds, the user prefers auto
 
 For OS-level code changes in the `tgoskits` submodule, keep every feature branch close to the PR target baseline:
 
-- Before starting or updating a TGOSKit PR branch, fetch remotes and merge the target `origin/main` baseline into that branch. If the public target is `rcore-os/tgoskits`, also compare with `upstream/main` and record any divergence instead of silently mixing baselines.
+- The TGOSKit collaboration baseline is `dev`, not `main`. Before starting or updating a TGOSKit PR branch, fetch remotes and base the branch on the latest `origin/dev`.
+- TGOSKit PRs must target the `dev` branch. If the public target is `rcore-os/tgoskits`, also compare with `upstream/dev` and record any divergence instead of silently mixing baselines.
 - Do not submit local scripts, showtime artifacts, Docker-only workaround files, or broad repo reshuffles as OS fixes. Split PRs by OS behavior: kernel, syscall, filesystem, scheduler, synchronization, device, or test-suite behavior.
 - Use temporary worktrees for risky upstream merges or conflict exploration. Abort failed merge attempts unless the conflict resolution is intentionally completed and validated.
 - Run local validation before pushing a PR branch: `cargo fmt`, the narrow `cargo xtask clippy --package <crate>` or equivalent package check, and the relevant StarryOS/test-suit case. Documentation-only updates may use a lighter validation path.
+- Validate PR branches against `origin/dev` by checking that the branch introduces no new conflict markers. If `origin/dev` already contains unrelated historical markers, record them as baseline debt and do not mix that cleanup into an OS feature PR.
 - GitHub Actions can only run after a branch/PR is pushed. Push only after local validation is clean enough to justify CI, then wait for `gh pr checks` to report green before marking the PR ready, asking for approval, or considering it done.
 - PR titles use Conventional Commits in English. PR bodies are written in Chinese and must cover problem/root cause, fix summary, why each changed area is used, test-suite evidence, and remaining risk.
 - Keep local PR tracking up to date. Merged or approved PRs go under `success-pr/`; active or blocked PRs are tracked in `success-pr/PR-TRACKING.md` with branch, status, CI state, tests, and next action.

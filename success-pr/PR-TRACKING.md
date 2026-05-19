@@ -4,10 +4,24 @@
 
 ## Workflow
 
-- 基线：OS 代码分支在提交 PR 前先合入目标 `origin/main`；面向 `rcore-os/tgoskits` 时同步检查 `upstream/main`。
+- 基线：OS 代码分支提交 PR 前以 `dev` 为目标分支；本地先对齐最新 `origin/dev`，面向 `rcore-os/tgoskits` 时同步检查 `upstream/dev`。
 - 提交：本地格式化、clippy/构建、相关 test-suite 通过后再 push 触发 GitHub Actions。
 - 合入：Actions 全绿后再标记 ready、请求 review 或让用户批准。
 - 文档：每个 PR 保留问题、修复、测试、CI 状态和下一步；合入后生成 `success-pr/pr-<number>.txt`。
+- 检查：PR 分支不能相对 `origin/dev` 新增冲突标记；如果 `origin/dev` 自身已有历史标记，作为基线债记录，不混入 OS 功能 PR。
+
+## Dev Baseline Correction
+
+2026-05-19 用户确认 TGOSKit PR 目标应为 `dev`，不是 `main`。已停止把 `main` 作为功能 PR 基线的整理方式。
+
+- `origin/dev = abbb705e6`
+- `upstream/dev = 19e43af91`
+- `origin/dev...upstream/dev = 43 / 1752`
+- `git cherry upstream/dev origin/dev`：42 个非 merge patch 全部为 `-`，说明 fork dev 的功能补丁已被公共 dev 等价吸收，但 fork dev 分支拓扑仍明显落后。
+- 已创建并推送 `sync/dev-live` 到 `yks23/tgoskits`，当前镜像 `origin/dev@abbb705e6`。
+- 基线债：`origin/dev` 本身的 `docs/tgoskits-dependency.md` 含历史 conflict marker；后续 OS PR 只检查“不新增 marker”，不把该文档清理混入内核功能 PR。
+
+后续策略：如果 PR 提到 fork 内部，以 `origin/dev` 切分支；如果 PR 提到 `rcore-os/tgoskits`，仍以 base branch `dev` 提交，并在功能分支上对齐公共目标 `upstream/dev`，避免把旧 fork dev 的大面积结构差异带进 PR。
 
 ## Upstream Merge Probe
 
@@ -39,6 +53,7 @@
 
 | Branch | Base | Merged | Result | Purpose |
 | --- | --- | --- | --- | --- |
+| `sync/dev-live` | `origin/dev@abbb705e6` | none | pushed to `yks23/tgoskits`; mirrors current fork dev | Rolling dev-baseline branch for PR preparation after the baseline correction. Not a feature PR. |
 | `sync/dev-main-20260519` | `origin/dev@abbb705e6` | `upstream/main@11ffb5585` | pushed to `yks23/tgoskits`; merge commit `dfb8eaaac`; no unresolved conflicts | Bridge branch for inspecting/syncing old fork dev with public main. Not suitable as a normal OS feature PR because the remaining diff is broad: 123 files, mainly `drivers/`, `test-suit/`, `components/`, and `scripts/`. |
 
 ## Active PRs
