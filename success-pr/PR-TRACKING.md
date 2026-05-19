@@ -35,6 +35,12 @@
 
 结论：不要从 `origin/dev` 整体开 PR。需要提交时，从 `upstream/dev` 或 `upstream/main` 新建干净功能分支，只 cherry-pick 单个 OS 行为修复和对应 test-suite。
 
+## Sync Branches
+
+| Branch | Base | Merged | Result | Purpose |
+| --- | --- | --- | --- | --- |
+| `sync/dev-main-20260519` | `origin/dev@abbb705e6` | `upstream/main@11ffb5585` | pushed to `yks23/tgoskits`; merge commit `dfb8eaaac`; no unresolved conflicts | Bridge branch for inspecting/syncing old fork dev with public main. Not suitable as a normal OS feature PR because the remaining diff is broad: 123 files, mainly `drivers/`, `test-suit/`, `components/`, and `scripts/`. |
+
 ## Active PRs
 
 | PR | Topic | Branch | CI state | Local evidence | Next action |
