@@ -274,6 +274,83 @@ Interpretation:
   concrete OS/kernel memory or scheduling fault under `SMP=4 + jobs=2`
   pressure.
 
+## 2026-05-19 v23-v28 SMP4 jobs=2 full-pressure line
+
+Command shape:
+
+```text
+M6_QEMU_SMP=4 M6_TCG_THREAD=single CARGO_BUILD_JOBS=2 RAYON_NUM_THREADS=2 M6_FAST_FEEDBACK=1
+```
+
+Purpose:
+
+- Continue from a clean upstream-dev-based TGOSKit worktree.
+- Keep QEMU in `tcg,thread=single` for correctness, so any failure is more
+  likely a StarryOS kernel issue than QEMU MTTCG LR/SC emulation.
+- Reuse checkpointed rootfs state for a short feedback loop, then change only
+  the kernel between diagnostic runs.
+
+Evidence files:
+
+```text
+showtime/multi-cpu/logs/m6-smp4-threadsingle-j2-clean-upstream-v26-resched-if-needed.log
+showtime/multi-cpu/logs/m6-smp4-threadsingle-j2-clean-upstream-v27-mutex-caller.log
+showtime/multi-cpu/logs/m6-smp4-threadsingle-j2-clean-upstream-v28-mutex-unlock-competitive.log
+```
+
+High-signal sequence:
+
+1. v23 reached userland but hit a `kernel task` panic in a user-thread-only
+   path.
+2. procfs/wait accounting was made tolerant of kernel tasks by using
+   `try_as_thread()`.
+3. v26 used `ax_task::resched_if_needed()` instead of unconditional timer
+   `yield_now()` and reached `quote v1.0.45`, then panicked in `RawMutex`.
+4. v27 added `track_caller` to `RawMutex` and identified the caller:
+
+```text
+Thread(76) tried to acquire mutex it already owns at os/StarryOS/kernel/src/task/user.rs:38:52
+```
+
+5. The call site is the user page-fault path acquiring the process address-space
+   mutex.
+6. v28 changed `RawMutex::unlock()` from direct owner handoff to conservative
+   unlock-then-wake:
+
+```text
+owner_id.store(0, Release)
+notify_one(true)
+```
+
+Live result:
+
+- v28 has passed the v27 failure point.
+- It completed the `quote` build-script, entered `quote` rustc, and continued
+  into `syn v2.0.117`.
+- It then continued through later bare-metal/kernel dependency phases including
+  `compiler_builtins`, `alloc`, `ax-kspin`, `ax-config-gen`,
+  `critical-section`, `riscv-types`, `embedded-hal`, and `riscv v0.16.0`.
+- It later reached `ax-percpu`, `heapless`, `toml`, `ax-allocator`,
+  `ax-hal`, `ax-plat`, `ax-page-table-multiarch`, `darling_core`, and
+  `futures-util`.
+- At the latest observation (`2026-05-19 19:53 CST`), Docker still had the
+  v28 container up, QEMU was using about one host CPU, and memory usage was
+  about 4.8 GiB.
+- However, the guest serial log stopped growing after the heartbeat at
+  `2026-05-19T10:12:57Z`; the progress monitor still reports the same
+  `log_bytes=500192` and `log_lines=3041` at elapsed `13986s`.
+- The run is still being monitored; this is not a full PASS claim yet. If no
+  new serial bytes arrive before the stall threshold, treat this as the next
+  OS responsiveness/scheduler feedback issue rather than as a Docker build
+  success.
+
+Interpretation:
+
+- The current leading root cause is `RawMutex` owner handoff under SMP
+  contention, not a Docker/script issue.
+- The smaller OS regression should stress blocking mutex wakeup plus page-fault
+  allocation or address-space locking.
+
 ## 当前产物位置
 
 尚未复制到 showtime artifact 目录。实验产物仍在：
@@ -285,7 +362,8 @@ Interpretation:
 
 - 多轮 benchmark。
 - M6 级别 guest cargo build 的稳定加速验证；当前 `SMP=4 + thread=single + jobs=2`
-  在早期 kernel-lib 编译中触发 StoreFault，需要继续缩小成 OS regression。
+  已经越过 v27 的 `quote` mutex panic，并推进到 `riscv v0.16.0` 一带，v28
+  仍在运行中。
 - 对每个 kernel fix 单独拆测例。
 - 判断哪些实验改动适合 PR。
 - 在 host Linux 和 guest Starry QEMU 两种环境分别跑完整日志。

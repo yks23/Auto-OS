@@ -30,10 +30,10 @@
 
 | PR | 类型 | 状态 | 下一步 |
 | --- | --- | --- | --- |
-| #692 | robust futex cleanup | 新提交已触发 CI | 等 CI 完成 |
-| #693 | vfork/clone behavior | 代码侧暂无新问题 | 需要有权限者 rerun CI |
-| #694 | IPv4-mapped IPv6 socket | 代码侧暂无新问题 | 需要有权限者 rerun CI |
-| #695 | rsext4 inode bitmap | CI 绿 | 等 review/merge |
+| #692 | robust futex cleanup | OPEN/CLEAN，CI 绿 | 可请求 review/合入 |
+| #693 | vfork/clone behavior | OPEN/UNSTABLE，board job 失败且多项 container check cancelled | 看 aarch64 board 失败日志；必要时另拆 FS/exit cleanup 修复 |
+| #694 | IPv4-mapped IPv6 socket | MERGED，CI 绿 | 已归档到 `success-pr/pr-694.txt` |
+| #695 | rsext4 inode bitmap | MERGED，CI 绿 | 已归档到 `success-pr/pr-695.txt` |
 
 ## 新 PR 候选
 

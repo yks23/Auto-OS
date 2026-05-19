@@ -1,0 +1,5 @@
+PR #695
+title: fix(rsext4): reuse uninit inode bitmaps
+mergedAt: 2026-05-18T09:17:54Z
+url: https://github.com/rcore-os/tgoskits/pull/695
+archivedAt: 2026-05-18T12:59:25Z

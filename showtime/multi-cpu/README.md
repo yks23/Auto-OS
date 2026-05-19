@@ -7,13 +7,15 @@
 ## 当前已知进展
 
 - target: `riscv64-qemu-virt`
-- QEMU mode tested: `-smp 4 -accel tcg,thread=multi`
-- workload: 小型 hello-world cargo workspace
-- observed result:
+- speed signal workload: 小型 hello-world cargo workspace
+- speed signal QEMU mode: `-smp 4 -accel tcg,thread=multi`
+- observed speed result:
   - `-j1`: 约 176s
   - `-j4`: 约 62s
   - speedup: 约 2.8x
-- status: 有加速信号，但样本数还少，需要重复跑和更重 workload 验证。
+- correctness workload: M6 guest self-build early kernel-lib stage
+- correctness QEMU mode: `-smp 4 -accel tcg,thread=single`
+- latest status: `jobs=2` 已经越过 v27 在 `quote v1.0.45` 触发的 mutex 自重入 panic；v28 继续推进到 `ax-hal`、`ax-plat`、`futures-util` 等后续依赖。QEMU 仍在运行且占用约 1 个宿主 CPU，但 guest 串口日志自 `2026-05-19T10:12:57Z` 起没有新行，尚未宣称 full PASS。
 
 ## 当前实验性 kernel changes
 
@@ -23,6 +25,10 @@
   - 支持 `FUTEX_PRIVATE_FLAG`
 - `os/arceos/modules/axsync/src/mutex.rs`
   - mutex unlock 从 owner handoff 改成先 store 0 再 notify_one
+- `os/arceos/modules/axtask/src/api.rs`
+  - 暴露 `resched_if_needed()`，让用户态 timer interrupt 只在 `need_resched` 置位时做调度
+- `os/StarryOS/kernel/src/pseudofs/proc.rs`
+  - `/proc` 遍历时跳过 kernel task，避免把 StarryOS user thread context 强行套到 GC/migration task 上
 
 已构建过的 SMP4 kernel 路径：
 
