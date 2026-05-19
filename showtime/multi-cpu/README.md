@@ -58,4 +58,5 @@ RISC-V QEMU TCG 的 MTTCG 下存在 LR/SC reservation 建模问题，可能让 g
 
 如果要测试“StarryOS guest 内并发编译 StarryOS”，按这份方案推进：
 
+- `docs/true-acceleration-readiness.md`
 - `docs/starryos-concurrent-selfbuild.md`
