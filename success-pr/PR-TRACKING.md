@@ -23,11 +23,23 @@
 
 结论：当前不应该做“整体 merge main”式 PR；后续 PR 仍按 OS 功能切分，在每个功能分支上小范围合目标基线并解决相关冲突。
 
+## Dev vs Main Comparison
+
+2026-05-19 再次 fetch `upstream/main`、`upstream/dev`、`origin/main`、`origin/dev` 后：
+
+- `upstream/main = 11ffb5585`
+- `upstream/dev = 19e43af91`
+- `origin/dev = abbb705e6`
+- `origin/dev` 相对 `upstream/main` 有 43 个 commit 不同名提交，其中 42 个非 merge patch 在 `git cherry upstream/main origin/dev` 中全部为 `-`，说明 patch 内容已被上游 main 等价吸收。
+- 直接做 `origin/dev -> upstream/main` 的 tree diff 会显示约 2974 个文件变化，这是因为 fork dev 很旧且 upstream main 结构迁移很多，不代表还有 2974 个本地功能需要 PR。
+
+结论：不要从 `origin/dev` 整体开 PR。需要提交时，从 `upstream/dev` 或 `upstream/main` 新建干净功能分支，只 cherry-pick 单个 OS 行为修复和对应 test-suite。
+
 ## Active PRs
 
 | PR | Topic | Branch | CI state | Local evidence | Next action |
 | --- | --- | --- | --- | --- | --- |
-| #692 | robust futex cleanup | `fix/starry-robust-futex-cleanup` | OPEN/CLEAN；container 与 required host checks 绿，skipped 为矩阵限制 | `test-futex-robust-list` | 可请求 review/合入；继续观察是否有人工 review 要求 |
+| #692 | robust futex cleanup | `fix/starry-robust-futex-cleanup` | 已在 fetched `upstream/dev` 观察到 `7119a62fe ... (#692)`；尚未出现在 `upstream/main` | `test-futex-robust-list` | 不再从 fork dev 整体提交；等待上游 dev->main 或按 main 单独 cherry-pick 需求处理 |
 | #693 | vfork child-stack clone | `fix/starry-vfork-posix-spawn` | OPEN/UNSTABLE；多项 container check cancelled，board job 失败 | `test-vfork` | 失败点在 aarch64 board：`dash` SIGSEGV 后 `axfs-ng::HighLevelFile::sync` 在 atomic context 锁 page cache；需判断是否已有上游修复或另拆 FS/exit cleanup 修复 |
 
 ## Merged Or Approved Archive
