@@ -45,7 +45,7 @@
 
 | Candidate | Area | Status | Required test evidence |
 | --- | --- | --- | --- |
-| mutex unlock ordering | `axsync::Mutex` / SMP scheduler path | v28 guest build passed the old `quote` mutex self-owner panic and reached later kernel deps; QEMU alive but serial log currently stalled in `starry-kernel-lib` | SMP lock stress plus M6 guest cargo log without mutex self-owner panic; if v28 stalls out, extract a responsiveness/scheduler regression |
+| mutex unlock ordering | `axsync::Mutex` / SMP scheduler path | v28 guest build passed the old `quote` mutex self-owner panic and reached later kernel deps; final result was no PASS/no crash, then serial-log stall in `starry-kernel-lib` | SMP lock stress plus M6 guest cargo log without mutex self-owner panic; extract a separate responsiveness/scheduler regression for long CPU-bound guest rustc phases |
 | FUTEX_PRIVATE_FLAG | StarryOS futex syscall | private worktree experiment exists | private/shared futex wait-wake and pthread smoke |
 | SMP guest cargo build regression | StarryOS test-suite | not yet extracted | small parallel cargo workload under `qemu-smp4` |
 | checkpoint tar readback | filesystem regression | candidate only | tar/readback/hash minimal FS test |

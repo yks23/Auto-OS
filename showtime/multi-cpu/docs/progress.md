@@ -333,23 +333,23 @@ Live result:
 - It later reached `ax-percpu`, `heapless`, `toml`, `ax-allocator`,
   `ax-hal`, `ax-plat`, `ax-page-table-multiarch`, `darling_core`, and
   `futures-util`.
-- At the latest observation (`2026-05-19 19:53 CST`), Docker still had the
-  v28 container up, QEMU was using about one host CPU, and memory usage was
-  about 4.8 GiB.
-- However, the guest serial log stopped growing after the heartbeat at
-  `2026-05-19T10:12:57Z`; the progress monitor still reports the same
-  `log_bytes=500192` and `log_lines=3041` at elapsed `13986s`.
-- The run is still being monitored; this is not a full PASS claim yet. If no
-  new serial bytes arrive before the stall threshold, treat this as the next
-  OS responsiveness/scheduler feedback issue rather than as a Docker build
-  success.
+- The guest serial log then stopped growing after the heartbeat at
+  `2026-05-19T10:12:57Z`; the progress monitor still reported the same
+  `log_bytes=500192` and `log_lines=3041` up to elapsed `15390s`.
+- The container exited at about `2026-05-19T12:17Z` after the stall detector
+  boundary. The captured guest serial log contains no `===M6-SELFBUILD-PASS===`
+  marker, no kernel panic/trap, and no Rust compile error.
+- Final v28 result: **no PASS, no visible crash, serial-log stall during a
+  long `futures-util`/`starry-kernel-lib` rustc phase**.
 
 Interpretation:
 
-- The current leading root cause is `RawMutex` owner handoff under SMP
-  contention, not a Docker/script issue.
-- The smaller OS regression should stress blocking mutex wakeup plus page-fault
-  allocation or address-space locking.
+- The `RawMutex` unlock-before-wake experiment is still meaningful because it
+  passed the earlier self-owner panic point.
+- The next smaller OS regression should focus on guest progress under
+  `SMP=4 + jobs=2`: timer/preemption responsiveness while long CPU-bound
+  rustc processes run, plus blocking mutex wakeup and address-space/page-fault
+  locking under parallel user tasks.
 
 ## 当前产物位置
 
@@ -362,8 +362,8 @@ Interpretation:
 
 - 多轮 benchmark。
 - M6 级别 guest cargo build 的稳定加速验证；当前 `SMP=4 + thread=single + jobs=2`
-  已经越过 v27 的 `quote` mutex panic，并推进到 `riscv v0.16.0` 一带，v28
-  仍在运行中。
+  已经越过 v27 的 `quote` mutex panic，并推进到 `futures-util` 一带，但 v28
+  最终因为串口日志长时间不增长而退出，没有 full PASS。
 - 对每个 kernel fix 单独拆测例。
 - 判断哪些实验改动适合 PR。
 - 在 host Linux 和 guest Starry QEMU 两种环境分别跑完整日志。

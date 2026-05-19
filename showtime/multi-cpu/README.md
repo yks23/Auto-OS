@@ -15,7 +15,7 @@
   - speedup: 约 2.8x
 - correctness workload: M6 guest self-build early kernel-lib stage
 - correctness QEMU mode: `-smp 4 -accel tcg,thread=single`
-- latest status: `jobs=2` 已经越过 v27 在 `quote v1.0.45` 触发的 mutex 自重入 panic；v28 继续推进到 `ax-hal`、`ax-plat`、`futures-util` 等后续依赖。QEMU 仍在运行且占用约 1 个宿主 CPU，但 guest 串口日志自 `2026-05-19T10:12:57Z` 起没有新行，尚未宣称 full PASS。
+- latest status: `jobs=2` 已经越过 v27 在 `quote v1.0.45` 触发的 mutex 自重入 panic；v28 继续推进到 `ax-hal`、`ax-plat`、`futures-util` 等后续依赖。最终没有 full PASS，容器在串口日志长时间不增长后退出；日志中没有捕获 panic/trap/Rust compile error。
 
 ## 当前实验性 kernel changes
 
