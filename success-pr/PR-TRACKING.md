@@ -62,6 +62,7 @@
 | --- | --- | --- | --- | --- | --- |
 | #692 | robust futex cleanup | `fix/starry-robust-futex-cleanup` | 已在 fetched `upstream/dev` 观察到 `7119a62fe ... (#692)`；尚未出现在 `upstream/main` | `test-futex-robust-list` | 不再从 fork dev 整体提交；等待上游 dev->main 或按 main 单独 cherry-pick 需求处理 |
 | #693 | vfork child-stack clone | `fix/starry-vfork-posix-spawn` | OPEN/UNSTABLE；多项 container check cancelled，board job 失败 | `test-vfork` | 失败点在 aarch64 board：`dash` SIGSEGV 后 `axfs-ng::HighLevelFile::sync` 在 atomic context 锁 page cache；需判断是否已有上游修复或另拆 FS/exit cleanup 修复 |
+| TBD | StarryOS SMP cargo build progress | `fix/starry-smp-cargo-build` @ `44f0fd9d5` | 本地已提交；push 被当前 DNS 阻断：`Could not resolve host: github.com` | `cargo fmt --check`; `git diff --check`; Docker direct `cargo build -p starryos --target riscv64gc-unknown-none-elf --features ax-feat/defplat,ax-feat/smp,qemu --release` 2m27s PASS; manual QEMU smoke: `smp = 4`, `online cpus: 4`, `TEST PASSED`, `===SMP-HEARTBEAT-RC:0===` | 网络恢复后 `git push -u origin fix/starry-smp-cargo-build`，再开 base `dev` PR 并等 Actions |
 
 ## Merged Or Approved Archive
 
@@ -80,5 +81,5 @@
 | --- | --- | --- | --- |
 | mutex unlock ordering | `axsync::Mutex` / SMP scheduler path | v28 guest build passed the old `quote` mutex self-owner panic and reached later kernel deps; final result was no PASS/no crash, then serial-log stall in `starry-kernel-lib` | SMP lock stress plus M6 guest cargo log without mutex self-owner panic; extract a separate responsiveness/scheduler regression for long CPU-bound guest rustc phases |
 | FUTEX_PRIVATE_FLAG | StarryOS futex syscall | private worktree experiment exists | private/shared futex wait-wake and pthread smoke |
-| SMP guest cargo build regression | StarryOS test-suite | not yet extracted | small parallel cargo workload under `qemu-smp4` |
+| SMP guest cargo build regression | StarryOS test-suite | extracted as `test-smp-heartbeat` in `fix/starry-smp-cargo-build`; branch commit `44f0fd9d5` | StarryOS heartbeat userland progress under `qemu-riscv64 -smp 4 -accel tcg,thread=single`; next step is CI test runner after push |
 | checkpoint tar readback | filesystem regression | candidate only | tar/readback/hash minimal FS test |
