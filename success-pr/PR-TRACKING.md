@@ -17,11 +17,22 @@
 - `origin/dev = abbb705e6`
 - `upstream/dev = 19e43af91`
 - `origin/dev...upstream/dev = 43 / 1752`
+- `merge-base(origin/dev, upstream/dev) = 2dad8b394`
 - `git cherry upstream/dev origin/dev`：42 个非 merge patch 全部为 `-`，说明 fork dev 的功能补丁已被公共 dev 等价吸收，但 fork dev 分支拓扑仍明显落后。
 - 已创建并推送 `sync/dev-live` 到 `yks23/tgoskits`，当前镜像 `origin/dev@abbb705e6`。
 - 基线债：`origin/dev` 本身的 `docs/tgoskits-dependency.md` 含历史 conflict marker；后续 OS PR 只检查“不新增 marker”，不把该文档清理混入内核功能 PR。
 
 后续策略：如果 PR 提到 fork 内部，以 `origin/dev` 切分支；如果 PR 提到 `rcore-os/tgoskits`，仍以 base branch `dev` 提交，并在功能分支上对齐公共目标 `upstream/dev`，避免把旧 fork dev 的大面积结构差异带进 PR。
+
+### Daily Sync Log
+
+2026-05-20
+
+- fetch：已更新本地引用（`origin` / `upstream`）
+- `origin/dev = abbb705e6`
+- `upstream/dev = 19e43af91`
+- `sync/dev-live = abbb705e6`（push: up-to-date）
+- `origin/dev...upstream/dev = 43 / 1752`（未变化）
 
 ## Upstream Merge Probe
 
