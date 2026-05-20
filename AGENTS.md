@@ -6,6 +6,15 @@ The user is the StarryOS / Auto-OS project developer and is comfortable with RIS
 
 For long-running background tasks such as M6 guest builds, the user prefers automatic monitoring or periodic follow-up. When asked to publish changes, the usual target branch is `dev`.
 
+## Execution Rules for M6 and OS Bugs
+
+- The main delivery goal is a reproducible StarryOS M6 self-build result: StarryOS building StarryOS inside the guest, preferably with SMP/multi-job cargo enabled when correctness permits.
+- If an OS-level bug is found while chasing M6 or multi-core compilation, immediately try to turn it into a TGOSKit PR-quality fix: root cause, minimal OS code patch, focused test-suit case, local validation notes, and PR body. Do not leave confirmed OS bugs only as showtime notes.
+- If the feedback loop for a run exceeds 2 hours, stop treating the long run as the primary diagnostic. First shorten the loop by using a smaller repro, resume/cache, lower logs, a smaller cargo target, host-side preflight, or direct host QEMU instead of Docker when that removes avoidable overhead.
+- If no concrete bug/root cause is visible, add logging or progress markers before rerunning the long path. Prefer high-signal logs: phase, heartbeat, current crate/process, syscall counters, panic/trap PC, guest exit status, and PASS/FAIL markers.
+- Use subagents when useful, but keep the critical path local. Good splits are: one agent monitors logs and extracts high-signal status, one agent prepares report/PR evidence, and the main agent fixes the immediate blocker or runs the next validation.
+- For reports, distinguish clearly between: confirmed OS fixes, experiment/infrastructure changes, QEMU/TCG limitations, and remaining blockers.
+
 ## TGOSKit Upstream and PR Workflow
 
 For OS-level code changes in the `tgoskits` submodule, keep every feature branch close to the PR target baseline:

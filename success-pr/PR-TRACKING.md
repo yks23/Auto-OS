@@ -26,6 +26,14 @@
 
 ### Daily Sync Log
 
+2026-05-21
+
+- fetch：已更新本地引用（`origin` / `upstream`）
+- `origin/dev = abbb705e6`
+- `upstream/dev = bfd78b7de`
+- `origin/dev...upstream/dev = 43 / 1767`
+- 规则执行记录：`ppoll` 用户缓冲区 race 已按 OS bug PR 候选检查；上游 `dev` 已包含 `8d5eb20d4 fix(starry): copy ppoll fds before blocking`，并已有 `test-suit/starryos/normal/qemu-smp1/bugfix/bug-poll-wait-user-buffer-race`，因此不重复提交本地旧候选分支。
+
 2026-05-20
 
 - fetch：已更新本地引用（`origin` / `upstream`）
@@ -73,7 +81,11 @@
 | --- | --- | --- | --- | --- | --- |
 | #692 | robust futex cleanup | `fix/starry-robust-futex-cleanup` | 已在 fetched `upstream/dev` 观察到 `7119a62fe ... (#692)`；尚未出现在 `upstream/main` | `test-futex-robust-list` | 不再从 fork dev 整体提交；等待上游 dev->main 或按 main 单独 cherry-pick 需求处理 |
 | #693 | vfork child-stack clone | `fix/starry-vfork-posix-spawn` | OPEN/UNSTABLE；多项 container check cancelled，board job 失败 | `test-vfork` | 失败点在 aarch64 board：`dash` SIGSEGV 后 `axfs-ng::HighLevelFile::sync` 在 atomic context 锁 page cache；需判断是否已有上游修复或另拆 FS/exit cleanup 修复 |
+| #800 | direct device full transfer | `fix/dev-zero-full-transfer` @ `6b109364a` | PR created; checks not reported yet | `cargo fmt --check`; `git diff --check`; C syntax check; Docker `cargo check -p ax-fs-ng --target riscv64gc-unknown-none-elf --release`; StarryOS `test-dev-zero-full-transfer` PASS; direct `dd & dd & wait` PASS | 等 GitHub Actions 触发并变绿；若 CI 不自动触发，手动 rerun 或检查 workflow 条件 |
 | TBD | StarryOS SMP cargo build progress | `fix/starry-smp-cargo-build` @ `44f0fd9d5` | 本地已提交；push 被当前 DNS 阻断：`Could not resolve host: github.com` | `cargo fmt --check`; `git diff --check`; Docker direct `cargo build -p starryos --target riscv64gc-unknown-none-elf --features ax-feat/defplat,ax-feat/smp,qemu --release` 2m27s PASS; manual QEMU smoke: `smp = 4`, `online cpus: 4`, `TEST PASSED`, `===SMP-HEARTBEAT-RC:0===` | 网络恢复后 `git push -u origin fix/starry-smp-cargo-build`，再开 base `dev` PR 并等 Actions |
+| TBD | RISC-V hwprobe compatibility | `fix/riscv-hwprobe-compat` @ `b212d8cd9` | pushed to `yks23/tgoskits`; draft PR create blocked by `api.github.com` connection failure | `cargo fmt --check` PASS; `git diff --check` PASS; C syntax smoke PASS with macOS syscall deprecation warning disabled; test covers normal keys, unknown key, unsupported flags, explicit CPU set/count, and bad pointer; `cargo xtask clippy --package starry-kernel` runs but is blocked by baseline/host issues in `axcpu/src/uspace_common.rs` and macOS `ax-percpu` symbol macros; full RISC-V `cargo check` still blocked by local lwext4 RISC-V musl toolchain/Docker API issue | 网络恢复后运行 `gh pr create --repo rcore-os/tgoskits --head yks23:fix/riscv-hwprobe-compat --base dev --draft`；CI/Linux 工具链继续跑 `cargo check` 和 `test_riscv_hwprobe` |
+| TBD | SMP CPU topology exposure | `fix/starry-cpu-topology` @ `ed6991269` | 本地已提交；push 被 DNS 阻断：`Could not resolve host: github.com` | `cargo fmt`; `git diff --check`; host C syntax smoke for `test-suit/starryos/normal/cpu-topology`; full qemu test blocked locally by rootfs/toolchain/DNS constraints | 网络恢复后 `git push -u fork fix/starry-cpu-topology`，再开 base `dev` draft PR 并等 Actions/test-suite |
+| TBD | user-copy cold page prepopulate | `fix/starry-usercopy-cold-page` @ `86d6d47c9` | pushed to `yks23/tgoskits`; draft PR create blocked by `api.github.com` connection failure | `cargo fmt`; `cargo fmt --check`; `git diff --check upstream/dev`; host C syntax smoke PASS; added StarryOS bugfix case `/usr/bin/bug-usercopy-cold-page` for RISC-V grouped tests; `cargo test -p axbuild ...` and `cargo xtask ... -l` blocked by crates.io DNS/slow transfer; Docker fallback blocked by Docker API 500 | 网络恢复后运行 `gh pr create --repo rcore-os/tgoskits --head yks23:fix/starry-usercopy-cold-page --base dev --draft`；CI/Linux 环境补跑完整 StarryOS bugfix group |
 
 ## Merged Or Approved Archive
 
@@ -81,6 +93,7 @@
 | --- | --- | --- |
 | #694 | IPv4-mapped IPv6 socket | `success-pr/pr-694.txt` |
 | #695 | rsext4 inode bitmap | `success-pr/pr-695.txt` |
+| upstream dev | poll/ppoll user-buffer race | `8d5eb20d4 fix(starry): copy ppoll fds before blocking`; includes `bug-poll-wait-user-buffer-race` test-suite |
 | #255 | archived upstream PR | `success-pr/pr-255.txt` |
 | #203 | archived upstream PR | `success-pr/pr-203.txt` |
 | #201 | archived upstream PR | `success-pr/pr-201.txt` |
@@ -94,3 +107,7 @@
 | FUTEX_PRIVATE_FLAG | StarryOS futex syscall | private worktree experiment exists | private/shared futex wait-wake and pthread smoke |
 | SMP guest cargo build regression | StarryOS test-suite | extracted as `test-smp-heartbeat` in `fix/starry-smp-cargo-build`; branch commit `44f0fd9d5` | StarryOS heartbeat userland progress under `qemu-riscv64 -smp 4 -accel tcg,thread=single`; next step is CI test runner after push |
 | checkpoint tar readback | filesystem regression | candidate only | tar/readback/hash minimal FS test |
+| riscv_hwprobe ENOSYS noise | StarryOS syscall ABI | conservative implementation prepared on `fix/riscv-hwprobe-compat`; not an M6 correctness blocker | `test_riscv_hwprobe`: syscall 258 normal keys, unknown key, invalid flags, bad pointer |
+| RawMutex wait in atomic context | `axsync::Mutex` caller path under SMP cargo build | `resume3` reached `ax-percpu`/`ax-percpu-macros` then failed at `os/arceos/modules/axsync/src/mutex.rs:78:26`: contended mutex tried to enter `WaitQueue::wait_until()` with `irq_enabled=false`; diagnostic kernel is being rebuilt to print the outer lock caller | rerun from the fsck-clean rootfs with caller-aware RawMutex diagnostic; after caller is known, split the real OS fix and add a focused test-suit case |
+| SMP CPU topology mismatch | StarryOS procfs/sysfs/sysconf/affinity | committed as `ed6991269 fix(starry): expose SMP CPU topology to user space`; push blocked by DNS | qemu smp4 test should prove sysconf, `/proc/cpuinfo`, `/proc/stat`, `/sys/devices/system/cpu/online`, and affinity round-trip |
+| user-copy cold page fault | StarryOS user memory access | branch `fix/starry-usercopy-cold-page` pre-populates user slices before no-fault copy so cold anonymous output pages do not enter the IRQ-off page-fault path | `bug-usercopy-cold-page`: `getcwd` and `read` write into untouched anonymous pages |
