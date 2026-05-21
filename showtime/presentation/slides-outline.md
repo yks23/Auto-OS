@@ -147,15 +147,24 @@ showtime/single-cpu/logs/m6-selfbuild-guest-pass.log
 | --- | --- | --- |
 | hello-world `-smp 1`, `-j1` | 约 176s | pass |
 | hello-world `-smp 4`, `-j4` | 约 62s | 约 2.8x speedup |
+| raw CPU `-smp 4`, `thread=single` | 4/8 workers: 0.90s / 1.01s | correctness baseline pass |
+| raw CPU `-smp 4`, `thread=multi` | 4/8 workers: 0.33s / 0.32s | 约 2.76x / 3.17x speedup |
+| 8 核启动 `-smp 8 -m 4G` | 约 5s 到 userland | `smp = 8`，`TEST PASSED` |
+| 8 核 `-m 6G` | 早期 boot | bitmap allocator `CAP=1048576 pages`，需要 `1572864 pages` |
 | M6 v20 `SMP=4`, `jobs=2`, subset | 几分钟 | `===M6-SELFBUILD-SUBSET-PASS===` |
 | M6 v21 `SMP=4`, `jobs=2`, full early pressure | 到 `syn v2.0.117` | 无 panic/SIGSEGV，但 heartbeat 后续消失，触发 stall |
 | M6 v22 `SMP=4`, `jobs=2`, `starry-kernel/smp` | 到 `syn v1.0.109` 后 StoreFault | 早期 kernel-lib 阶段已覆盖 SMP feature，并暴露具体内核 fault |
+| M6 v27 `SMP=4`, `jobs=2`, mutex caller | 到 `quote v1.0.45` | 定位 `RawMutex` 自重入 caller: `task/user.rs:38` |
+| M6 v28 `SMP=4`, `jobs=2`, unlock-then-wake | 已越过 `quote`，进入 `syn v2.0.117` | 修正 owner handoff 后继续推进，仍在验证 |
+| M6 `-smp 8`, MTTCG, `jobs=4`, tmpfs target | 进入 `starry-kernel-lib` | `compiler_builtins` build script `Exec format error`，转为 tmpfs regression |
+| M6 `-smp 8`, MTTCG, `jobs=4`, ext4 target | 已越过 tmpfs 早期失败点 | 当前主线，继续验证完整 cargo selfbuild |
 
 结论：
 
 - 小 workload 已有速度收益。
-- M6 full 还没有宣称最终 pass；当前成果是把 OS 层问题边界定位清楚了。
-- jobs=2 真实压力暴露了后续要拆的调度、响应性和内存/页表类问题。
+- raw syscall CPU benchmark 已排除 libc/cargo 变量，证明 MTTCG 有真实并行收益，但当前最好约 3.17x，还没有稳定达到 4x。
+- 8 核启动已经验证；6G 失败是 allocator 容量上限，不是 secondary HART bring-up 失败。
+- M6 full 还没有宣称最终 pass；当前成果是把 OS 层问题边界定位到 futex、allocator、tmpfs rename/readback/exec 这些内核路径。
 
 ## 10. 多核暴露的内核实现问题
 
@@ -172,6 +181,17 @@ showtime/single-cpu/logs/m6-selfbuild-guest-pass.log
 - run queue 负载:
   - 增加每 CPU run queue load 统计。
   - 非 pinned 的 kernel task 可以按负载分配，用户任务先保持亲和性。
+- mutex handoff:
+  - 现象：v27 在 `quote` 阶段报 `Thread(76) tried to acquire mutex it already owns at task/user.rs:38`。
+  - 原因假设：unlock 时直接把 owner 写给 waiter，SMP 竞争下会出现 owner 指向等待者但等待者还没真正持锁的中间状态。
+  - 修正：unlock 先清 `owner_id`，再 `notify_one`，让 waiter 重新 CAS 抢锁。
+- futex wait:
+  - 现象：8 核 cargo smoke 里 `FUTEX_WAIT` 在 wait queue 锁内读用户 futex word，触发 `prepare_user_memory will lock aspace in atomic context`。
+  - 原因：锁内 recheck 用普通 `vm_read()`，可能 fault/populate 用户页并拿 aspace mutex。
+  - 修正：锁前做普通用户读；锁内只用窄的 `vm_read_u32_noprepare()` 读已存在的 32-bit futex word。
+- allocator:
+  - 现象：`-smp 8 -m 6G` 早期 panic，bitmap 需要 `1572864` 页但 CAP 只有 `1048576` 页。
+  - 临时路线：展示和 M6 8 核实验先用 `-m 4G`；真正修复应让 allocator metadata 随平台内存动态扩展或配置化。
 
 要讲的话：
 
@@ -202,10 +222,13 @@ showtime/single-cpu/logs/m6-selfbuild-guest-pass.log
 | SMP 内核正确性 | `SMP=4`, `thread=single`, `jobs=1` | 先证明多 hart kernel 能长时间支撑真实 guest selfbuild |
 | 用户态并发压力 | `SMP=4`, `thread=single`, `jobs=2/4` | 在正确性基线上逐步放大 futex/锁/调度压力 |
 | 速度实验 | `SMP=4/8`, `thread=multi`, `jobs=4/8` | 观察宿主 TCG 并行速度信号，单独标风险 |
+| 8 核 boot smoke | `SMP=8`, `m=4G` | 先验证 HART bring-up、userland、短 workload |
+| 8 核 full M6 tmpfs | `SMP=8`, `m=4G`, `jobs=4`, tmpfs target | 已定位为 tmpfs rename/readback/exec 候选问题，不作为 PASS 口径 |
+| 8 核 full M6 ext4 | `SMP=8`, `m=4G`, `jobs=4`, ext4 target | 当前主线，继续验证完整 cargo selfbuild |
 
 要讲的话：
 
-- 最新口径是：v20 的 `SMP=4 + jobs=2` subset 已 PASS；v21 full early 进入真实 cargo build，到 `syn v2.0.117` 后 heartbeat 消失；v22 已让早期 `starry-kernel` lib 阶段启用 `smp` feature，并进一步暴露 StoreFault。
+- 最新口径是：8 核启动已 PASS，raw CPU MTTCG 有 2.76x/3.17x 速度信号；tmpfs full M6 暴露 `build-script` 的 `Exec format error`，ext4 full M6 已越过这个早期点并继续推进。
 - 所以当前展示不声称完整多核 M6 已 PASS，而是说明多核已经从“能启动”推进到“能复现实打实的 OS 调度压力”。
 
 ## 13. 内核改进与当前证据
@@ -217,8 +240,13 @@ showtime/single-cpu/logs/m6-selfbuild-guest-pass.log
 | 用户态抢占 | timer interrupt 返回后显式 yield | v19 中 guest heartbeat 持续输出，并已越过 v18 的 `thiserror` 卡点；v21 进一步暴露 jobs=2 heartbeat stall |
 | 用户任务迁移 | 用户态运行 pin CPU，blocked wake 保持用户任务亲和性 | v17 的 cross-CPU wake panic 不再复现 |
 | run queue | 记录 run queue load，kernel task 可按负载分配 | 为后续 jobs=2/4 提供基础 |
+| mutex handoff | unlock 先清 owner 再 wake waiter | v28 已越过 v27 的 `quote` mutex panic |
+| futex wait | 锁前普通读，锁内 `vm_read_u32_noprepare` 窄读 | 避免 wait queue no-IRQ 区间内触发 aspace prepare |
+| allocator capacity | 8 核 6G 暴露 bitmap CAP 只覆盖 4G 页 | `-m 4G` boot smoke 通过；6G 是明确 allocator 修复点 |
 | 诊断能力 | `track_caller` 记录 preempt/block callsite | 后续 panic 能更快定位内核调用点 |
 | SMP feature wiring | `starry-kernel` 新增 `smp = ["ax-feat/smp"]` | v22 早期 lib 阶段已打印 `--features smp`，随后暴露 StoreFault |
+| signal/wait 用户缓冲 | `rt_sigaction`、signal frame、`wait4` 不再在锁/async poll 内访问用户内存 | raw benchmark 能稳定执行 `clone + wait4`，后续可拆 PR |
+| ioctl 用户缓冲 | TTY/pipe ioctl 曾在持锁路径 `vm_read/vm_write`，启动 shell 会打印 atomic usercopy 警告 | 先复制内核状态，锁外访问用户缓冲；新增 `test-ioctl-usercopy-locks`，轻量 QEMU 验证 `TEST PASSED` 且警告消失 |
 
 要讲的话：
 
@@ -229,11 +257,19 @@ showtime/single-cpu/logs/m6-selfbuild-guest-pass.log
 
 页面内容：
 
-- 基于 v22 的 `StoreFault` 抽一个更小的 OS regression，避免继续用完整 selfbuild 才得到反馈。
-- 补三个 OS regression：
+- 保留 v28 的 mutex handoff 证据，但下一步优先处理 8 核 futex/exec 两个新阻塞点。
+- 把 raw CPU MTTCG benchmark 固化为短反馈环；当前 `thread=multi` 最好约 3.17x，未到 4x。
+- 把 futex wait 的 locked recheck 修复成正式 PR：窄 `noprepare` 用户读 + `bug-futex-wait-wake` regression。
+- 把 `-smp 8 -m 6G` bitmap CAP panic 抽成 allocator regression；展示路线继续用 4G。
+- 把 tmpfs `build-script` 的 `Exec format error` 抽成最小 regression：写 ELF 到 tmpfs、rename、读 final ELF magic、再 `fork + execve`。
+- 保持 ext4 作为今晚完整 cargo selfbuild 主线，不让 tmpfs 问题继续阻塞长跑。
+- 基于 mutex handoff 和 futex wait 抽更小的 OS regression，避免继续用完整 selfbuild 才得到反馈。
+- 补这些 OS regression：
   - CPU-bound 用户进程不能饿死 heartbeat/其他可运行任务。
   - blocked 用户任务唤醒不能错误迁移到没有 StarryOS thread context 的 CPU。
   - `starry-kernel/smp` 早期 lib 阶段必须覆盖 `ax-task/smp` 路径。
+  - `ioctl` 等 syscall 不能在 atomic/preempt-disabled 路径访问用户缓冲。
+  - `futex wait` 锁内不能 fault/populate 用户页。
 - 再逐步放大到 `jobs=4`，观察 futex、锁、文件系统路径。
 - `thread=multi` 只作为速度实验；correctness 仍以 `thread=single` 或真硬件为准。
 
@@ -249,6 +285,8 @@ showtime/single-cpu/logs/m6-selfbuild-guest-pass.log
 一句话总结：
 
 > 单核 guest self-build 已跑通；多核线已经看到小 workload 加速，jobs=2 subset 通过，并把真实 M6 压力暴露的问题收敛到内核调度、迁移和响应性上。
+
+> 2026-05-21 最新口径：8 核启动已验证，raw CPU MTTCG 有真实速度信号；tmpfs 路线暴露 build-script exec/readback 问题，ext4 路线正在继续完整多核 M6，不声明最终 pass。
 
 要讲的话：
 
