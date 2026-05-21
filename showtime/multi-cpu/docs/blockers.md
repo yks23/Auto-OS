@@ -296,3 +296,55 @@ owner=os/StarryOS/kernel/src/syscall/task/clone.rs:204:55
   - If another path still intentionally touches unmapped user memory directly,
     it may need the same pre-populate/no-fault treatment or a focused
     `try_lock`/`EFAULT` policy.
+
+## B13. M6 munmap/aspace lock can block user-memory prepopulate
+
+- status: new first blocker after applying the user-copy PR shape in the
+  diagnostic kernel
+- severity: high for SMP guest cargo build
+- evidence:
+  - `showtime/multi-cpu/logs/m6-smp4-j2-platformdiag-usercopy-ownerguard-resume-20260521.log`
+- configuration:
+  - kernel:
+    `.guest-runs/riscv64-m6-bench/starry-platformdiag-usercopy-ownerguard-20260521.bin`
+  - rootfs:
+    `.guest-runs/riscv64-m6-bench/rootfs-bench-usercopy-run.img`
+  - qemu: `-smp 4 -m 4G -accel tcg,thread=single`
+  - guest cargo: `CARGO_BUILD_JOBS=2 RAYON_NUM_THREADS=2`
+- symptom:
+
+```text
+Compiling compiler_builtins v0.1.160
+Compiling core v0.0.0
+Compiling proc-macro2 v1.0.106
+panicked at os/StarryOS/kernel/src/mm/access.rs:311:33:
+RawMutex would block in atomic context:
+waiter=os/StarryOS/kernel/src/mm/access.rs:311:33
+owner_task=128
+owner=os/StarryOS/kernel/src/syscall/mm/mmap.rs:276:56
+```
+
+- interpretation:
+  - The user-copy cold-page fix moved the run past the previous `clone.rs`
+    owner blocker.
+  - The current waiter is `prepare_user_memory`, and the owner is
+    `sys_munmap` holding the process address-space mutex while unmapping.
+  - This is an OS-level synchronization/VM interaction issue, not a Docker or
+    MTTCG artifact: the run uses QEMU `tcg,thread=single`.
+- shortest next feedback:
+  - Build a focused test that runs one thread/process through repeated
+    `mmap`/`munmap` while another issues syscalls that copy to/from user
+    buffers, then verify the kernel returns normal syscall errors or progress
+    instead of panicking.
+  - If the testcase is still too noisy, add a diagnostic log at
+    `prepare_user_memory` and `sys_munmap` recording current task id, syscall
+    id if available, IRQ state, range, and owner location.
+- fix direction:
+  - Do not make `RawMutex` sleep in atomic context.
+  - Either ensure user-memory prepopulate cannot run while IRQs are disabled,
+    or narrow/reshape `sys_munmap` address-space locking so normal user-copy
+    prepopulate does not block in an atomic path.
+- PR rule:
+  - Once the reproducer or exact caller pair is stable, split it from the
+    user-copy PR and prepare a separate TGOSKit PR with a focused test-suite
+    case.

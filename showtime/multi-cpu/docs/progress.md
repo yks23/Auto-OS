@@ -906,3 +906,59 @@ PR work extracted from this loop:
   through the current keyring/network path.
 - Local evidence and PR body are tracked in
   `success-pr/pr-usercopy-cold-page-draft.md`.
+
+## 2026-05-21 User-Copy PR Kernel Reruns
+
+Short-loop change:
+
+- Rebuilt a diagnostic kernel with the `fix/starry-usercopy-cold-page` shape:
+  pre-populate user slices/strings before no-fault access, avoid holding
+  `IrqSave` across that pre-populate, and skip re-locking the current task's
+  own address-space mutex.
+- Kept control variables fixed: same SMP4 QEMU correctness mode, same rootfs
+  clone, same `CARGO_BUILD_JOBS=2` / `RAYON_NUM_THREADS=2`, same direct rootfs
+  cargo home.
+
+Evidence files:
+
+```text
+showtime/multi-cpu/logs/m6-smp4-j2-platformdiag-usercopy-resume2-20260521.log
+showtime/multi-cpu/logs/m6-smp4-j2-platformdiag-usercopy-noirq-resume-20260521.log
+showtime/multi-cpu/logs/m6-smp4-j2-platformdiag-usercopy-ownerguard-resume-20260521.log
+```
+
+Results:
+
+```text
+resume2: failed in about 6.7s; experimental tree still held IrqSave in VmIo::new
+noirq: failed in about 9s; same-task aspace lock re-entry during M6_RESUME scan
+ownerguard: reached real cargo; compiled compiler_builtins/core/proc-macro2;
+  failed around guest time 72s with owner=syscall/mm/mmap.rs:276:56
+```
+
+Interpretation:
+
+- The old `clone.rs` owner blocker was reduced to a PR branch with a focused
+  test-suite case and pushed as `fix/starry-usercopy-cold-page`.
+- The feedback loop is now seconds to about one minute for the next blocker,
+  not a blind multi-hour wait.
+- The current first OS blocker is narrower:
+  `prepare_user_memory` waits for the address-space mutex while `sys_munmap`
+  owns it. The next step is to add a tiny `mmap/munmap + syscall user-buffer`
+  reproducer or extra caller logging before changing lock semantics.
+
+Rootfs check after forced panic exit:
+
+```text
+e2fsck -fn .guest-runs/riscv64-m6-bench/rootfs-bench-usercopy-run.img
+clean, 70290/1048576 files, 900480/4194304 blocks
+```
+
+PR state:
+
+```text
+branch: fix/starry-usercopy-cold-page
+head: 179aef0fd fix(starry): prepopulate user strings before read
+push: done to yks23/tgoskits
+PR create: blocked locally by GitHub API/keyring connectivity
+```

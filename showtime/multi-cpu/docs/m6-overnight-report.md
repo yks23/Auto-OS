@@ -239,15 +239,95 @@ owner_task=1066
 owner=os/StarryOS/kernel/src/syscall/task/clone.rs:204:55
 ```
 
-Why this is a shorter feedback loop than the earlier full reruns:
+## 2026-05-21 User-Copy PR Kernel Fast Reruns
+
+Rule applied:
+
+- The mutex-owner panic is now treated as an OS bug, not only an M6 log.
+- A TGOSKit PR branch has been prepared and pushed:
+  `fix/starry-usercopy-cold-page`.
+- The feedback loop was shortened from a 38-minute M6 failure to three
+  controlled kernel-only reruns on the same QEMU/rootfs/cargo variables.
+
+Common configuration:
+
+```text
+rootfs: .guest-runs/riscv64-m6-bench/rootfs-bench-usercopy-run.img
+qemu: -smp 4 -m 4G -accel tcg,thread=single
+guest cargo: CARGO_BUILD_JOBS=2 RAYON_NUM_THREADS=2
+mode: M6_RESUME=1, M6_USE_TMPFS_WORK=0, low log level
+```
+
+Rerun timeline:
+
+```text
+usercopy-resume2:
+  result: failed after about 6.7s
+  cause: experimental kernel still kept IrqSave in VmIo::new
+  panic: access.rs:304 RawMutex would block in atomic context
+  owner: task/user.rs:33:50
+
+usercopy-noirq:
+  result: failed after about 9s
+  cause: same-task address-space mutex re-entry during resume scan
+  panic: Thread(49) tried to acquire mutex it already owns
+  fix: add owner guard before pre-populating current-task user memory
+
+usercopy-ownerguard:
+  result: progressed into real cargo before the next blocker
+  cargo: compiler_builtins, core, proc-macro2
+  elapsed: about 72s of guest-visible M6 time
+  panic: access.rs:311 RawMutex would block in atomic context
+  owner: syscall/mm/mmap.rs:276:56
+```
+
+Interpretation:
+
+- The PR branch contains the two required shape fixes: no `IrqSave` held in
+  `VmIo`, and an owner guard before pre-populating user memory.
+- The old `clone.rs` owner panic no longer appears in the latest rerun. This
+  is useful evidence that cold-page user-copy was a real OS blocker.
+- The latest first blocker has moved to a different OS path: `sys_munmap`
+  owns the process address-space mutex while another user-memory prepopulate
+  path needs the same mutex from an atomic context.
+
+Latest captured panic:
+
+```text
+panicked at os/StarryOS/kernel/src/mm/access.rs:311:33:
+RawMutex would block in atomic context:
+waiter=os/StarryOS/kernel/src/mm/access.rs:311:33
+owner_task=128
+owner=os/StarryOS/kernel/src/syscall/mm/mmap.rs:276:56
+```
+
+Rootfs status:
+
+```text
+post-panic repair: e2fsck -fy modified target-dir metadata after forced panic exit
+follow-up check: e2fsck -fn clean, 70290/1048576 files, 900480/4194304 blocks
+```
+
+Next action:
+
+1. Keep the user-copy cold-page fix as a PR candidate with its focused test.
+2. Add a narrow diagnostic or testcase around concurrent `munmap` and user
+   buffer/string access, then decide whether the fix belongs in `sys_munmap`,
+   address-space locking, or the user-memory prepopulate policy.
+3. Do not start another multi-hour full run until the `munmap/aspace` blocker
+   has a shorter reproducer or stronger caller log.
+
+Why this is still the right feedback loop:
 
 - The previous failure was captured at about 53 minutes but only pointed at
   `axsync::Mutex`.
-- This rerun added mutex owner/waiter state and reduced the unknown from
-  "some mutex in atomic context" to the exact pair:
-  user-memory page-fault handler waiting on the process address-space lock,
+- The first diagnostic pass added mutex owner/waiter state and reduced the
+  unknown from "some mutex in atomic context" to the exact pair:
+  user-memory page-fault handler waiting on the process address-space lock
   while fork/clone owns that lock.
-- That is now an OS-level bug candidate instead of a blind long-run failure.
+- The user-copy PR kernel reruns then confirmed the next blocker is a distinct
+  `sys_munmap` owner path, so the work is now split into two OS-level bug
+  tracks instead of one broad "M6 failed" bucket.
 
 New PR-quality OS bug extracted during this pass:
 
@@ -264,14 +344,10 @@ that may acquire the process address-space mutex. The fix pre-populates user
 slices and null-terminated user-string pages in normal syscall context, then
 performs no-fault `user_copy` or direct byte reads.
 
-Next controlled rerun:
+Completed controlled rerun:
 
-- Keep the same Linux QEMU container/host QEMU choice, fsck-clean rootfs,
+- The kernel-only replacement was done with the same fsck-clean rootfs,
   `-smp 4`, `tcg,thread=single`, `CARGO_BUILD_JOBS=2`,
   `RAYON_NUM_THREADS=2`, and resume mode.
-- Replace only the kernel with a build that includes
-  `fix/starry-usercopy-cold-page`.
-- If the same owner/waiter panic remains, inspect direct user-memory access
-  paths that still bypass pre-population; if the run passes this point, the
-  next high-signal checkpoint is the first new panic/trap/error or a two-hour
-  no-progress stall.
+- The old `clone.rs` owner blocker did not reappear; the run reached real
+  cargo and exposed the new `sys_munmap` owner blocker documented above.
