@@ -30,8 +30,9 @@
 
 - fetch：已更新本地引用（`origin` / `upstream`）
 - `origin/dev = abbb705e6`
-- `upstream/dev = bfd78b7de`
-- `origin/dev...upstream/dev = 43 / 1767`
+- `upstream/dev = 5c08d32ca`
+- `sync/dev-live = abbb705e6`（push: up-to-date）
+- `origin/dev...upstream/dev = 43 / 1768`
 - 规则执行记录：`ppoll` 用户缓冲区 race 已按 OS bug PR 候选检查；上游 `dev` 已包含 `8d5eb20d4 fix(starry): copy ppoll fds before blocking`，并已有 `test-suit/starryos/normal/qemu-smp1/bugfix/bug-poll-wait-user-buffer-race`，因此不重复提交本地旧候选分支。
 
 2026-05-20
