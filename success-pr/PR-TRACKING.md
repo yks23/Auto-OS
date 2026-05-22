@@ -26,6 +26,15 @@
 
 ### Daily Sync Log
 
+2026-05-22
+
+- fetch：已更新本地引用（`origin` / `upstream`）
+- `origin/dev = abbb705e6`（未变化）
+- `upstream/dev = 5b41966df`（相对 2026-05-21 发生变化）
+- `sync/dev-live = abbb705e6`（push: up-to-date；镜像 `origin/dev`）
+- `merge-base(origin/dev, upstream/dev) = 2dad8b394`
+- `origin/dev...upstream/dev = 43 / 1781`
+
 2026-05-21
 
 - later update:
