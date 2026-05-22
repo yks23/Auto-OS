@@ -18,7 +18,7 @@
 | [#878](https://github.com/rcore-os/tgoskits/pull/878) | READY OPEN | `gh pr view`：`isDraft=false`，`mergeStateStatus=CLEAN`，`mergeable=MERGEABLE`；CI rollup 显示 container/qemu/self-hosted 相关 job 已通过，部分 host job skipped | `git diff --check upstream/dev...HEAD` PASS；`cargo fmt --check` PASS；现有 robust futex / mt-execve 覆盖 teardown ABI | 修复 teardown/usercopy/futex 对“当前上下文必是用户线程”的错误假设。 |
 | [#879](https://github.com/rcore-os/tgoskits/pull/879) | READY OPEN | `gh pr view`：`isDraft=false`，`mergeStateStatus=CLEAN`，`mergeable=MERGEABLE`；CI rollup 显示 container/qemu/self-hosted 相关 job 已通过，部分 host job skipped | `git diff --check upstream/dev...HEAD` PASS；`cargo fmt --check` PASS；新增 `qemu-smp4/test-rawmutex-handoff` | 修复 SMP RawMutex owner handoff 竞态和 guard 跨任务释放风险。 |
 | [#800](https://github.com/rcore-os/tgoskits/pull/800) | READY OPEN | 已在独立 worktree 重放到最新 `dev` 并推送 `6aeb2566e`；`mergeStateStatus=CLEAN`，旧 `CHANGES_REQUESTED` 已消；CI run `26308003915` 全 PASS；已评论说明冲突清理和验证状态 | `cargo fmt` PASS；`cargo clippy -p ax-fs-ng --target riscv64gc-unknown-none-elf -- -D warnings` PASS；四架构 bugfix list PASS；test-suite 已迁到 `normal/qemu-smp1/bugfix/test-dev-zero-full-transfer` | 直接设备读写完整传输语义；当前不再是 merge conflict、CI blocker 或旧 review blocker。 |
-| [#885](https://github.com/rcore-os/tgoskits/pull/885) | DRAFT OPEN | 2026-05-23 CST 新建 draft；branch `fix/starry-syscall-thread-snapshot`，最新 commit `5313aec45`；上一轮 CI 仅新增 `test-openat-umask-smp` 在 riscv64 失败，根因是测例使用 `CLONE_THREAD`；已改成项目既有 waitable clone worker 形态并触发新 CI run `26310481991` | `git diff --check` PASS；`cargo fmt --all --check` PASS；`cargo check -p starry-kernel --target riscv64gc-unknown-none-elf` PASS；`zig cc` C 语法 PASS；`test-openat-umask-smp --list` PASS；#885 内核已通过 guest cargo synthetic leaf16/leaf64 短基准 | 文件创建 syscall 在入口固定用户线程上下文，避免 usercopy 后二次 `current().as_thread()` 读到错误 task；这是 M6 多核压力暴露出来的保守 OS hardening。 |
+| [#885](https://github.com/rcore-os/tgoskits/pull/885) | READY OPEN | 2026-05-23 CST 新建；branch `fix/starry-syscall-thread-snapshot`，最新 commit `5313aec45`；第二轮 CI run `26310481991` 全 PASS；`mergeStateStatus=CLEAN`，已从 draft 标为 ready | `git diff --check` PASS；`cargo fmt --all --check` PASS；`cargo check -p starry-kernel --target riscv64gc-unknown-none-elf` PASS；`zig cc` C 语法 PASS；`test-openat-umask-smp --list` PASS；GitHub Actions 全 PASS；#885 内核已通过 guest cargo synthetic leaf16/leaf64 短基准 | 文件创建 syscall 在入口固定用户线程上下文，避免 usercopy 后二次 `current().as_thread()` 读到错误 task；这是 M6 多核压力暴露出来的保守 OS hardening。 |
 
 ## #692 robust futex cleanup faults
 
@@ -241,7 +241,7 @@ SMP 下 `RawMutex::unlock` 旧逻辑用 `notify_one_with` 把 `owner_id` 直接�
 **测试 / 状态**
 
 - PR：[#885](https://github.com/rcore-os/tgoskits/pull/885)
-- 状态：DRAFT OPEN；上一轮 Actions 只剩 `starry riscv64 qemu` failed，失败点是新增测例 `clone worker 0 errno=2`。已推送 `5313aec45` 把测例从 `CLONE_THREAD` 改为项目既有的 waitable clone worker 形态，新 CI run `26310481991` 正在跑，继续保持 draft。
+- 状态：READY OPEN；上一轮 Actions 只剩 `starry riscv64 qemu` failed，失败点是新增测例 `clone worker 0 errno=2`。已推送 `5313aec45` 把测例从 `CLONE_THREAD` 改为项目既有的 waitable clone worker 形态；第二轮 CI run `26310481991` 全 PASS，`mergeStateStatus=CLEAN`，已从 draft 标为 ready。
 - 本地证据：`git diff --check` PASS；`cargo fmt --all --check` PASS；`cargo check -p starry-kernel --target riscv64gc-unknown-none-elf` PASS；`zig cc -target riscv64-linux-musl` C 语法 PASS；`cargo xtask starry test qemu --arch riscv64 -g normal -c test-openat-umask-smp --list` PASS。
 - 本地限制：macOS 缺 `debugfs`，Docker qemu 尝试时 Docker CLI 无输出卡住，因此完整 qemu case 交给 CI。
 
@@ -256,4 +256,4 @@ SMP 下 `RawMutex::unlock` 旧逻辑用 `notify_one_with` 把 `owner_id` 直接�
 - #695 已合入且历史记录为 CI 绿，但仍缺一个更小、独立的 rsext4 inode allocation regression 描述。
 - #842/#843/#844/#878/#879 当前都已经 ready review，元数据为 CLEAN / MERGEABLE；下一步等待维护者 review/用户批准。
 - #800 冲突已清，从 DIRTY/BLOCKED 变为 CLEAN；CI 已全 PASS，旧 review blocker 已消，等待维护者合入。
-- #885 是新的 draft OS hardening PR，来自多核 cargo 压力信号；上一轮失败为 testsuit clone flag 问题，已修并触发新 CI，等全绿后再决定是否 ready。
+- #885 是新的 OS hardening PR，来自多核 cargo 压力信号；testsuit clone flag 问题已修，第二轮 CI 全 PASS，当前 READY/CLEAN。
