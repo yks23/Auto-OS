@@ -19,6 +19,11 @@
 - #879：RawMutex wakeup owner 语义修复。
 - robust futex bad-head tolerance。
 
+当前不能宣称“完整 M6 已经 8 核编译通过”。已经拿到的是两类更短反馈：
+
+- 速度信号：旧 stable lane 的 synthetic cargo leaf16 在同一个 `smp=8,thread=multi` guest 里，`jobs=1` 为 2m15s，`jobs=8` 为 1m05s，约 2.08x。
+- 正确性阻塞：最新 integration / asthreaddiag lane 的 `jobs=8` 会快速复现 `fd_ops.rs:269` 的 `kernel task` panic；已拆出保守 OS hardening draft PR #885，不把它直接包装成 MTTCG correctness 证明。
+
 ## 控制变量
 
 验证尽量保持同一个集成内核、同一个 fsck-clean base rootfs、同一个 host QEMU、同一个 guest cargo workload。当前把“速度 lane”和“正确性 lane”分开记录：
@@ -146,6 +151,87 @@ runner 会在 guest 内独立打印 `cargo/rustc/cc/ld/build-starry` 相关进�
 
 使用 qcow2 overlay 的原因：保留 guest 编译产物，同时不污染 16G base rootfs，也避免每次复制完整 raw image。若后续长跑完成，下一步从 overlay 中提取 `/opt/tgoskits/target/riscv64gc-unknown-none-elf/release/starryos`，再用同一 QEMU 条件做 boot/`ls -la` smoke。
 
+## MTTCG j4 overlay 诊断长跑
+
+第二轮加了 process heartbeat 和不截断 panic：
+
+```text
+log: showtime/multi-cpu/logs/m6-full-smp8-mttcg-j4-pshb-20260523.log
+rootfs overlay: .guest-runs/rootfs-selfbuild-riscv64-smp8-mttcg-j4-pshb-20260523.qcow2
+M6_TCG_THREAD=multi
+M6_QEMU_SMP=8
+CARGO_BUILD_JOBS=4
+RAYON_NUM_THREADS=4
+M6_STOP_ON_PANIC=0
+```
+
+结果：
+
+```text
+progress: 越过上一轮停滞点，继续到 syscalls / strum_macros / ax-config-gen / thiserror-impl
+compile failure: ax-config 里 TASK_STACK_SIZE 被旧 rootfs 手工注入 const，与 include_configs! 生成值重复
+follow-up panic: sys_openat 读 umask 时 current().as_thread() 命中 kernel task
+```
+
+结论：这轮没有证明 M6 完成，但它把问题从“疑似卡住”收敛成两个明确点：
+
+- rootfs/runner 层：旧 rootfs 中残留的 `pub const TASK_STACK_SIZE: usize = 0x20000;` 需要在本轮 runner 里清掉。
+- OS 层：kernel task 进入 `sys_openat` 的路径需要 guard/诊断；若能稳定复现，应拆成新的 StarryOS PR，而不是混进脚本修复。
+
+## MTTCG j8 真 8 核当前推进
+
+最新 full M6 j8 lane：
+
+```text
+log: showtime/multi-cpu/logs/m6-full-smp8-mttcg-j8-20260523T031835.log
+rootfs overlay: .guest-runs/rootfs-selfbuild-riscv64-smp8-mttcg-j8-20260523T031835.qcow2
+M6_TCG_THREAD=multi
+M6_QEMU_SMP=8
+CARGO_BUILD_JOBS=8
+RAYON_NUM_THREADS=8
+M6_STOP_ON_PANIC=0
+```
+
+已确认：
+
+```text
+guest boot: smp=8
+guest cargo: jobs=8, rayon=8
+runner: 已删除旧 rootfs 注入的 TASK_STACK_SIZE const
+progress: ax-config 已越过上一轮重复定义点；当前在 core/syn/syn 早期 build-std/宏 crate 阶段
+host observation: QEMU 总 CPU 约 200%，线程级采样显示 2 个 TCG worker 接近满载，其余 hart 基本空闲
+```
+
+结果：这条 lane 没有完整通过。约 10 分钟内没有继续增长 crate 级进度，QEMU CPU 长时间维持在约 120%-200%，说明 full M6 早期依赖图没有把 8 个 vCPU 喂满；继续盲等的反馈价值低，已切换到 synthetic cargo 短基准。
+
+## Synthetic Cargo 8 Job 短基准
+
+短基准使用 `scripts/bench-m6-cargo-speed-expect.sh`，不复制 rootfs，不写回 rootfs，QEMU `-snapshot`，只在 guest 内生成一个 16 个 leaf crate 的 offline Rust workspace。它用于快速回答“StarryOS guest 内的 cargo 能否用多 job 获得速度信号”，不是完整 M6 correctness 证明。
+
+已通过的旧 stable lane：
+
+```text
+kernel: .guest-runs/riscv64-m6/starry-smp8-stable-*.bin
+log j1: showtime/multi-cpu/logs/cargo-speed-smp8-stable-mttcg-j1-leaf16-20260523.log
+log j8: showtime/multi-cpu/logs/cargo-speed-smp8-stable-mttcg-j8-leaf16-20260523.log
+guest: smp=8, thread=multi, leaves=16
+jobs=1: Finished release in 2m 15s
+jobs=8: Finished release in 1m 05s
+speedup: 135s / 65s = 2.08x
+result: PASS / PASS
+```
+
+最新 integration/diagnostic lane：
+
+```text
+log: showtime/multi-cpu/logs/cargo-speed-smp8-asthreaddiag-mttcg-j8-leaf16-20260523T033750.log
+guest: smp=8, thread=multi, jobs=8, leaves=16
+result: 约 13 秒触发 panic
+panic marker: M6_AS_THREAD_KERNEL_TASK caller=os/StarryOS/kernel/src/syscall/fs/fd_ops.rs:269:34
+```
+
+解释：这说明“8 核 + `cargo -j8` 的启动路径”真实跑到了 StarryOS 多 hart 上，但当前路径仍能暴露 `sys_openat`/umask 上下文使用问题。由于 RISC-V MTTCG 本身有 LR/SC 原子语义风险，这个现象不能直接作为正常硬件上的确定性 OS bug 证明；已按保守 hardening 拆成 draft PR #885：文件创建 syscall 在入口固定用户线程上下文，避免 usercopy 后二次读取 per-CPU current。
+
 ## thread=single 对照
 
 命令要点：
@@ -175,10 +261,10 @@ guest reached about 237s without panic
 
 - 真实 8-HART StarryOS kernel 能启动并进入 guest cargo workload。
 - #842/#843/#878/#879 等 OS 修复已经让 guest 更接近真实多核 cargo 环境：CPU topology 可见、hwprobe 噪音消失、teardown/usercopy 和 RawMutex 语义更稳。
-- 真正使用宿主多线程的 MTTCG 路线目前失败在 rustc SIGSEGV，不能宣称 8 核 cargo build 已正确完成或达到 4x。
+- 真正使用宿主多线程的 MTTCG 路线已经有 2.08x synthetic cargo 速度信号，但最新集成内核在 `jobs=8` 下复现 `fd_ops.rs:269` kernel-task panic；目前不能宣称完整 M6 已正确完成或达到 4x。该上下文问题已拆成 draft PR #885。
 
 下一步不再盲跑 full M6；优先做短反馈：
 
-- 当前先让 MTTCG `smp=8,j4` overlay 长跑；若再次 SIGSEGV 或停滞，再降到 `j2` 找稳定并行上限。
-- 抽取一个 Rust/rustc 或用户态原子压力最小复现，区分 QEMU LR/SC 问题和 StarryOS 内核调度/内存问题。
-- 若复现指向 OS 行为，再拆成新的 TGOSKit PR；若指向 QEMU MTTCG，则把正确性路线固定为 `thread=single`，加速路线改用真实硬件或架构对齐的虚拟化。
+- 先等 #885 的 CI 信号；如果通过，再用新内核重跑 synthetic cargo `jobs=1/8`。
+- synthetic cargo 重新稳定后，再进入 full M6 j8 overlay。
+- 若继续出现 rustc SIGSEGV，再抽取用户态原子/多进程最小复现，区分 QEMU LR/SC 问题和 StarryOS 内核调度/内存问题。

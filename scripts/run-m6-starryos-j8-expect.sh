@@ -108,6 +108,14 @@ if [ -f "$AXCFG" ]; then
     sed -i 's/^[[:space:]]*phys-memory-size[[:space:]]*=.*/phys-memory-size = 0x100000000 # uint/' "$AXCFG" 2>/dev/null || true
 fi
 
+AXCONFIG_LIB=/opt/tgoskits/os/arceos/modules/axconfig/src/lib.rs
+if [ -f "$AXCONFIG_LIB" ] && grep -q 'include_configs!' "$AXCONFIG_LIB" 2>/dev/null; then
+    if grep -q '^pub const TASK_STACK_SIZE: usize = 0x20000;' "$AXCONFIG_LIB" 2>/dev/null; then
+        echo "[M6] removing stale injected axconfig TASK_STACK_SIZE const"
+        sed -i '/^pub const TASK_STACK_SIZE: usize = 0x20000;$/d' "$AXCONFIG_LIB" 2>/dev/null || true
+    fi
+fi
+
 export M6_GUEST_HEARTBEAT_SEC
 export M6_PROCESS_HEARTBEAT_SEC
 export M6_SYSCALL_STATS_INTERVAL_SEC
@@ -135,6 +143,7 @@ if [ "${M6_PROCESS_HEARTBEAT_SEC:-0}" != "0" ]; then
         while :; do
             now="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date)"
             echo "[M6 $now] process heartbeat (cargo/rustc/build helpers)"
+            ps 2>/dev/null | head -30 || true
             ps 2>/dev/null | grep -E 'cargo|rustc|cc|ld|build-starry|m6-full' | grep -v grep | head -20 || true
             sleep "$M6_PROCESS_HEARTBEAT_SEC"
         done

@@ -9,7 +9,7 @@
 | PR | 状态 | CI / merge 信息 | 测试证据 | OS 层意义 |
 | --- | --- | --- | --- | --- |
 | [#692](https://github.com/rcore-os/tgoskits/pull/692) | MERGED | `gh pr view`：2026-05-19 合入，base `dev` | `test-futex-robust-list`；Linux 容器原生测例曾连续 3 次 `72 pass, 0 fail` | 修复线程退出时 robust futex cleanup 对用户坏指针的容错。 |
-| [#693](https://github.com/rcore-os/tgoskits/pull/693) | UPDATED OPEN | 2026-05-23 CST 推送 `4503b5fb3`，标题/正文改为 `fix(starry): preserve vfork parent blocking`；new run `26305672447` in progress；前一轮 run `26267901276` riscv64 busybox 46/47 failed | `test-vfork`；`git diff --check` PASS；`cargo fmt --check` PASS | 恢复 Linux-compatible `CLONE_VFORK` 父进程阻塞语义，避免 busybox/sh/timeout 这类真实 workload 因同步顺序破坏而崩溃。 |
+| [#693](https://github.com/rcore-os/tgoskits/pull/693) | UPDATED OPEN | 2026-05-23 CST 推送 `4503b5fb3`，标题/正文改为 `fix(starry): preserve vfork parent blocking`；run `26305672447` 中 riscv64/x86_64/aarch64 Starry QEMU、clippy、format、sync-lint 已过；仅 loongarch Starry QEMU fail，失败点是 `apk-curl` 网络下载 Alpine index 1200s timeout，非 vfork case；PR 仍是 `reviewDecision=CHANGES_REQUESTED` | `test-vfork`；`git diff --check` PASS；`cargo fmt --check` PASS；loongarch 非网络 suite 到 43/44，失败在网络 apk/curl | 恢复 Linux-compatible `CLONE_VFORK` 父进程阻塞语义，避免 busybox/sh/timeout 这类真实 workload 因同步顺序破坏而崩溃。 |
 | [#694](https://github.com/rcore-os/tgoskits/pull/694) | MERGED | 归档记录：2026-05-18 合入；一次 `gh` 查询 EOF，状态以归档为准 | `bug-af-inet6-v4mapped`；x86_64 已过，其他旧架构结果需按日志/重跑确认 | 修复 AF_INET6 与 IPv4-mapped address 的用户态 socket ABI。 |
 | [#695](https://github.com/rcore-os/tgoskits/pull/695) | MERGED | `gh pr view`：2026-05-18 合入；历史展示记录 CI 绿 | inode allocation regression 待进一步收窄；PR 已合入 | 修复 ext4 未初始化 inode bitmap 的 allocator 行为。 |
 | [#842](https://github.com/rcore-os/tgoskits/pull/842) | READY OPEN | 2026-05-23 已执行 `gh pr ready`；`mergeStateStatus=CLEAN`，`mergeable=MERGEABLE`；Actions 20 pass / 0 fail | qemu-smp4 topology regression；`cargo fmt --all -- --check` PASS | 修复 SMP CPU topology 对用户态的暴露，支撑 `nproc`、affinity 和 cargo 并行度判断。 |
@@ -17,6 +17,8 @@
 | [#844](https://github.com/rcore-os/tgoskits/pull/844) | READY OPEN | 2026-05-23 已执行 `gh pr ready`；`mergeStateStatus=CLEAN`，`mergeable=MERGEABLE`；Actions 20 pass / 0 fail | BusyBox tmpfs copy -> rename -> ELF magic -> exec regression；`sh -n busybox-tests.sh` PASS | 固化 tmpfs rename 后 ELF 读回和执行的文件系统行为。 |
 | [#878](https://github.com/rcore-os/tgoskits/pull/878) | READY OPEN | `gh pr view`：`isDraft=false`，`mergeStateStatus=CLEAN`，`mergeable=MERGEABLE`；CI rollup 显示 container/qemu/self-hosted 相关 job 已通过，部分 host job skipped | `git diff --check upstream/dev...HEAD` PASS；`cargo fmt --check` PASS；现有 robust futex / mt-execve 覆盖 teardown ABI | 修复 teardown/usercopy/futex 对“当前上下文必是用户线程”的错误假设。 |
 | [#879](https://github.com/rcore-os/tgoskits/pull/879) | READY OPEN | `gh pr view`：`isDraft=false`，`mergeStateStatus=CLEAN`，`mergeable=MERGEABLE`；CI rollup 显示 container/qemu/self-hosted 相关 job 已通过，部分 host job skipped | `git diff --check upstream/dev...HEAD` PASS；`cargo fmt --check` PASS；新增 `qemu-smp4/test-rawmutex-handoff` | 修复 SMP RawMutex owner handoff 竞态和 guard 跨任务释放风险。 |
+| [#800](https://github.com/rcore-os/tgoskits/pull/800) | BLOCKED OPEN | 已在独立 worktree 重放到最新 `dev` 并推送 `6aeb2566e`；`mergeStateStatus` 从 DIRTY 变为 BLOCKED，冲突已消；`reviewDecision=CHANGES_REQUESTED`；CI run `26308003915` 中 format/sync-lint/std/clippy/ArceOS/axvisor 已过，主要等 Starry qemu container jobs | `cargo fmt` PASS；`cargo clippy -p ax-fs-ng --target riscv64gc-unknown-none-elf -- -D warnings` PASS；四架构 bugfix list PASS；test-suite 已迁到 `normal/qemu-smp1/bugfix/test-dev-zero-full-transfer` | 直接设备读写完整传输语义；剩余是旧 review 状态和 Starry CI pending，不再是 merge conflict。 |
+| [#885](https://github.com/rcore-os/tgoskits/pull/885) | DRAFT OPEN | 2026-05-23 CST 新建 draft；branch `fix/starry-syscall-thread-snapshot`，commit `82fa8297d`；等待 Actions | `git diff --check` PASS；`cargo fmt --all --check` PASS；`cargo check -p starry-kernel --target riscv64gc-unknown-none-elf` PASS；`zig cc` C 语法 PASS；`test-openat-umask-smp --list` PASS | 文件创建 syscall 在入口固定用户线程上下文，避免 usercopy 后二次 `current().as_thread()` 读到错误 task；这是 M6 多核压力暴露出来的保守 OS hardening。 |
 
 ## #692 robust futex cleanup faults
 
@@ -55,10 +57,10 @@ Linux `CLONE_VFORK` 语义要求父进程等到子进程 `exec` 或退出，即�
 **测试 / 状态**
 
 - PR：[#693](https://github.com/rcore-os/tgoskits/pull/693)
-- 状态：2026-05-23 CST 已推送修复 commit `4503b5fb3` 到现有 PR 分支，并更新 PR title/body；`gh pr view` 显示 new Actions run `26305672447` 正在进行。
+- 状态：2026-05-23 CST 已推送修复 commit `4503b5fb3` 到现有 PR 分支，并更新 PR title/body；`gh pr view` 显示 run `26305672447` 中 riscv64/x86_64/aarch64 Starry QEMU、clippy、format、sync-lint 已通过，剩余失败是 `Test starry loongarch64 qemu / run_container` 的 `apk-curl` 网络下载 Alpine index 1200s timeout，review 仍为 `CHANGES_REQUESTED`。
 - 前一轮阻塞点：run `26267901276` 中 `Test starry riscv64 qemu / run_container` 失败，busybox suite 输出 `46/47 case(s) passed`，失败 case 是 `busybox`，日志含 `busybox_arch` / `busybox_arp` / `Segmentation fault`。
 - 本地证据：`git diff --check HEAD^..HEAD` PASS；`cargo fmt --check` PASS；macOS 上 `cargo xtask clippy --package starry-kernel` 被既有 `ax-percpu` / Mach-O section baseline 阻断，非本 patch 引入。
-- 下一步：盯 run `26305672447` 的 `Test starry riscv64 qemu / run_container`；如果 busybox 和 syscall 都过，再请求 reviewer 重新检查 semantic blocker。
+- 下一步：需要 maintainer/admin rerun failed loongarch job，或追加 no-op commit 触发新 CI；然后评论说明已恢复 Linux-compatible `CLONE_VFORK` 阻塞语义并请求 reviewer 重新检查 semantic blocker。
 
 **为什么是 OS 层功能改动**
 
@@ -222,9 +224,36 @@ SMP 下 `RawMutex::unlock` 旧逻辑用 `notify_one_with` 把 `owner_id` 直接�
 
 这是 SMP sleepable mutex 的所有权和 wakeup 顺序语义修复。它影响地址空间锁、page cache、进程退出和 futex wait/wake 等内核共享路径，不能用降低 cargo 并行度或改脚本替代。
 
+## #885 file syscall thread snapshot
+
+**问题 / 根因**
+
+`openat`、`mkdirat`、`mknodat` 这类文件创建 syscall 先读取用户态 pathname，然后再通过 `current().as_thread()` 获取 `umask` / credential。M6 多核 cargo 压力中曾在 `fd_ops.rs:269` 看到 `kernel task` panic，说明二次读取 current 的路径在 SMP/preempt/用户内存访问压力下不够稳。
+
+注意：该现象来自 RISC-V QEMU MTTCG，MTTCG 本身有 LR/SC 原子语义风险，所以不能把它单独说成真实硬件上的确定性 OS bug。PR 口径是更保守的 OS hardening：文件创建语义应使用 syscall 入口调用者的线程上下文。
+
+**修复内容**
+
+- `sys_openat` 入口保存当前 `Thread`，后续 `umask` 和 `cred` 都从同一个 thread 读取。
+- `sys_mkdirat` / `sys_mknodat` 同步保存入口 thread，后续 mode/permission 的 umask 计算不再二次读取 current。
+- 新增 `qemu-smp4/test-openat-umask-smp`，多个 worker 并发执行 `umask + openat(O_CREAT)`，覆盖共享 fs/files 和 SMP 调度压力。
+
+**测试 / 状态**
+
+- PR：[#885](https://github.com/rcore-os/tgoskits/pull/885)
+- 状态：DRAFT OPEN，等待 GitHub Actions。
+- 本地证据：`git diff --check` PASS；`cargo fmt --all --check` PASS；`cargo check -p starry-kernel --target riscv64gc-unknown-none-elf` PASS；`zig cc -target riscv64-linux-musl` C 语法 PASS；`cargo xtask starry test qemu --arch riscv64 -g normal -c test-openat-umask-smp --list` PASS。
+- 本地限制：macOS 缺 `debugfs`，Docker qemu 尝试时 Docker CLI 无输出卡住，因此完整 qemu case 交给 CI。
+
+**为什么是 OS 层功能改动**
+
+这是 syscall 入口上下文和文件创建 ABI 的稳定性修复，不是 M6 脚本规避。即使最终 8 核 M6 仍需要真实硬件或正确模拟器验证，这个补丁也能让文件创建路径对 SMP 调度更稳。
+
 ## 仍缺 / 待确认
 
-- #693 的 BLOCKED CI 已定位到 riscv64 busybox 失败和 review 语义争议；下一步不是重跑 CI，而是先收窄 `CLONE_VFORK` 特判。
+- #693 已按 review 恢复所有 `CLONE_VFORK` 父进程阻塞；关键 riscv64/x86_64/aarch64 Starry QEMU 已过，剩 loongarch `apk-curl` 网络 timeout 需要 rerun，以及 reviewer 状态。
 - #694 虽已归档合入，但本次 `gh` 查询偶发 GraphQL EOF；如汇报需要完整 CI 明细，建议重新查 Actions run。
 - #695 已合入且历史记录为 CI 绿，但仍缺一个更小、独立的 rsext4 inode allocation regression 描述。
 - #842/#843/#844/#878/#879 当前都已经 ready review，元数据为 CLEAN / MERGEABLE；下一步等待维护者 review/用户批准。
+- #800 冲突已清，从 DIRTY 变为 BLOCKED；CI 正在跑，剩旧 review 状态，不纳入当前 M6 展示主线。
+- #885 是新的 draft OS hardening PR，来自多核 cargo 压力信号；需要等 Actions，再决定是否 ready。
