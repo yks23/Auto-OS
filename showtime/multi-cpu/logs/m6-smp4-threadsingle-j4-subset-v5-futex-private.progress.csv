@@ -1,0 +1,4 @@
+# utc_iso elapsed_s log_bytes log_lines last_signal
+2026-05-17T19:43:44Z 60 3190 79 [M6 2026-05-17T19:42:53Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-17T19:44:46Z 122 3190 79 [M6 2026-05-17T19:42:53Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-17T19:45:48Z 183 4362 96 [M6 2026-05-17T19:45:39Z] [subset-0] start cargo metadata --offline --no-deps 

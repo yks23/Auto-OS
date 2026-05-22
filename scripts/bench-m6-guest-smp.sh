@@ -13,6 +13,7 @@
 #
 # 环境变量：
 #   M6_QEMU_SMP — QEMU CPU 数，默认 4（须与内核 max-cpu-num 一致）
+#   M6_TCG_THREAD — QEMU TCG 线程模式，默认 single；multi 仅用于速度信号，不作为 RISC-V SMP 正确性证明
 #   M6_BENCH_SHA_JOBS — 空格分隔的正整数：并行 dd|sha256sum 管道条数（总 MiB 均分），默认 "1 4"
 #   M6_QEMU_MEM — 默认 5G
 #   M6_QEMU_TIMEOUT_SEC — 单次 QEMU 超时，默认 1800
@@ -37,6 +38,7 @@ WORK="$ROOT/.guest-runs/riscv64-m6-bench"
 ROOTFS_MASTER="${ROOTFS:-$ROOT/tests/selfhost/rootfs-selfbuild-riscv64.img}"
 ELF="$ROOT/tgoskits/target/riscv64gc-unknown-none-elf/release/starryos"
 M6_QEMU_SMP="${M6_QEMU_SMP:-4}"
+M6_TCG_THREAD="${M6_TCG_THREAD:-single}"
 M6_BENCH_SHA_JOBS="${M6_BENCH_SHA_JOBS:-1 4}"
 M6_QEMU_MEM="${M6_QEMU_MEM:-5G}"
 M6_QEMU_TIMEOUT_SEC="${M6_QEMU_TIMEOUT_SEC:-1800}"
@@ -47,6 +49,10 @@ M6_BENCH_CARGO_PKGS="${M6_BENCH_CARGO_PKGS:-ax-errno riscv-h}"
 mkdir -p "$WORK"
 [[ -f "$ROOTFS_MASTER" ]] || { echo "rootfs not found: $ROOTFS_MASTER" >&2; exit 1; }
 [[ -f "$ELF"    ]] || { echo "kernel ELF not found: $ELF" >&2; exit 1; }
+case "$M6_TCG_THREAD" in
+    single|multi) ;;
+    *) echo "invalid M6_TCG_THREAD=$M6_TCG_THREAD (expected single or multi)" >&2; exit 1 ;;
+esac
 
 if [[ "${M6_BENCH_SHARE_ROOTFS:-}" == "1" ]]; then
     ROOTFS="$ROOTFS_MASTER"
@@ -241,26 +247,30 @@ _sc="${M6_BENCH_SKIP_CARGO:-0}"
 
 echo "================================================================"
 echo "  M6 guest SMP benchmark (kernel ELF + rootfs 与 demo 相同)"
-echo "  固定 MiB dd→/dev/null 总工作量 ${M6_BENCH_SHA256_TOTAL_MB} MiB; QEMU -smp ${M6_QEMU_SMP}; 并行管道数档位: ${M6_BENCH_SHA_JOBS}"
+echo "  固定 MiB dd→/dev/null 总工作量 ${M6_BENCH_SHA256_TOTAL_MB} MiB; QEMU -smp ${M6_QEMU_SMP}; TCG=${M6_TCG_THREAD}; 并行管道数档位: ${M6_BENCH_SHA_JOBS}"
 echo "  cargo pkgs: ${M6_BENCH_CARGO_PKGS}"
+if [[ "$M6_QEMU_SMP" -gt 1 && "$M6_TCG_THREAD" == "multi" ]]; then
+    echo "  note: RISC-V MTTCG 仅作为速度信号；正确性结论仍需 thread=single 或真实硬件/KVM。"
+fi
 echo "================================================================"
 
-SUMMARY="$WORK/summary.txt"
+SUMMARY="$WORK/summary-smp${M6_QEMU_SMP}-${M6_TCG_THREAD}.txt"
 : >"$SUMMARY"
 
 for sj in $M6_BENCH_SHA_JOBS; do
     inject_bench_runner "$M6_BENCH_SHA256_TOTAL_MB" "$_cargo_p" "$_sc" "$sj"
-    OUT="$WORK/bench-sha-${sj}.txt"
+    OUT="$WORK/bench-smp${M6_QEMU_SMP}-${M6_TCG_THREAD}-sha-${sj}.txt"
     rm -f "$OUT"
     echo ""
-    echo "---------- SHA 档位 sha_jobs=$sj (QEMU -smp $M6_QEMU_SMP -m $M6_QEMU_MEM) ----------"
+    echo "---------- SHA 档位 sha_jobs=$sj (QEMU -smp $M6_QEMU_SMP -m $M6_QEMU_MEM -accel tcg,thread=$M6_TCG_THREAD) ----------"
     _t0=$(date +%s)
     set +e
     # 用 -serial file 避免 mon:stdio 经 shell 重定向时的块缓冲，便于长计时仍能看到串口增长。
-    # QEMU TCG LR/SC broken under MTTCG; force single-threaded TCG when SMP>1.
+    # QEMU RISC-V MTTCG has LR/SC risks. Keep M6_TCG_THREAD=single for
+    # correctness runs; use multi only as a separate speed-signal experiment.
     _accel=()
     if [[ "$M6_QEMU_SMP" -gt 1 ]]; then
-        _accel=(-accel tcg,thread=single)
+        _accel=(-accel "tcg,thread=$M6_TCG_THREAD")
     fi
     $SUDO timeout "$M6_QEMU_TIMEOUT_SEC" qemu-system-riscv64 \
         -display none -machine virt -bios default -smp "$M6_QEMU_SMP" -m "$M6_QEMU_MEM" \
@@ -310,14 +320,14 @@ arr=($M6_BENCH_SHA_JOBS)
 if [[ ${#arr[@]} -ge 2 ]]; then
     j0="${arr[0]}"
     j1="${arr[1]}"
-    t0=$(parse_work_from_log "$WORK/bench-sha-${j0}.txt")
-    t1=$(parse_work_from_log "$WORK/bench-sha-${j1}.txt")
+    t0=$(parse_work_from_log "$WORK/bench-smp${M6_QEMU_SMP}-${M6_TCG_THREAD}-sha-${j0}.txt")
+    t1=$(parse_work_from_log "$WORK/bench-smp${M6_QEMU_SMP}-${M6_TCG_THREAD}-sha-${j1}.txt")
     if [[ -n "$t0" && -n "$t1" ]] && awk -v b="$t1" 'BEGIN { exit !(b+0 > 0) }'; then
         fac=$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.2f", a / b }')
         echo "访客 dd 阶段: 管道数=${j0} 耗时 ${t0}s  vs  管道数=${j1} 耗时 ${t1}s  => 约 ${fac}× 加速（慢/快；理想接近 ${j1}/${j0}）"
     fi
-    c0=$(parse_cargo_from_log "$WORK/bench-sha-${j0}.txt")
-    c1=$(parse_cargo_from_log "$WORK/bench-sha-${j1}.txt")
+    c0=$(parse_cargo_from_log "$WORK/bench-smp${M6_QEMU_SMP}-${M6_TCG_THREAD}-sha-${j0}.txt")
+    c1=$(parse_cargo_from_log "$WORK/bench-smp${M6_QEMU_SMP}-${M6_TCG_THREAD}-sha-${j1}.txt")
     if [[ -n "$c0" && -n "$c1" ]] && awk -v b="$c1" 'BEGIN { exit !(b+0 > 0) }'; then
         cf=$(awk -v a="$c0" -v b="$c1" 'BEGIN { printf "%.2f", a / b }')
         echo "CARGO: ${j0} 档 ${c0}s vs ${j1} 档 ${c1}s => 约 ${cf}×（受依赖图限制）"

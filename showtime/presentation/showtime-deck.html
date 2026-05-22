@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StarryOS Showtime: 单核已跑通与多核加速进展</title>
+  <style>
+    :root {
+      --bg: #f6f4ef;
+      --paper: #fffdf8;
+      --ink: #18202a;
+      --muted: #667085;
+      --line: #d8d2c5;
+      --accent: #0f766e;
+      --accent-2: #b45309;
+      --accent-3: #365da8;
+      --soft: #e9f5f2;
+      --soft-2: #fff4de;
+      --soft-3: #edf2ff;
+      --danger: #b42318;
+      --ok: #16703d;
+      --shadow: 0 18px 60px rgba(24, 32, 42, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(255, 253, 248, 0.88), rgba(246, 244, 239, 0.95)),
+        repeating-linear-gradient(90deg, rgba(15, 118, 110, 0.04), rgba(15, 118, 110, 0.04) 1px, transparent 1px, transparent 68px);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.55;
+    }
+
+    .deck-nav {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: rgba(255, 253, 248, 0.9);
+      border: 1px solid rgba(216, 210, 197, 0.85);
+      border-radius: 999px;
+      box-shadow: 0 12px 30px rgba(24, 32, 42, 0.12);
+      backdrop-filter: blur(14px);
+      transform: translateX(-50%);
+    }
+
+    .deck-nav button,
+    .deck-nav a {
+      min-width: 40px;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--ink);
+      font: inherit;
+      font-size: 14px;
+      text-decoration: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 12px;
+    }
+
+    .deck-nav button:hover,
+    .deck-nav a:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .counter {
+      min-width: 68px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .slide {
+      width: min(1180px, calc(100vw - 48px));
+      min-height: calc(100vh - 64px);
+      margin: 32px auto;
+      padding: 54px 64px 60px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      page-break-after: always;
+    }
+
+    .slide:first-of-type {
+      margin-top: 24px;
+    }
+
+    .kicker {
+      margin: 0 0 18px;
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      font-size: 14px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 920px;
+      margin-bottom: 18px;
+      font-size: 58px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin-bottom: 24px;
+      font-size: 42px;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin-bottom: 10px;
+      font-size: 22px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 860px;
+      color: #394150;
+      font-size: 24px;
+      line-height: 1.48;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .mono,
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: #f0eee7;
+      font-size: 0.92em;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 16px 0 0;
+      padding: 18px 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #161b22;
+      color: #f3f6fb;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    pre code {
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      min-height: 140px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffaf0;
+    }
+
+    .card.teal {
+      background: var(--soft);
+      border-color: #b9ddd7;
+    }
+
+    .card.blue {
+      background: var(--soft-3);
+      border-color: #c8d6fb;
+    }
+
+    .card.amber {
+      background: var(--soft-2);
+      border-color: #f1d49d;
+    }
+
+    .card p:last-child,
+    .card ul:last-child {
+      margin-bottom: 0;
+    }
+
+    .big-number {
+      margin: 4px 0 4px;
+      font-size: 54px;
+      line-height: 1;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .big-number.amber {
+      color: var(--accent-2);
+    }
+
+    .big-number.blue {
+      color: var(--accent-3);
+    }
+
+    ul {
+      padding-left: 1.2em;
+      margin: 0 0 18px;
+    }
+
+    li {
+      margin: 7px 0;
+      padding-left: 2px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 18px;
+    }
+
+    .pr-table {
+      font-size: 15px;
+      line-height: 1.42;
+    }
+
+    .pr-table th,
+    .pr-table td {
+      padding: 11px 12px;
+    }
+
+    .pr-title {
+      display: block;
+      margin-top: 4px;
+      color: #475467;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #344054;
+      background: #f4efe5;
+      font-weight: 700;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status.ok {
+      color: var(--ok);
+      background: #e7f7ec;
+    }
+
+    .status.warn {
+      color: var(--accent-2);
+      background: #fff1d6;
+    }
+
+    .status.risk {
+      color: var(--danger);
+      background: #ffe9e7;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 14px;
+      margin-top: 10px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 46px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .dot {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+    }
+
+    .quote {
+      padding: 28px 32px;
+      border-left: 6px solid var(--accent);
+      background: var(--soft);
+      border-radius: 0 8px 8px 0;
+      font-size: 26px;
+      line-height: 1.5;
+      font-weight: 700;
+    }
+
+    .footer-note {
+      margin-top: 26px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .slide-number {
+      position: absolute;
+      right: 32px;
+      bottom: 24px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .slide {
+      position: relative;
+    }
+
+    .speaker {
+      margin-top: 24px;
+      padding: 16px 18px;
+      border: 1px dashed #c6bdac;
+      border-radius: 8px;
+      background: #fbf7ee;
+      color: #4b5563;
+      font-size: 16px;
+    }
+
+    .speaker strong {
+      color: var(--ink);
+    }
+
+    .compact p,
+    .compact li {
+      font-size: 18px;
+    }
+
+    @media (max-width: 820px) {
+      .slide {
+        width: calc(100vw - 24px);
+        min-height: auto;
+        margin: 12px auto;
+        padding: 34px 24px 44px;
+      }
+
+      h1 {
+        font-size: 38px;
+      }
+
+      h2 {
+        font-size: 30px;
+      }
+
+      .lead {
+        font-size: 19px;
+      }
+
+      .grid.two,
+      .grid.three {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        font-size: 15px;
+      }
+
+      th,
+      td {
+        padding: 10px 8px;
+      }
+
+      .deck-nav {
+        width: calc(100vw - 24px);
+        justify-content: center;
+      }
+    }
+
+    @media print {
+      @page {
+        size: 16in 9in;
+        margin: 0;
+      }
+
+      body {
+        background: white;
+      }
+
+      .deck-nav {
+        display: none;
+      }
+
+      .slide {
+        width: 16in;
+        height: 9in;
+        min-height: 9in;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        break-after: page;
+      }
+
+      .speaker {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="deck-nav" aria-label="幻灯片导航">
+    <button type="button" id="prevBtn" aria-label="上一页">上一页</button>
+    <span class="counter"><span id="currentSlide">1</span> / <span id="totalSlides">15</span></span>
+    <button type="button" id="nextBtn" aria-label="下一页">下一页</button>
+    <button type="button" id="printBtn" aria-label="打印或导出 PDF">导出 PDF</button>
+  </nav>
+
+  <main>
+    <section class="slide" id="slide-1">
+      <p class="kicker">StarryOS Showtime</p>
+      <h1>单核已跑通，多核继续加速</h1>
+      <p class="lead">M6 guest self-build 已经在 StarryOS 内编译出 StarryOS kernel；现在把 binary、日志、checksum、问题链路和 PR 计划沉淀成可复现材料。</p>
+      <div class="speaker"><strong>讲法：</strong>今天重点不是单个 patch，而是证据链：结果在哪里、证明了什么、哪些验证还要继续拆。</div>
+      <span class="slide-number">01</span>
+    </section>
+
+    <section class="slide" id="slide-2">
+      <p class="kicker">为什么要拆两条线</p>
+      <h2>先有可信基线，再讨论并行加速</h2>
+      <div class="grid three">
+        <article class="card teal">
+          <h3>单 CPU</h3>
+          <p>建立稳定 baseline：已完成 M6 guest self-build，留下 binary、checksum 和完整日志。</p>
+        </article>
+        <article class="card amber">
+          <h3>多 CPU</h3>
+          <p>验证 guest cargo build 是否真的并行提速，而不是只启动多个 CPU。</p>
+        </article>
+        <article class="card blue">
+          <h3>PR 沉淀</h3>
+          <p>把过程中暴露的问题拆成小修复，并为每个修复准备对应测例。</p>
+        </article>
+      </div>
+      <div class="speaker"><strong>讲法：</strong>多核实验里变量很多：kernel、QEMU、rootfs、cargo workload 都会互相影响。所以先用单核收敛正确性和复现方式。</div>
+      <span class="slide-number">02</span>
+    </section>
+
+    <section class="slide" id="slide-3">
+      <p class="kicker">交付目录</p>
+      <h2><code>Auto-OS/showtime</code> 的组织方式</h2>
+      <pre><code>showtime/
+├── single-cpu/     单核 binary、runbook、bugfix、PR 测例
+├── multi-cpu/      SMP 实验、benchmark、风险记录、QEMU notes
+├── shared/         rootfs、环境、命令模板
+└── presentation/   这次展示用的 HTML 和讲述材料</code></pre>
+      <p class="footer-note">这个目录的作用是把临时实验变成可查、可复现、可继续提交 PR 的材料。</p>
+      <div class="speaker"><strong>讲法：</strong>后续所有 binary、日志、checksum、run command 和 bug 说明都落在这里，避免散在不同 worktree 或临时路径。</div>
+      <span class="slide-number">03</span>
+    </section>
+
+    <section class="slide" id="slide-4">
+      <p class="kicker">单核 M6 结果</p>
+      <h2>guest self-build 已经 PASS</h2>
+      <div class="grid two">
+        <article class="card teal">
+          <h3>运行配置</h3>
+          <ul>
+            <li>架构：<code>riscv64-qemu-virt</code></li>
+            <li>CPU：<code>-smp 1</code></li>
+            <li>TCG：<code>thread=single</code></li>
+            <li>内存：<code>7G</code></li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>成功证据</h3>
+          <ul>
+            <li><code>cargo build --release</code>：<code>132m 59s</code></li>
+            <li><code>===M6-SELFBUILD-PASS===</code></li>
+            <li>guest 内产出 <code>.elf</code> 和 <code>.bin</code></li>
+            <li>完整 serial log 已落盘</li>
+          </ul>
+        </article>
+      </div>
+      <div class="speaker"><strong>讲法：</strong>这一步证明 StarryOS guest 能承载 Rust/Cargo workload，并在 guest 内编译出 StarryOS kernel。它是后续多核实验的正确性尺子。</div>
+      <span class="slide-number">04</span>
+    </section>
+
+    <section class="slide" id="slide-5">
+      <p class="kicker">产物与边界</p>
+      <h2>结果已经落盘，边界也写清楚</h2>
+      <div class="grid two">
+        <article class="card teal">
+          <h3>已放入 showtime</h3>
+          <ul>
+            <li><code>starryos-singlecpu.elf</code></li>
+            <li><code>starryos-singlecpu.bin</code></li>
+            <li><code>SHA256SUMS</code></li>
+            <li><code>m6-selfbuild-guest-pass.log</code></li>
+          </ul>
+        </article>
+        <article class="card amber">
+          <h3>还不能过度声明</h3>
+          <ul>
+            <li>已做同环境 A/B boot smoke</li>
+            <li>复杂用户态 smoke 只作旁证</li>
+            <li>多核内核正确性仍单独推进</li>
+            <li>checkpoint readback 是 FS follow-up</li>
+          </ul>
+        </article>
+      </div>
+      <div class="speaker"><strong>讲法：</strong>下午讲的时候要把“编译出 kernel”“新 kernel 能启动”“哪些路径还没验证”分开。现在单核 boot smoke 已经补过，不需要虚。</div>
+      <span class="slide-number">05</span>
+    </section>
+
+    <section class="slide" id="slide-6">
+      <p class="kicker">严谨性：A/B 对比</p>
+      <h2>只替换 <code>-kernel</code>，其余条件不动</h2>
+      <div class="grid two compact">
+        <article class="card teal">
+          <h3>控制变量</h3>
+          <ul>
+            <li>同一个 Linux QEMU 容器</li>
+            <li>同一个 fsck 后 rootfs</li>
+            <li><code>-smp 1</code>, <code>tcg,thread=single</code></li>
+            <li>snapshot 模式，不污染镜像</li>
+          </ul>
+        </article>
+        <article class="card blue">
+          <h3>判据</h3>
+          <ul>
+            <li>进入 StarryOS userland</li>
+            <li>找到 rootfs 内已完成的 StarryOS ELF</li>
+            <li>打印 <code>===M6-SELFBUILD-PASS===</code></li>
+            <li>无 <code>panic/trap/FATAL/error</code></li>
+          </ul>
+        </article>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>对象</th>
+            <th>kernel</th>
+            <th>结果</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>reference</td>
+            <td><code>.guest-runs/riscv64-m6/starry-up1.bin</code></td>
+            <td><span class="status ok">PASS</span></td>
+          </tr>
+          <tr>
+            <td>guest-built</td>
+            <td><code>showtime/.../starryos-singlecpu.bin</code></td>
+            <td><span class="status ok">PASS</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="speaker"><strong>讲法：</strong>这一页体现严谨性：不是“guest-built kernel 自己说自己好”，而是拿原本正确编译的 reference kernel 做同环境对照，只换 <code>-kernel</code>，两边同一个 smoke 都通过。</div>
+      <span class="slide-number">06</span>
+    </section>
+
+    <section class="slide" id="slide-7">
+      <p class="kicker">PR 与测例</p>
+      <h2>4 个已提 PR 要能讲清楚问题、修复和证据</h2>
+      <table class="pr-table">
+        <thead>
+          <tr>
+            <th>PR</th>
+            <th>问题</th>
+            <th>修复内容</th>
+            <th>测例 / CI</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>#692<span class="pr-title">robust futex cleanup</span></td>
+            <td>线程退出时 robust-list 坏指针或 pending futex 不能拖垮退出路径。</td>
+            <td>容错清理坏 entry，pending 单独处理；测例按 Linux ABI 拆成 pending cleanup 和 bad-head tolerance。</td>
+            <td><code>test-futex-robust-list</code><br><span class="status warn">新 CI 已触发</span></td>
+          </tr>
+          <tr>
+            <td>#693<span class="pr-title">vfork child-stack clone</span></td>
+            <td><code>CLONE_VM|CLONE_VFORK</code> 带私有 child stack 时，父进程不应按传统 vfork 阻塞。</td>
+            <td>只在 <code>CLONE_VFORK && stack == 0</code> 时等待，避免 posix_spawn 类同步死锁。</td>
+            <td><code>test-vfork</code><br><span class="status warn">旧 CI 有取消/需重跑</span></td>
+          </tr>
+          <tr>
+            <td>#694<span class="pr-title">IPv4-mapped IPv6 socket</span></td>
+            <td>AF_INET6 socket 使用 <code>::ffff:127.0.0.1</code> 时，需要走 IPv4 backend 且保持 IPv6 用户态语义。</td>
+            <td>bind/connect 做 v4-mapped 归一化，getsockname/getpeername/accept 再包装回 IPv6。</td>
+            <td><code>bug-af-inet6-v4mapped</code><br><span class="status warn">x86_64 过，其他架构需看旧失败</span></td>
+          </tr>
+          <tr>
+            <td>#695<span class="pr-title">rsext4 inode bitmap</span></td>
+            <td>ext4 block group 的 inode bitmap 未初始化时，allocator 不能直接跳过可用 inode 容量。</td>
+            <td>识别并初始化 uninit inode bitmap，然后继续从该 group 分配 inode。</td>
+            <td>inode allocation regression<br><span class="status ok">CI 绿</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="speaker"><strong>讲法：</strong>这 4 个 PR 不要讲成“改了很多地方”，而是按问题、修复、测例三段讲。checkpoint tar readback 仍是候选问题，另拆 filesystem regression。</div>
+      <span class="slide-number">07</span>
+    </section>
+
+    <section class="slide" id="slide-8">
+      <p class="kicker">多核目标</p>
+      <h2>先证明 SMP 内核正确，再谈并行加速</h2>
+      <div class="grid three">
+        <article class="card blue">
+          <h3>1. 小 workload</h3>
+          <p>hello-world cargo build 先确认多核方向确实有速度收益。</p>
+        </article>
+        <article class="card teal">
+          <h3>2. SMP correctness</h3>
+          <p><code>-smp 4</code> + <code>thread=single</code> 先验证内核调度、迁移、文件系统路径。</p>
+        </article>
+        <article class="card amber">
+          <h3>3. 并发压力</h3>
+          <p>逐步打开 <code>jobs=2/4</code>，再观察 futex、锁和用户态响应性。</p>
+        </article>
+      </div>
+      <div class="speaker"><strong>讲法：</strong>Rust build 是很好的 OS 压力源，但不能只展示“启动了 4 个 CPU”。要说明内核是否真的能调度复杂用户态 workload。</div>
+      <span class="slide-number">08</span>
+    </section>
+
+    <section class="slide" id="slide-9">
+      <p class="kicker">多核证据</p>
+      <h2>已有收益，也暴露了真正的内核问题</h2>
+      <table class="pr-table">
+        <thead>
+          <tr>
+            <th>实验</th>
+            <th>配置</th>
+            <th>结果</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>hello-world</td>
+            <td><code>-smp 1 -j1</code> vs <code>-smp 4 -j4</code></td>
+            <td><span class="status ok">176s -> 62s</span></td>
+            <td>小 workload 约 <code>2.8x</code> speedup。</td>
+          </tr>
+          <tr>
+            <td>M6 v20 subset</td>
+            <td><code>SMP=4 jobs=2</code></td>
+            <td><span class="status ok">PASS</span></td>
+            <td><code>nproc=4</code>，metadata/pkgid 全部通过。</td>
+          </tr>
+          <tr>
+            <td>M6 v21 full early</td>
+            <td><code>SMP=4 jobs=2</code></td>
+            <td><span class="status warn">到 syn 后 stall</span></td>
+            <td>无 panic/SIGSEGV；暴露用户态响应性问题。</td>
+          </tr>
+          <tr>
+            <td>M6 v22 feature</td>
+            <td><code>starry-kernel/smp</code></td>
+            <td><span class="status warn">StoreFault</span></td>
+            <td>早期 kernel-lib 阶段覆盖 SMP 路径，并暴露具体内核 fault。</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="speaker"><strong>讲法：</strong>这里要讲清楚：多核不是已经最终 full PASS，而是已经拿到加速信号和可定位的 OS 问题。这个边界反而让结论更可信。</div>
+      <span class="slide-number">09</span>
+    </section>
+
+    <section class="slide" id="slide-10">
+      <p class="kicker">多核暴露的内核实现问题</p>
+      <h2>核心不是脚本，而是调度和迁移语义</h2>
+      <div class="grid three compact">
+        <article class="card teal">
+          <h3>用户态抢占</h3>
+          <ul>
+            <li><code>uctx.run()</code> 因 timer 返回后原来没有显式调度点</li>
+            <li>长 CPU 段可能让 guest heartbeat 长时间不推进</li>
+            <li>修正：<code>ReturnReason::Interrupt</code> 中 <code>yield_now()</code></li>
+          </ul>
+        </article>
+        <article class="card blue">
+          <h3>用户任务迁移</h3>
+          <ul>
+            <li>直接跨 CPU wake 曾触发 <code>current().as_thread()</code> panic</li>
+            <li>原因：StarryOS 用户线程上下文尚未完全 migration-safe</li>
+            <li>修正：用户态运行 pin CPU，blocked wake 回原 CPU</li>
+          </ul>
+        </article>
+        <article class="card amber">
+          <h3>run queue 负载</h3>
+          <ul>
+            <li>新增每 CPU run queue load 统计</li>
+            <li>kernel task 可按负载分配</li>
+            <li>用户任务先保持亲和性，correctness-first</li>
+          </ul>
+        </article>
+      </div>
+      <div class="speaker"><strong>讲法：</strong>这一页只讲 OS 实现：用户态抢占点、任务迁移亲和性、run queue 负载。脚本只是把这些验证出来，不是 PR 主体。</div>
+      <span class="slide-number">10</span>
+    </section>
+
+    <section class="slide" id="slide-11">
+      <p class="kicker">必须讲清楚的风险</p>
+      <h2>QEMU RISC-V MTTCG 不能当 correctness 证明</h2>
+      <div class="grid two">
+        <article class="card amber">
+          <h3>速度实验</h3>
+          <pre><code>-smp 4 -accel tcg,thread=multi</code></pre>
+          <p>可以观察真实并行是否能加速。</p>
+        </article>
+        <article class="card teal">
+          <h3>正确性优先</h3>
+          <pre><code>-smp 4 -accel tcg,thread=single</code></pre>
+          <p>避免 RISC-V MTTCG LR/SC reservation 风险。</p>
+        </article>
+      </div>
+      <p class="footer-note">内核 context-switch 里的 LR/SC 清理 fix 仍然有意义，但它不能修复 QEMU MTTCG 的跨 hart reservation 建模问题。</p>
+      <div class="speaker"><strong>讲法：</strong>这里要主动说明风险。用 <code>thread=multi</code> 跑快了，只能说明速度潜力，最终正确性需要另一个验证路径。</div>
+      <span class="slide-number">11</span>
+    </section>
+
+    <section class="slide" id="slide-12">
+      <p class="kicker">SMP selfbuild 怎么测</p>
+      <h2>先验证内核正确性，再放大并行度</h2>
+      <div class="grid three compact">
+        <article class="card">
+          <h3>1. baseline</h3>
+          <pre><code>SMP=1
+jobs=1
+rayon=1</code></pre>
+          <p>拿完整 StarryOS selfbuild 的串行墙钟时间。</p>
+        </article>
+        <article class="card teal">
+          <h3>2. SMP 内核正确性</h3>
+          <pre><code>SMP=4
+thread=single
+jobs=1</code></pre>
+          <p>证明多 hart kernel 能长时间支撑真实 guest selfbuild。</p>
+        </article>
+        <article class="card amber">
+          <h3>3. 放大并行压力</h3>
+          <pre><code>SMP=4
+thread=single
+jobs=2/4</code></pre>
+          <p>逐步验证 futex、锁、调度和文件系统路径。</p>
+        </article>
+      </div>
+      <p class="footer-note">最新状态：v20 的 <code>jobs=2</code> subset 已 PASS；v21 full early 到 <code>syn</code> 后 heartbeat 消失；v22 已让 <code>starry-kernel</code> 早期 lib 阶段启用 <code>smp</code> feature，并暴露 <code>StoreFault</code>。</p>
+      <div class="speaker"><strong>讲法：</strong>现在不把 <code>jobs=4</code> 当最终结论，也不声称完整多核 M6 已 PASS。重点是多核已经从“能启动”推进到“能复现实打实的 OS 调度压力”。</div>
+      <span class="slide-number">12</span>
+    </section>
+
+    <section class="slide" id="slide-13">
+      <p class="kicker">内核改进与当前证据</p>
+      <h2>每个改动都对应一个 SMP 现象</h2>
+      <table class="pr-table">
+        <thead>
+          <tr>
+            <th>内核点</th>
+            <th>遇到的问题</th>
+            <th>解决策略</th>
+            <th>当前证据</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>用户态抢占</td>
+            <td>CPU-bound rustc 段中 guest 反馈可能消失。</td>
+            <td>timer interrupt 返回用户循环时显式 <code>yield_now()</code>。</td>
+            <td>v19 guest heartbeat 持续输出，已越过 v18 的 <code>thiserror</code> 卡点；v21 暴露 <code>jobs=2</code> heartbeat stall。</td>
+          </tr>
+          <tr>
+            <td>任务迁移</td>
+            <td>blocked 用户任务跨 CPU wake 后 syscall 当前线程上下文错误。</td>
+            <td>用户态运行 pin CPU，带 <code>TaskExt</code> 的任务唤醒回原 CPU。</td>
+            <td>v17 的 <code>current().as_thread()</code> panic 不再复现。</td>
+          </tr>
+          <tr>
+            <td>run queue</td>
+            <td>SMP 下缺少可解释的 CPU 负载选择信号。</td>
+            <td>维护 run queue load；非 pinned kernel task 可按负载分配。</td>
+            <td>为后续 <code>jobs=2/4</code> 压力测试提供基础。</td>
+          </tr>
+          <tr>
+            <td>诊断</td>
+            <td>长跑失败只看最后 panic，定位太慢。</td>
+            <td><code>track_caller</code> 记录 preempt/block 调用点。</td>
+            <td>后续调度 panic 能直接回到内核调用点。</td>
+          </tr>
+          <tr>
+            <td>feature wiring</td>
+            <td>早期 <code>starry-kernel</code> lib 阶段没有覆盖 SMP 调度代码。</td>
+            <td>新增 <code>smp = ["ax-feat/smp"]</code>。</td>
+            <td>v22 已打印 <code>--features smp</code>；随后暴露 <code>StoreFault</code>。</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="speaker"><strong>讲法：</strong>这一页回答“OS 实现改进了什么”。不要把 Docker、QEMU、rootfs 讲成主线，它们只是验证这些内核改动的环境。</div>
+      <span class="slide-number">13</span>
+    </section>
+
+    <section class="slide" id="slide-14">
+      <p class="kicker">下一步计划</p>
+      <h2>把 SMP 内核改动变成可复现 regression</h2>
+      <div class="timeline">
+        <div class="step">
+          <span class="dot">1</span>
+          <div><h3>缩小 v22 fault</h3><p>把 <code>StoreFault</code> 从完整 selfbuild 里抽成可复现 OS regression。</p></div>
+        </div>
+        <div class="step">
+          <span class="dot">2</span>
+          <div><h3>补 OS regression</h3><p>覆盖 CPU-bound 用户进程不能饿死 heartbeat，以及 blocked 用户任务 wake 后不能丢失 thread context。</p></div>
+        </div>
+        <div class="step">
+          <span class="dot">3</span>
+          <div><h3>逐步放大并行度</h3><p>在 <code>thread=single</code> 下从稳定 <code>jobs=2</code> 到 <code>jobs=4</code>，重点观察 futex、锁、调度和文件系统。</p></div>
+        </div>
+      </div>
+      <div class="speaker"><strong>讲法：</strong>先把内核正确性跑稳，再讲速度。脚本和日志是为了可复现，PR 仍按 OS 功能和测例拆。</div>
+      <span class="slide-number">14</span>
+    </section>
+
+    <section class="slide" id="slide-15">
+      <p class="kicker">总结</p>
+      <div class="quote">单核 guest self-build 已跑通；多核已看到小 workload 加速，jobs=2 subset 通过，并把真实 M6 压力收敛到内核调度、迁移和响应性问题。</div>
+      <div class="grid three" style="margin-top: 28px;">
+        <article class="card teal">
+          <h3>baseline</h3>
+          <p>guest-built binary、SHA256 和完整日志已落盘。</p>
+        </article>
+        <article class="card amber">
+          <h3>SMP kernel</h3>
+          <p>timer/yield、任务亲和性、run queue load、早期 SMP feature 覆盖已补。</p>
+        </article>
+        <article class="card blue">
+          <h3>PR</h3>
+          <p>后续问题按 OS 功能和 regression 测例拆，不按脚本拆。</p>
+        </article>
+      </div>
+      <div class="speaker"><strong>讲法：</strong>收尾时强调：多核进展的本质是内核调度、迁移和同步语义更清楚了；速度实验是下一步，不是当前唯一结论。</div>
+      <span class="slide-number">15</span>
+    </section>
+  </main>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const total = slides.length;
+    const currentSlide = document.getElementById("currentSlide");
+    const totalSlides = document.getElementById("totalSlides");
+    totalSlides.textContent = String(total);
+
+    function currentIndex() {
+      const mid = window.scrollY + window.innerHeight / 2;
+      let index = 0;
+      for (let i = 0; i < slides.length; i += 1) {
+        if (slides[i].offsetTop <= mid) {
+          index = i;
+        }
+      }
+      return index;
+    }
+
+    function go(delta) {
+      const next = Math.min(total - 1, Math.max(0, currentIndex() + delta));
+      slides[next].scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function updateCounter() {
+      currentSlide.textContent = String(currentIndex() + 1);
+    }
+
+    document.getElementById("prevBtn").addEventListener("click", () => go(-1));
+    document.getElementById("nextBtn").addEventListener("click", () => go(1));
+    document.getElementById("printBtn").addEventListener("click", () => window.print());
+    window.addEventListener("scroll", updateCounter, { passive: true });
+    window.addEventListener("resize", updateCounter);
+    window.addEventListener("keydown", (event) => {
+      if (["ArrowRight", "PageDown", " "].includes(event.key)) {
+        event.preventDefault();
+        go(1);
+      } else if (["ArrowLeft", "PageUp"].includes(event.key)) {
+        event.preventDefault();
+        go(-1);
+      } else if (event.key.toLowerCase() === "p") {
+        window.print();
+      } else if (event.key === "Home") {
+        slides[0].scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (event.key === "End") {
+        slides[total - 1].scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+    updateCounter();
+  </script>
+</body>
+</html>
