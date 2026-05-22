@@ -34,6 +34,7 @@ M6_STOP_ON_PANIC="${M6_STOP_ON_PANIC:-1}"
 CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-8}"
 RAYON_NUM_THREADS="${RAYON_NUM_THREADS:-8}"
 M6_GUEST_HEARTBEAT_SEC="${M6_GUEST_HEARTBEAT_SEC:-60}"
+M6_PROCESS_HEARTBEAT_SEC="${M6_PROCESS_HEARTBEAT_SEC:-30}"
 M6_SYSCALL_STATS_INTERVAL_SEC="${M6_SYSCALL_STATS_INTERVAL_SEC:-120}"
 M6_RUSTFLAGS_COMMON="${M6_RUSTFLAGS_COMMON:--C debuginfo=0}"
 M6_CARGO_VV="${M6_CARGO_VV:-0}"
@@ -70,6 +71,7 @@ echo "jobs=$CARGO_BUILD_JOBS"
 echo "rayon=$RAYON_NUM_THREADS"
 echo "resume=$M6_RESUME"
 echo "tmpfs_work=$M6_USE_TMPFS_WORK"
+echo "process_heartbeat=$M6_PROCESS_HEARTBEAT_SEC"
 echo "===M6-FULL-J8-ENV-END==="
 
 mkdir -p /opt/ccwrap
@@ -107,6 +109,7 @@ if [ -f "$AXCFG" ]; then
 fi
 
 export M6_GUEST_HEARTBEAT_SEC
+export M6_PROCESS_HEARTBEAT_SEC
 export M6_SYSCALL_STATS_INTERVAL_SEC
 export M6_CARGO_VV
 export M6_RESUME
@@ -126,8 +129,21 @@ if [ -f /opt/build-starry-kernel.sh ] && [ "${M6_CARGO_VV:-0}" != "1" ]; then
 fi
 
 echo "===M6-FULL-J8-START==="
+process_hb_pid=""
+if [ "${M6_PROCESS_HEARTBEAT_SEC:-0}" != "0" ]; then
+    (
+        while :; do
+            now="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date)"
+            echo "[M6 $now] process heartbeat (cargo/rustc/build helpers)"
+            ps 2>/dev/null | grep -E 'cargo|rustc|cc|ld|build-starry|m6-full' | grep -v grep | head -20 || true
+            sleep "$M6_PROCESS_HEARTBEAT_SEC"
+        done
+    ) &
+    process_hb_pid=$!
+fi
 /bin/bash --noprofile --norc /opt/build-starry-kernel.sh
 rc=$?
+[ -n "$process_hb_pid" ] && kill "$process_hb_pid" 2>/dev/null || true
 sync 2>/dev/null || true
 echo "===M6-FULL-J8-RUN-END rc=$rc==="
 exit "$rc"
@@ -137,6 +153,7 @@ export QEMU KERNEL ROOTFS LOG M6_QEMU_SMP M6_TCG_THREAD M6_QEMU_MEM
 export M6_QEMU_TIMEOUT_SEC M6_PANIC_GRACE_MS M6_DRIVE_SNAPSHOT M6_STOP_ON_PANIC GUEST_SCRIPT
 export M6_DRIVE_FORMAT
 export CARGO_BUILD_JOBS RAYON_NUM_THREADS M6_GUEST_HEARTBEAT_SEC
+export M6_PROCESS_HEARTBEAT_SEC
 export M6_SYSCALL_STATS_INTERVAL_SEC M6_RUSTFLAGS_COMMON M6_CARGO_VV
 export M6_RESUME M6_USE_TMPFS_WORK M6_COPY_TOOLCHAIN_EXEC M6_WORK_TMPFS_SIZE
 
@@ -144,7 +161,7 @@ echo "[host] log=$LOG"
 echo "[host] kernel=$KERNEL"
 echo "[host] rootfs=$ROOTFS"
 echo "[host] qemu=-smp $M6_QEMU_SMP -m $M6_QEMU_MEM -accel tcg,thread=$M6_TCG_THREAD drive.format=$M6_DRIVE_FORMAT drive.snapshot=$M6_DRIVE_SNAPSHOT"
-echo "[host] guest cargo jobs=$CARGO_BUILD_JOBS rayon=$RAYON_NUM_THREADS stop_on_panic=$M6_STOP_ON_PANIC"
+echo "[host] guest cargo jobs=$CARGO_BUILD_JOBS rayon=$RAYON_NUM_THREADS stop_on_panic=$M6_STOP_ON_PANIC process_heartbeat=$M6_PROCESS_HEARTBEAT_SEC"
 
 set +e
 expect <<'EXPECT'
@@ -160,7 +177,7 @@ while {[gets $fh line] >= 0} {
 close $fh
 send -- "__M6_FULL_J8__\r"
 expect -re {root@starry:[^\r\n]*#}
-send -- "M6_GUEST_HEARTBEAT_SEC=$env(M6_GUEST_HEARTBEAT_SEC) M6_SYSCALL_STATS_INTERVAL_SEC=$env(M6_SYSCALL_STATS_INTERVAL_SEC) M6_CARGO_VV=$env(M6_CARGO_VV) M6_RESUME=$env(M6_RESUME) M6_RUSTFLAGS_COMMON='$env(M6_RUSTFLAGS_COMMON)' M6_USE_TMPFS_WORK=$env(M6_USE_TMPFS_WORK) M6_COPY_TOOLCHAIN_EXEC=$env(M6_COPY_TOOLCHAIN_EXEC) M6_WORK_TMPFS_SIZE=$env(M6_WORK_TMPFS_SIZE) CARGO_BUILD_JOBS=$env(CARGO_BUILD_JOBS) RAYON_NUM_THREADS=$env(RAYON_NUM_THREADS) /bin/sh /tmp/m6-full-j8.sh\r"
+send -- "M6_GUEST_HEARTBEAT_SEC=$env(M6_GUEST_HEARTBEAT_SEC) M6_PROCESS_HEARTBEAT_SEC=$env(M6_PROCESS_HEARTBEAT_SEC) M6_SYSCALL_STATS_INTERVAL_SEC=$env(M6_SYSCALL_STATS_INTERVAL_SEC) M6_CARGO_VV=$env(M6_CARGO_VV) M6_RESUME=$env(M6_RESUME) M6_RUSTFLAGS_COMMON='$env(M6_RUSTFLAGS_COMMON)' M6_USE_TMPFS_WORK=$env(M6_USE_TMPFS_WORK) M6_COPY_TOOLCHAIN_EXEC=$env(M6_COPY_TOOLCHAIN_EXEC) M6_WORK_TMPFS_SIZE=$env(M6_WORK_TMPFS_SIZE) CARGO_BUILD_JOBS=$env(CARGO_BUILD_JOBS) RAYON_NUM_THREADS=$env(RAYON_NUM_THREADS) /bin/sh /tmp/m6-full-j8.sh\r"
 set rc 6
 expect {
     "===M6-FULL-J8-RUN-END rc=0===" {

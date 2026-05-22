@@ -106,9 +106,9 @@ last heartbeat: guest time about 188s; last rseq line at guest time about 218s
 
 这条不是完整编译结果，只是短反馈 smoke。结论是：j4 比 j8 稳定，能形成宿主多线程并行压力，并且在 240s 窗口内没有复现 j8 的 rustc SIGSEGV。它还不能证明完整 M6 已完成。
 
-## MTTCG j4 长跑
+## MTTCG j4 overlay 长跑
 
-当前正式推进的 lane：
+第一轮正式推进的 lane：
 
 ```text
 log: showtime/multi-cpu/logs/m6-full-smp8-mttcg-j4-overlay-long-20260523.log
@@ -122,7 +122,29 @@ RAYON_NUM_THREADS=4
 M6_QEMU_TIMEOUT_SEC=14400
 ```
 
-使用 qcow2 overlay 的原因：保留 guest 编译产物，同时不污染 16G base rootfs，也避免每次复制完整 raw image。若这条完成，下一步从 overlay 中提取 `/opt/tgoskits/target/riscv64gc-unknown-none-elf/release/starryos`，再用同一 QEMU 条件做 boot/`ls -la` smoke。
+结果：
+
+```text
+runtime: about 18m41s
+host qemu CPU: early about 300%-390%, later about 100%
+progress: reached inherit-methods-macro / unicode-xid after darling/yansi
+last heartbeat: guest timestamp 2026-05-22T18:44:49Z
+last kernel log: rseq at guest time about 727s
+SIGSEGV/panic/trap: 0
+outcome: stopped manually because log and overlay stopped changing after 02:47:42 CST while QEMU kept one host core busy
+```
+
+解释：这不是完成结果，也不是明确 kernel panic。它说明 j4 lane 能早期利用多核，但进入后段后并行度下降到约 1 host core，并且原 heartbeat 不能解释当前 guest 里到底是哪一个 cargo/rustc 进程在跑。
+
+后续 runner 改动：
+
+```text
+M6_PROCESS_HEARTBEAT_SEC=30
+```
+
+runner 会在 guest 内独立打印 `cargo/rustc/cc/ld/build-starry` 相关进程，避免下一次只看到“QEMU 100% CPU、cargo 没输出”的盲区。
+
+使用 qcow2 overlay 的原因：保留 guest 编译产物，同时不污染 16G base rootfs，也避免每次复制完整 raw image。若后续长跑完成，下一步从 overlay 中提取 `/opt/tgoskits/target/riscv64gc-unknown-none-elf/release/starryos`，再用同一 QEMU 条件做 boot/`ls -la` smoke。
 
 ## thread=single 对照
 
