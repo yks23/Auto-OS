@@ -203,7 +203,7 @@ expect {
             exp_continue
         }
     }
-    -re {(fatal|FATAL|trap|Unhandled|Segmentation fault|stack smashing detected)} {
+    -re {(fatal|FATAL|trap|Unhandled|Segmentation fault|SIGSEGV|signal: 11|stack smashing detected)} {
         set rc 4
         after $env(M6_PANIC_GRACE_MS)
     }

@@ -17,8 +17,8 @@
 | [#844](https://github.com/rcore-os/tgoskits/pull/844) | READY OPEN | 2026-05-23 已执行 `gh pr ready`；`mergeStateStatus=CLEAN`，`mergeable=MERGEABLE`；Actions 20 pass / 0 fail | BusyBox tmpfs copy -> rename -> ELF magic -> exec regression；`sh -n busybox-tests.sh` PASS | 固化 tmpfs rename 后 ELF 读回和执行的文件系统行为。 |
 | [#878](https://github.com/rcore-os/tgoskits/pull/878) | READY OPEN | `gh pr view`：`isDraft=false`，`mergeStateStatus=CLEAN`，`mergeable=MERGEABLE`；CI rollup 显示 container/qemu/self-hosted 相关 job 已通过，部分 host job skipped | `git diff --check upstream/dev...HEAD` PASS；`cargo fmt --check` PASS；现有 robust futex / mt-execve 覆盖 teardown ABI | 修复 teardown/usercopy/futex 对“当前上下文必是用户线程”的错误假设。 |
 | [#879](https://github.com/rcore-os/tgoskits/pull/879) | READY OPEN | `gh pr view`：`isDraft=false`，`mergeStateStatus=CLEAN`，`mergeable=MERGEABLE`；CI rollup 显示 container/qemu/self-hosted 相关 job 已通过，部分 host job skipped | `git diff --check upstream/dev...HEAD` PASS；`cargo fmt --check` PASS；新增 `qemu-smp4/test-rawmutex-handoff` | 修复 SMP RawMutex owner handoff 竞态和 guard 跨任务释放风险。 |
-| [#800](https://github.com/rcore-os/tgoskits/pull/800) | BLOCKED OPEN | 已在独立 worktree 重放到最新 `dev` 并推送 `6aeb2566e`；`mergeStateStatus` 从 DIRTY 变为 BLOCKED，冲突已消；`reviewDecision=CHANGES_REQUESTED`；CI run `26308003915` 中 format/sync-lint/std/clippy/ArceOS/axvisor 已过，主要等 Starry qemu container jobs | `cargo fmt` PASS；`cargo clippy -p ax-fs-ng --target riscv64gc-unknown-none-elf -- -D warnings` PASS；四架构 bugfix list PASS；test-suite 已迁到 `normal/qemu-smp1/bugfix/test-dev-zero-full-transfer` | 直接设备读写完整传输语义；剩余是旧 review 状态和 Starry CI pending，不再是 merge conflict。 |
-| [#885](https://github.com/rcore-os/tgoskits/pull/885) | DRAFT OPEN | 2026-05-23 CST 新建 draft；branch `fix/starry-syscall-thread-snapshot`，commit `82fa8297d`；等待 Actions | `git diff --check` PASS；`cargo fmt --all --check` PASS；`cargo check -p starry-kernel --target riscv64gc-unknown-none-elf` PASS；`zig cc` C 语法 PASS；`test-openat-umask-smp --list` PASS | 文件创建 syscall 在入口固定用户线程上下文，避免 usercopy 后二次 `current().as_thread()` 读到错误 task；这是 M6 多核压力暴露出来的保守 OS hardening。 |
+| [#800](https://github.com/rcore-os/tgoskits/pull/800) | BLOCKED OPEN | 已在独立 worktree 重放到最新 `dev` 并推送 `6aeb2566e`；`mergeStateStatus` 从 DIRTY 变为 BLOCKED，冲突已消；`reviewDecision=CHANGES_REQUESTED`；CI run `26308003915` 已全 PASS；已评论说明冲突清理和验证状态 | `cargo fmt` PASS；`cargo clippy -p ax-fs-ng --target riscv64gc-unknown-none-elf -- -D warnings` PASS；四架构 bugfix list PASS；test-suite 已迁到 `normal/qemu-smp1/bugfix/test-dev-zero-full-transfer` | 直接设备读写完整传输语义；剩余是旧 review 状态，不再是 merge conflict 或 CI blocker。 |
+| [#885](https://github.com/rcore-os/tgoskits/pull/885) | DRAFT OPEN | 2026-05-23 CST 新建 draft；branch `fix/starry-syscall-thread-snapshot`，commit `82fa8297d`；Actions 大部分已 PASS，剩 `starry riscv64/aarch64 qemu` pending | `git diff --check` PASS；`cargo fmt --all --check` PASS；`cargo check -p starry-kernel --target riscv64gc-unknown-none-elf` PASS；`zig cc` C 语法 PASS；`test-openat-umask-smp --list` PASS；#885 内核已通过 guest cargo synthetic leaf16/leaf64 短基准 | 文件创建 syscall 在入口固定用户线程上下文，避免 usercopy 后二次 `current().as_thread()` 读到错误 task；这是 M6 多核压力暴露出来的保守 OS hardening。 |
 
 ## #692 robust futex cleanup faults
 
@@ -241,7 +241,7 @@ SMP 下 `RawMutex::unlock` 旧逻辑用 `notify_one_with` 把 `owner_id` 直接�
 **测试 / 状态**
 
 - PR：[#885](https://github.com/rcore-os/tgoskits/pull/885)
-- 状态：DRAFT OPEN，等待 GitHub Actions。
+- 状态：DRAFT OPEN；Actions 大部分已通过，剩 `starry riscv64/aarch64 qemu` pending，继续保持 draft。
 - 本地证据：`git diff --check` PASS；`cargo fmt --all --check` PASS；`cargo check -p starry-kernel --target riscv64gc-unknown-none-elf` PASS；`zig cc -target riscv64-linux-musl` C 语法 PASS；`cargo xtask starry test qemu --arch riscv64 -g normal -c test-openat-umask-smp --list` PASS。
 - 本地限制：macOS 缺 `debugfs`，Docker qemu 尝试时 Docker CLI 无输出卡住，因此完整 qemu case 交给 CI。
 
@@ -255,5 +255,5 @@ SMP 下 `RawMutex::unlock` 旧逻辑用 `notify_one_with` 把 `owner_id` 直接�
 - #694 虽已归档合入，但本次 `gh` 查询偶发 GraphQL EOF；如汇报需要完整 CI 明细，建议重新查 Actions run。
 - #695 已合入且历史记录为 CI 绿，但仍缺一个更小、独立的 rsext4 inode allocation regression 描述。
 - #842/#843/#844/#878/#879 当前都已经 ready review，元数据为 CLEAN / MERGEABLE；下一步等待维护者 review/用户批准。
-- #800 冲突已清，从 DIRTY 变为 BLOCKED；CI 正在跑，剩旧 review 状态，不纳入当前 M6 展示主线。
-- #885 是新的 draft OS hardening PR，来自多核 cargo 压力信号；需要等 Actions，再决定是否 ready。
+- #800 冲突已清，从 DIRTY 变为 BLOCKED；CI 已全 PASS，已评论请求重新 review，剩旧 review 状态。
+- #885 是新的 draft OS hardening PR，来自多核 cargo 压力信号；Actions 仍有 Starry qemu job pending，等全绿后再决定是否 ready。

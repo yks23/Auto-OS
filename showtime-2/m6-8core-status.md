@@ -4,6 +4,53 @@
 
 ## 当前结论
 
+### 2026-05-23 04:15 CST 更新
+
+已经基于 #885 的修复内核跑过一轮短反馈：
+
+```text
+kernel: .guest-runs/riscv64-m6/starry-smp8-snapshotthread-20260523.bin
+rootfs: .guest-runs/rootfs-selfbuild-riscv64.img
+QEMU: qemu-system-riscv64 10.2.2 on macOS arm64, -smp 8 -accel tcg,thread=multi
+workload: guest 内生成 16 个独立 Rust leaf crate，cargo build --offline --release
+```
+
+结果：
+
+```text
+jobs=8: 43.59s, PASS
+jobs=1: 1m33s, PASS
+speedup: 93s / 43.59s = 2.13x
+logs:
+  showtime/multi-cpu/logs/cargo-speed-smp8-snapshotthread-mttcg-j8-leaf16-20260523T040245.log
+  showtime/multi-cpu/logs/cargo-speed-smp8-snapshotthread-mttcg-j1-leaf16-20260523T040412.log
+```
+
+同一内核的 full StarryOS M6 `jobs=8` 已经启动到真实 `starry-kernel` guest cargo 阶段，但没有完成：
+
+```text
+log: showtime/multi-cpu/logs/m6-full-smp8-snapshotthread-mttcg-j8-20260523T040730.log
+guest: smp=8, jobs=8, rayon=8
+progress: reached [2] cargo build -p starry-kernel (lib), compiling core/syn/toml/syscalls/starry-signal
+failure: guest rustc for syn and core exited with signal 11 (SIGSEGV)
+kernel panic/trap: none observed in this run
+```
+
+这说明 #885 修掉了之前 `fd_ops.rs:269` 的 `kernel task` panic，但 RISC-V QEMU MTTCG 仍不能作为 full cargo correctness lane：full M6 在并行 rustc 下会出现用户态 SIGSEGV。
+
+更宽的 64 leaf synthetic cargo benchmark 也已完成：
+
+```text
+jobs=8: 2m47s, PASS
+jobs=1: 6m09s, PASS
+speedup: 369s / 167s = 2.21x
+logs:
+  showtime/multi-cpu/logs/cargo-speed-smp8-snapshotthread-mttcg-j8-leaf64-20260523T041302.log
+  showtime/multi-cpu/logs/cargo-speed-smp8-snapshotthread-mttcg-j1-leaf64-20260523T041634.log
+```
+
+结论：StarryOS guest 内 `cargo -j8` 的确能并行并带来约 2.1x-2.2x 加速，但在当前 Apple Silicon host 上跑 RISC-V QEMU TCG，full M6 `jobs=8` 仍被 MTTCG correctness 风险卡住；synthetic 宽图也没有达到 4x。`scripts/run-m6-starryos-j8-expect.sh` 和 `scripts/bench-m6-cargo-speed-expect.sh` 已补充 `SIGSEGV` / `signal: 11` 早停匹配，后续不会在 guest rustc 已经崩溃后继续盲等。
+
 已经构建出一个用于 8 核验证的集成内核：
 
 ```text

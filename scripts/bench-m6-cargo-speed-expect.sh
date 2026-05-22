@@ -231,7 +231,7 @@ expect {
         set rc 3
         after $env(M6_PANIC_GRACE_MS)
     }
-    -re {(fatal|FATAL|trap|Unhandled|Segmentation fault)} {
+    -re {(fatal|FATAL|trap|Unhandled|Segmentation fault|SIGSEGV|signal: 11)} {
         set rc 4
         after $env(M6_PANIC_GRACE_MS)
     }
