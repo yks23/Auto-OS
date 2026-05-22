@@ -51,6 +51,15 @@ logs:
 
 结论：StarryOS guest 内 `cargo -j8` 的确能并行并带来约 2.1x-2.2x 加速，但在当前 Apple Silicon host 上跑 RISC-V QEMU TCG，full M6 `jobs=8` 仍被 MTTCG correctness 风险卡住；synthetic 宽图也没有达到 4x。`scripts/run-m6-starryos-j8-expect.sh` 和 `scripts/bench-m6-cargo-speed-expect.sh` 已补充 `SIGSEGV` / `signal: 11` 早停匹配，后续不会在 guest rustc 已经崩溃后继续盲等。
 
+当前没有达到 4x 的直接原因：
+
+- 宿主是 macOS arm64，guest 是 riscv64，所有 guest 指令都要经过 QEMU TCG 翻译；`thread=multi` 提供宿主并行，但每个 vCPU 都仍有翻译和同步开销。
+- RISC-V MTTCG 在 full cargo workload 下不稳定，`syn` / `core` 的 guest rustc 已经出现 SIGSEGV；因此不能把 MTTCG 当作 full M6 correctness lane。
+- full StarryOS M6 早期 cargo graph 不总是 8 路宽；即使 `CARGO_BUILD_JOBS=8`，等待 build-std、proc-macro、链接或文件系统 I/O 时也会退化。
+- synthetic leaf64 已足够宽，但每个 crate 较小，进程创建、文件系统元数据、QEMU 设备模拟和串口日志开销会稀释并行收益。
+
+下一条能真正冲 4x 的路线不是继续盲目加 `-j`，而是换正确的加速底座：真实 RISC-V SMP / 正确模拟器，或改用与 Apple Silicon 对齐的 aarch64/HVF guest 路线；RISC-V TCG MTTCG 更适合暴露压力和短基准，不适合作为最终 full M6 PASS 口径。
+
 已经构建出一个用于 8 核验证的集成内核：
 
 ```text
