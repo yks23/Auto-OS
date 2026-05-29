@@ -128,38 +128,36 @@ function cover(p) {
   rect(s, 0, 0, 8, H, C.blue);
   text(s, "StarryOS 自举编译与内核改进成果汇报", { x: 72, y: 86, w: 980, h: 64, size: 39, color: C.white, bold: true });
   text(s, "BigLab-B 最终汇报 | 杨凯森 | 2026-05", { x: 74, y: 198, w: 640, h: 34, size: 20, color: "#CBD5E1" });
-  text(s, "目标：让 StarryOS 承载一个真实的大型 Rust/Cargo workload，在 guest 内编译出 StarryOS 自己。", {
+  text(s, "主线：让 StarryOS 在 guest 内编译出 StarryOS 自己，过程分为两步推进。", {
     x: 76,
-    y: 260,
+    y: 270,
     w: 1040,
     h: 44,
     size: 25,
     color: "#F8FAFC",
     bold: true,
   });
-  text(s, "这件事会系统性暴露 OS 层问题：进程创建、futex 退出、文件系统、SMP 同步、调度唤醒、用户态 ABI 和 QEMU/HVF 边界。", {
-    x: 76,
-    y: 318,
-    w: 1050,
-    h: 54,
-    size: 21,
+  rect(s, 78, 374, 500, 150, "#111C2F", "#334155", 1);
+  text(s, "1", { x: 104, y: 400, w: 46, h: 46, size: 30, color: "#93C5FD", bold: true, align: "center", valign: "middle", fill: "#1E3A8A" });
+  text(s, "首先实现单核", { x: 174, y: 396, w: 320, h: 34, size: 27, color: C.white, bold: true });
+  text(s, "先让 StarryOS 在 guest 环境中稳定完成一次自举编译，形成单核可复现基线。", {
+    x: 176,
+    y: 446,
+    w: 346,
+    h: 52,
+    size: 19,
     color: "#CBD5E1",
   });
-  bullet(s, [
-    { text: "方法：用 AI 驱动的持续迭代框架，把长时间实验拆成可复现、可验证、可提交的 OS 修复。", color: C.green, textColor: "#E5E7EB" },
-    { text: "成果：12 个 OS PR 已合入 TGOSKit dev；8 核 AArch64/HVF guest 完成 StarryOS self-build。", color: C.orange, textColor: "#E5E7EB" },
-    { text: "分析：用 host 对齐参考和微基准拆清 Cargo、OS、QEMU 各自承担的性能成本。", color: C.blue, textColor: "#E5E7EB" },
-  ], 84, 420, 930, 56, 21);
-  rect(s, 990, 430, 166, 154, "#111C2F", "#334155", 1);
-  text(s, "路线", { x: 1018, y: 454, w: 110, h: 26, size: 20, color: "#93C5FD", bold: true, align: "center" });
-  text(s, "真实 workload\n暴露 OS 问题\n形成 PR 与测例\n再做性能诊断", {
-    x: 1012,
-    y: 492,
-    w: 122,
-    h: 72,
-    size: 16,
+  rect(s, 650, 374, 500, 150, "#111C2F", "#334155", 1);
+  text(s, "2", { x: 676, y: 400, w: 46, h: 46, size: 30, color: "#BBF7D0", bold: true, align: "center", valign: "middle", fill: "#166534" });
+  text(s, "然后实现多核编译", { x: 746, y: 396, w: 340, h: 34, size: 27, color: C.white, bold: true });
+  text(s, "再沿同一条链路推进多核，让 StarryOS 在 guest 内以多核方式完成自举编译。", {
+    x: 748,
+    y: 446,
+    w: 346,
+    h: 66,
+    size: 19,
     color: "#CBD5E1",
-    align: "center",
   });
 }
 
