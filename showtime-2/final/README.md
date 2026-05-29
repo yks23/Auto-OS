@@ -1,6 +1,6 @@
 # BigLab-B Final Materials
 
-更新时间：2026-05-29
+更新时间：2026-05-30
 
 本目录整理杨凯森 BigLab-B 最终答辩材料的文本母稿。
 
@@ -13,10 +13,10 @@
   15 页答辩 PPT 规划和口播稿。后续生成 PPTX 时应以此为内容源，避免继续沿用旧状态。
 
 - `biglab-b-final-yang-kaisen.pptx`
-  根据最新口径生成的最终答辩 PPT：四个数字卡、host 对齐参考、实验 1 迭代框架、重点 PR、self-build 速度 setting、编译/链接瓶颈和 demo。
+  根据最新口径生成的最终答辩 PPT：BigLab-A 占位、Task 1 框架、Harness 两阶段、重点 PR 背景、self-build 速度 setting、CPU/阶段利用率图和成因拆解。
 
 - `biglab-b-final-yang-kaisen-minimal.pptx` / `biglab-b-final-yang-kaisen-minimal.pdf`
-  简约版正式展示稿。当前答辩优先使用这一版，已把端到端、编译并行、链接/串行尾段三种加速比拆开。
+  简约版正式展示稿。当前答辩优先使用这一版，共 15 页；已把端到端、编译并行、链接/串行尾段三种加速比拆开，并补充 SMP8 CPU/阶段分析。
 
 - `biglab-b-final-yang-kaisen-contact-sheet.png`
   最新 PPT 缩略图预览，便于快速检查页序和版面。
