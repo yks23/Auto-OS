@@ -474,6 +474,24 @@ function causeMatrix(p) {
   });
 }
 
+function courseThoughts(p) {
+  const s = base(p, "19", "课程思考：AI 时代的 OS 实验设计", "这次 BigLab-B 的经验是：AI 降低了工程实现门槛，但更凸显任务拆解、信息供给和系统理解的重要性。");
+  card(s, "1. Agent 与任务拆解", "Agent 已经能处理很长的工程上下文；真正决定效率的是学生能否把目标、仓库、分支、运行模式、交付标准说清楚。\n\n课程可以更强调：面对庞大 OS 项目，如何把模糊目标拆成可验证的小任务。", 74, 218, 350, 274, C.blue);
+  card(s, "2. 更早开放 OS 实战", "AI 让工程门槛显著下降，OS 课可以更多面向大一同学开放。\n\n他们通过参与真实项目、读代码、跑测试、提 PR，会比只做小作业获得更快的工程成长。", 465, 218, 350, 274, C.green);
+  card(s, "3. 选修课的多元参与", "区分必须掌握的 OS 基础和可选进阶模块。\n\n鼓励 AI 方向同学用自己的 AI 能力完成过去单人课程里很难完成的大型系统项目，同时保持 OS 核心问题足够有趣。", 856, 218, 350, 274, C.orange);
+  rect(s, 100, 572, 1080, 54, C.dark);
+  text(s, "结论：AI 不替代 OS 理解；它让课程更适合训练“拆解复杂系统、组织证据、完成真实工程交付”的能力。", {
+    x: 130,
+    y: 588,
+    w: 1020,
+    h: 24,
+    size: 20,
+    color: C.white,
+    bold: true,
+    align: "center",
+  });
+}
+
 function demo(p) {
   const s = base(p, "13", "复现材料与答辩支撑", "所有关键结果均保留复现命令、运行日志、PASS marker、PR 记录和最终报告材料。");
   card(s, "结果文档", "showtime-2/final/README.md\n包含性能 setting、日志路径和复现入口。", 78, 230, 335, 180, C.blue);
@@ -505,6 +523,7 @@ async function main() {
   cpuTimeline(presentation);
   alignedAnalysis(presentation);
   causeMatrix(presentation);
+  courseThoughts(presentation);
 
   const previewPaths = [];
   for (let i = 0; i < presentation.slides.count; i += 1) {

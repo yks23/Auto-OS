@@ -13,10 +13,10 @@
   答辩 PPT 规划和口播稿。后续生成 PPTX 时应以此为内容源，避免继续沿用旧状态。
 
 - `biglab-b-final-yang-kaisen.pptx`
-  根据最新口径生成的最终答辩 PPT：BigLab-A 前置训练、BigLab-B Task 1 的 tg-arceos-tutorial 五个基础 exercise、Task 2 阶段 1 Harness、重点 PR 背景、self-build 速度 setting、CPU/阶段利用率图和成因拆解。
+  根据最新口径生成的最终答辩 PPT：BigLab-A 前置训练、BigLab-B Task 1 的 tg-arceos-tutorial 五个基础 exercise、Task 2 阶段 1 Harness、重点 PR 背景、self-build 速度 setting、CPU/阶段利用率图、成因拆解和 OS 课程设计思考。
 
 - `biglab-b-final-yang-kaisen-minimal.pptx` / `biglab-b-final-yang-kaisen-minimal.pdf`
-  简约版正式展示稿。当前答辩优先使用这一版，共 18 页；已修正 BigLab-B Task 1 / Task 2 阶段 1 的归属，补 3 页 PR 背景知识，并把端到端、编译并行、链接/串行尾段三种加速比拆开。
+  简约版正式展示稿。当前答辩优先使用这一版，共 19 页；已修正 BigLab-B Task 1 / Task 2 阶段 1 的归属，补 3 页 PR 背景知识，并把端到端、编译并行、链接/串行尾段三种加速比拆开。
 
 - `biglab-b-final-yang-kaisen-contact-sheet.png`
   最新 PPT 缩略图预览，便于快速检查页序和版面。
