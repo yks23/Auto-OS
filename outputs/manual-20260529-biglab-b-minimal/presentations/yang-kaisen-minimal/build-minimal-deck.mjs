@@ -164,11 +164,11 @@ function cover(p) {
 }
 
 function bigLabA(p) {
-  const s = base(p, "02", "BigLab-A：AI4OSE Lab1 基础训练", "BigLab-A 是前 7 周的基础训练，目标是把 OS 概念、Rust 工程和可复现实验交付串起来。");
-  card(s, "任务结构", "Task 1：5 个基础小实验全部完成。\nTask 2：至少完成 2 个个性化实验。\nTask 3：至少完成 3 个扩展实验，且包含 T3L1 与 T3L8。\nTask 4：在完成总结报告后申请检查。", 74, 224, 340, 250, C.blue);
-  card(s, "交付方式", "每个实验形成可运行 crate，发布到 crates.io，并带上 #ai #ai4ose #kernel #learning #os 关键词；同时保留 GitHub repo、tag、README 和复现命令。", 470, 224, 340, 250, C.green);
-  card(s, "对后续的作用", "BigLab-A 训练的是小规模、可复现、可讲清楚的 OS 实验；BigLab-B 把这个方法迁移到 TGOSKit/StarryOS 的真实内核 PR 和大型 workload。", 866, 224, 340, 250, C.orange);
-  footer(s, "杨凯森：BigLab-B 汇报重点承接 BigLab-A 的工程化训练，进一步展示真实内核问题定位、修复、测例和 PR 合入。");
+  const s = base(p, "02", "BigLab-A：ArceOS 小实验与系统能力训练", "BigLab-A 里我主要完成 tg-arceos-tutorial/test 分支上的 ArceOS 小实验，从单个组件逐步走到应用、文件系统和虚拟化路径。");
+  card(s, "基础 OS app", "完成 app-helloworld / app-collections\n完成 exercise-printcolor / hashmap / altalloc\n\n熟悉 no_std Rust、axstd、allocator、集合结构和 QEMU 启动调试。", 74, 218, 520, 172, C.blue);
+  card(s, "任务、调度与内存", "完成 app-childtask / app-fairsched\n完成 app-lazymapping / exercise-sysmap\n\n覆盖任务创建、调度公平性、lazy mapping、符号/地址映射和异常定位。", 686, 218, 520, 172, C.green);
+  card(s, "文件系统与设备", "完成 app-readblk / app-readpflash\n完成 exercise-ramfs-rename / app-msgqueue\n\n练习块设备、pflash、RAMFS rename、消息队列和文件/设备抽象。", 74, 438, 520, 172, C.orange);
+  card(s, "用户态与虚拟化", "完成 app-runlinuxapp / app-userprivilege\n完成 app-guestmode / app-guestaspace / app-guestvdev\n\n接触用户态加载、权限切换、guest 地址空间和虚拟设备路径。", 686, 438, 520, 172, C.violet);
 }
 
 function task1(p) {
