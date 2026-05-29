@@ -1,0 +1,208 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="${ROOT:-/Users/txc/code/Auto-OS}"
+OUT_DIR="${OUT_DIR:-$ROOT/showtime-2/final/live-demo/out}"
+KERNEL="${KERNEL:-}"
+FALLBACK_KERNEL="$OUT_DIR/starryos-guestbuilt-aarch64-hvf-j8.bin"
+GUEST_BUILT_ELF="${GUEST_BUILT_ELF:-$ROOT/.guest-runs/aarch64-hvf/starryos-guestbuilt-aarch64-hvf-j8.elf}"
+SRC_ROOTFS="${SRC_ROOTFS:-$ROOT/.guest-runs/aarch64-hvf/rootfs-hvf-cargo-8g.img}"
+ROOTFS="${ROOTFS:-$OUT_DIR/rootfs-test-kernel-result.img}"
+LOG="${LOG:-$OUT_DIR/03-test-kernel-result.log}"
+TIMEOUT_SEC="${TIMEOUT_SEC:-180}"
+KEEP_ROOTFS="${KEEP_ROOTFS:-0}"
+DEBUGFS="${DEBUGFS:-/opt/homebrew/opt/e2fsprogs/sbin/debugfs}"
+QEMU="${QEMU:-/opt/homebrew/bin/qemu-system-aarch64}"
+QEMU_CPU="${QEMU_CPU:-max}"
+
+copy_rootfs() {
+  local src="$1"
+  local dst="$2"
+  rm -f "$dst"
+  if cp -c "$src" "$dst" 2>/dev/null; then
+    return 0
+  fi
+  cp "$src" "$dst"
+}
+
+if [ -z "$KERNEL" ]; then
+  for candidate in \
+    "$OUT_DIR/starryos-live-rebuilt.bin" \
+    "$OUT_DIR/starryos-host-aarch64-smp1.bin" \
+    "$FALLBACK_KERNEL" \
+    "$OUT_DIR/starryos-host-aarch64-smp8.bin"; do
+    if [ -f "$candidate" ]; then
+      KERNEL="$candidate"
+      break
+    fi
+  done
+  KERNEL="${KERNEL:-$OUT_DIR/starryos-live-rebuilt.bin}"
+fi
+case "$KERNEL" in
+  *smp1*) QEMU_SMP="${QEMU_SMP:-1}" ;;
+  *) QEMU_SMP="${QEMU_SMP:-8}" ;;
+esac
+
+find_objcopy() {
+  if [ -n "${OBJCOPY:-}" ] && [ -x "$OBJCOPY" ]; then
+    printf '%s\n' "$OBJCOPY"
+    return 0
+  fi
+  local sysroot host candidate
+  sysroot="$(rustc --print sysroot 2>/dev/null || true)"
+  host="$(rustc -vV 2>/dev/null | sed -n 's/^host: //p' || true)"
+  candidate="$sysroot/lib/rustlib/$host/bin/llvm-objcopy"
+  if [ -x "$candidate" ]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+  if command -v llvm-objcopy >/dev/null 2>&1; then
+    command -v llvm-objcopy
+    return 0
+  fi
+  return 1
+}
+
+check_env() {
+  local ok=1
+  [ -x "$DEBUGFS" ] || { echo "missing debugfs: $DEBUGFS" >&2; ok=0; }
+  [ -x "$QEMU" ] || { echo "missing qemu-system-aarch64: $QEMU" >&2; ok=0; }
+  [ -f "$SRC_ROOTFS" ] || { echo "missing rootfs: $SRC_ROOTFS" >&2; ok=0; }
+  if [ ! -f "$KERNEL" ] && [ ! -f "$FALLBACK_KERNEL" ] && [ ! -f "$GUEST_BUILT_ELF" ]; then
+    echo "missing kernel and fallback ELF: $KERNEL / $FALLBACK_KERNEL / $GUEST_BUILT_ELF" >&2
+    ok=0
+  fi
+  if [ ! -f "$KERNEL" ] && [ ! -f "$FALLBACK_KERNEL" ]; then
+    find_objcopy >/dev/null 2>&1 || { echo "missing llvm-objcopy; install rust llvm-tools or set OBJCOPY=/path/to/llvm-objcopy" >&2; ok=0; }
+  fi
+  if [ "$ok" = "1" ]; then
+    echo "===03-TEST-KERNEL-RESULT-CHECK-PASS==="
+    return 0
+  fi
+  echo "===03-TEST-KERNEL-RESULT-CHECK-FAIL==="
+  return 1
+}
+
+if [ "${1:-}" = "--check" ]; then
+  check_env
+  exit $?
+fi
+
+if [ ! -f "$KERNEL" ]; then
+  if [ ! -f "$FALLBACK_KERNEL" ]; then
+    [ -f "$GUEST_BUILT_ELF" ] || { echo "missing guest-built ELF: $GUEST_BUILT_ELF" >&2; exit 1; }
+    OBJCOPY_BIN="$(find_objcopy)" || {
+      echo "missing llvm-objcopy; install rust llvm-tools or set OBJCOPY=/path/to/llvm-objcopy" >&2
+      exit 1
+    }
+    mkdir -p "$(dirname "$FALLBACK_KERNEL")"
+    "$OBJCOPY_BIN" -O binary "$GUEST_BUILT_ELF" "$FALLBACK_KERNEL"
+  fi
+  KERNEL="$FALLBACK_KERNEL"
+fi
+
+[ -f "$KERNEL" ] || { echo "missing kernel image: $KERNEL" >&2; exit 1; }
+[ -f "$SRC_ROOTFS" ] || { echo "missing rootfs: $SRC_ROOTFS" >&2; exit 1; }
+[ -x "$DEBUGFS" ] || { echo "missing debugfs: $DEBUGFS" >&2; exit 1; }
+[ -x "$QEMU" ] || { echo "missing qemu-system-aarch64: $QEMU" >&2; exit 1; }
+
+mkdir -p "$OUT_DIR"
+echo "===03-TEST-KERNEL-RESULT-PREPARE==="
+echo "copy_rootfs_from=$SRC_ROOTFS"
+echo "copy_rootfs_to=$ROOTFS"
+copy_rootfs "$SRC_ROOTFS" "$ROOTFS"
+
+GUEST_AUTO="/tmp/auto-os-test-kernel-result.sh"
+DEBUGFS_CMD="/tmp/auto-os-test-kernel-result.debugfs"
+
+cat >"$GUEST_AUTO" <<'EOF'
+#!/bin/sh
+set -u
+echo "===TEST-KERNEL-RESULT-BEGIN==="
+uname -a 2>/dev/null || true
+echo "cpu_count=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || true)"
+echo "root_listing_begin"
+ls -la / 2>/dev/null || true
+echo "root_listing_end"
+test -x /bin/sh || exit 10
+test -d /opt/tgoskits || exit 11
+echo "===TEST-KERNEL-RESULT-PASS==="
+sync 2>/dev/null || true
+sleep 3
+EOF
+chmod +x "$GUEST_AUTO"
+
+cat >"$DEBUGFS_CMD" <<EOF
+rm /opt/hvf-auto.sh
+write $GUEST_AUTO /opt/hvf-auto.sh
+sif /opt/hvf-auto.sh mode 0100755
+EOF
+"$DEBUGFS" -w -f "$DEBUGFS_CMD" "$ROOTFS" >/dev/null
+
+echo "===03-TEST-KERNEL-RESULT-BEGIN==="
+echo "kernel=$KERNEL"
+echo "rootfs=$ROOTFS"
+echo "log=$LOG"
+echo "timeout_sec=$TIMEOUT_SEC"
+echo "keep_rootfs=$KEEP_ROOTFS"
+echo "qemu_smp=$QEMU_SMP"
+echo "qemu_cpu=$QEMU_CPU"
+
+"$QEMU" \
+  -snapshot \
+  -nographic \
+  -accel hvf \
+  -machine virt,gic-version=3 \
+  -cpu "$QEMU_CPU" \
+  -m 4096M \
+  -smp "$QEMU_SMP" \
+  -device virtio-blk-pci,drive=disk0 \
+  -drive "id=disk0,if=none,format=raw,file=$ROOTFS,file.locking=off" \
+  -device virtio-net-pci,netdev=net0 \
+  -netdev user,id=net0 \
+  -kernel "$KERNEL" \
+  -monitor none \
+  -serial mon:stdio \
+  >"$LOG" 2>&1 &
+qemu_pid="$!"
+
+rc=124
+deadline="$((SECONDS + TIMEOUT_SEC))"
+while kill -0 "$qemu_pid" 2>/dev/null; do
+  if grep -qa "===TEST-KERNEL-RESULT-PASS===" "$LOG"; then
+    rc=0
+    break
+  fi
+  if grep -qaiE "panic|trap|Segmentation|FATAL|ERROR" "$LOG"; then
+    rc=1
+    break
+  fi
+  if [ "$SECONDS" -ge "$deadline" ]; then
+    rc=124
+    break
+  fi
+  sleep 1
+done
+
+if kill -0 "$qemu_pid" 2>/dev/null; then
+  kill "$qemu_pid" 2>/dev/null || true
+  wait "$qemu_pid" 2>/dev/null || true
+else
+  wait "$qemu_pid" || rc="$?"
+fi
+
+echo "===03-TEST-KERNEL-RESULT-LOG-SUMMARY==="
+grep -aE "TEST-KERNEL-RESULT|cpu_count=|root_listing_|panic|trap|Segmentation|FATAL|ERROR" "$LOG" || true
+
+if [ "$rc" != "0" ]; then
+  echo "===03-TEST-KERNEL-RESULT-FAIL rc=$rc==="
+  echo "see log: $LOG" >&2
+  exit "$rc"
+fi
+
+if [ "$KEEP_ROOTFS" != "1" ]; then
+  rm -f "$ROOTFS"
+  echo "cleaned_temp_rootfs=$ROOTFS"
+fi
+
+echo "===03-TEST-KERNEL-RESULT-PASS==="
