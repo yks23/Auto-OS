@@ -164,27 +164,11 @@ function cover(p) {
 }
 
 function bigLabA(p) {
-  const s = base(p, "02", "BigLab-A：基础实验回顾", "本页先留作 BigLab-A 内容占位，后续按任务一实验记录补齐。");
-  rect(s, 86, 214, 1108, 344, C.white, C.line, 1);
-  text(s, "待补充", { x: 120, y: 248, w: 1040, h: 56, size: 32, color: C.muted, bold: true, align: "center" });
-  text(s, "这里后续放 BigLab-A 的实验目标、完成情况、关键收获与仓库链接。", {
-    x: 160,
-    y: 330,
-    w: 960,
-    h: 42,
-    size: 22,
-    color: C.ink,
-    align: "center",
-  });
-  text(s, "当前汇报重点放在 BigLab-B：AI 迭代框架、OS PR、StarryOS 自举编译与多核性能分析。", {
-    x: 150,
-    y: 400,
-    w: 980,
-    h: 50,
-    size: 20,
-    color: C.muted,
-    align: "center",
-  });
+  const s = base(p, "02", "BigLab-A：AI4OSE Lab1 基础训练", "BigLab-A 是前 7 周的基础训练，目标是把 OS 概念、Rust 工程和可复现实验交付串起来。");
+  card(s, "任务结构", "Task 1：5 个基础小实验全部完成。\nTask 2：至少完成 2 个个性化实验。\nTask 3：至少完成 3 个扩展实验，且包含 T3L1 与 T3L8。\nTask 4：在完成总结报告后申请检查。", 74, 224, 340, 250, C.blue);
+  card(s, "交付方式", "每个实验形成可运行 crate，发布到 crates.io，并带上 #ai #ai4ose #kernel #learning #os 关键词；同时保留 GitHub repo、tag、README 和复现命令。", 470, 224, 340, 250, C.green);
+  card(s, "对后续的作用", "BigLab-A 训练的是小规模、可复现、可讲清楚的 OS 实验；BigLab-B 把这个方法迁移到 TGOSKit/StarryOS 的真实内核 PR 和大型 workload。", 866, 224, 340, 250, C.orange);
+  footer(s, "杨凯森：BigLab-B 汇报重点承接 BigLab-A 的工程化训练，进一步展示真实内核问题定位、修复、测例和 PR 合入。");
 }
 
 function task1(p) {
@@ -279,23 +263,45 @@ function prMap(p) {
   card(s, "验证标准", "每个 PR 均包含问题根因、修复范围、测试用例和 CI 或本地复现证据。", 670, 466, 340, 130, C.red);
 }
 
+function vforkBackground(p) {
+  const s = base(p, "07", "背景 1：进程创建、vfork 与 posix_spawn", "很多用户态程序不是直接“运行一个命令”，而是通过 fork/vfork/clone 创建子进程，再 exec 成目标程序。");
+  card(s, "fork / clone", "fork 会复制进程语义，clone 是 Linux 更底层的创建接口；线程、进程、vfork 都可以看成不同 flag 组合。", 78, 230, 335, 200, C.blue);
+  card(s, "vfork", "vfork 是一种更强同步语义：子进程 exec 或 exit 前，父进程应等待。因为这段时间父子可能共享地址空间，父进程过早运行会破坏状态。", 472, 230, 335, 200, C.orange);
+  card(s, "posix_spawn / shell", "shell、busybox、cargo 调 rustc 等路径会频繁创建子进程。posix_spawn 常用 vfork 风格实现，要求父子同步可靠。", 866, 230, 335, 200, C.green);
+  bullet(s, [
+    { text: "老师问“为什么这个重要”：因为它是用户态启动其他程序的基础 ABI。", color: C.blue },
+    { text: "StarryOS 自举编译里，cargo 会反复 spawn rustc/build.rs；这条路径不稳，大型 workload 就无法稳定推进。", color: C.orange },
+  ], 132, 496, 1000, 52, 21);
+}
+
 function prVfork(p) {
-  const s = base(p, "07", "重点 PR 1：vfork / clone 语义修复", "背景：vfork 是 Linux 中为了快速创建子进程的特殊 clone；父子共享地址空间，父进程必须等子进程 exec 或 exit。");
+  const s = base(p, "08", "重点 PR 1：vfork / clone 语义修复", "这个 PR 修的是父进程等待条件，保证 vfork 类子进程在 exec/exit 前不会让父进程提前继续。");
   split(
     s,
-    "问题背景",
-    ["posix_spawn、shell 执行命令时经常走 fork/vfork + exec。", "如果父进程过早继续运行，会破坏子进程尚未 exec 前的同步顺序。"],
+    "问题",
+    ["旧实现把等待条件错误收窄，部分 CLONE_VFORK 场景没有等待。", "父进程提前返回会破坏 shell、busybox、cargo 依赖的同步顺序。"],
     "修复与测例",
     ["修复 CLONE_VFORK 等待条件，保证父进程等待 vfork_done。", "测例：test-vfork。", "影响范围：BusyBox / shell / cargo 子进程创建路径。"],
   );
   footer(s, "成果：修复进程创建 ABI 语义，使 BusyBox、shell 和 cargo 子进程创建路径具备更稳定的行为基础。");
 }
 
+function futexBackground(p) {
+  const s = base(p, "09", "背景 2：futex、robust list 与线程退出", "futex 是 Linux 用户态同步的核心：平时锁在用户态完成，只有等待/唤醒时才进入内核。");
+  card(s, "futex 是什么", "用户态锁先用原子指令竞争；竞争失败时用 futex syscall 让线程睡眠，释放锁时再由内核唤醒等待者。", 78, 226, 335, 214, C.blue);
+  card(s, "robust list 是什么", "线程持有锁时退出，用户态可能来不及释放锁。Linux 让线程登记 robust list，内核在线程退出时扫描并修复遗留锁状态。", 472, 226, 335, 214, C.green);
+  card(s, "为什么容易出错", "robust list 指针来自用户态，本来就可能是坏地址；退出路径还常在复杂上下文里，不能因为清理失败再引入 panic。", 866, 226, 335, 214, C.orange);
+  bullet(s, [
+    { text: "老师问“OS 知识点”：这是用户态 pthread/mutex 与内核等待队列之间的 ABI。", color: C.blue },
+    { text: "真实 workload 里 build tool、runtime、pthread 都可能走这条路径；退出清理必须容错。", color: C.green },
+  ], 132, 500, 1000, 52, 21);
+}
+
 function prFutex(p) {
-  const s = base(p, "08", "重点 PR 2：futex 与线程退出清理", "背景：futex 是 Linux 用户态锁的内核等待/唤醒机制；线程退出时 robust-list 要把可能遗留的锁状态清掉。");
+  const s = base(p, "10", "重点 PR 2：futex 与线程退出清理", "这个 PR 的重点是让线程退出路径能够安全处理坏 robust-list entry 和 pending futex。");
   split(
     s,
-    "问题背景",
+    "问题",
     ["用户态可以传坏 robust-list 指针，内核不能因此拖垮退出路径。", "pending futex 与普通 entry 混在一起，会让 pthread 退出/回收变得脆弱。"],
     "修复与测例",
     ["坏 entry 容错清理，pending 单独处理。", "测例：test-futex-robust-list。", "关联：teardown/context usercopy 修复退出路径。"],
@@ -303,8 +309,19 @@ function prFutex(p) {
   footer(s, "成果：退出清理路径可以安全处理用户态异常输入，避免单个坏 robust-list 破坏进程回收流程。");
 }
 
+function fsBackground(p) {
+  const s = base(p, "11", "背景 3：VFS、tmpfs、ext4 与真实应用", "Linux 应用看到的是统一的文件系统接口，但内核底下可能是内存文件系统、ext4、设备节点或 proc/sysfs。");
+  card(s, "VFS", "VFS 是统一抽象：open/read/write/rename/unlink/getdents 等 syscall 不直接绑定某一种磁盘格式。", 78, 226, 335, 210, C.blue);
+  card(s, "tmpfs / ext4", "tmpfs 主要在内存里维护目录项和文件对象；ext4 需要管理 inode、bitmap、block group 等磁盘元数据。", 472, 226, 335, 210, C.green);
+  card(s, "Cargo 压力", "cargo 编译会制造大量小文件、临时文件、rename、unlink、目录扫描和设备/pipe I/O，是检验 VFS 语义的真实压力源。", 866, 226, 335, 210, C.orange);
+  bullet(s, [
+    { text: "老师问“为什么 FS 会影响编译”：因为 target 目录几乎全是 metadata 和小文件操作。", color: C.orange },
+    { text: "这类 bug 往往不是单个命令失败，而是大量组合操作后出现目录项、inode 或短读写语义偏差。", color: C.green },
+  ], 132, 498, 1000, 52, 21);
+}
+
 function prFs(p) {
-  const s = base(p, "09", "重点 PR 3：文件系统与 VFS 正确性", "背景：Cargo 编译会大量创建、写入、rename、unlink 小文件；文件系统细节会直接影响真实应用。");
+  const s = base(p, "12", "重点 PR 3：文件系统与 VFS 正确性", "这一组 PR 面向真实应用的文件系统访问模式，补齐 inode 分配、rename/exec 和设备传输语义。");
   card(s, "#695 rsext4 inode bitmap", "ext4 block group 可标记 inode bitmap 未初始化；allocator 需要识别并初始化，再继续分配 inode。", 82, 230, 330, 208, C.green);
   card(s, "#844 tmpfs rename exec", "tmpfs 的目录项和可执行文件生命周期要一致；rename/unlink 不能让后续 exec/open 看到错乱状态。", 476, 230, 330, 208, C.orange);
   card(s, "#800 device transfer", "VFS 设备节点读写要遵守完整 transfer 语义，否则 busybox、构建脚本等用户态工具会拿到短读写。", 870, 230, 330, 208, C.blue);
@@ -323,7 +340,7 @@ function prSmp(p) {
 }
 
 function selfBuild(p) {
-  const s = base(p, "10", "实验 4：StarryOS guest 内自举编译", "实验目标是在 StarryOS userland 中运行 cargo build，完成 StarryOS 自身构建并输出 PASS marker。");
+  const s = base(p, "13", "实验 4：StarryOS guest 内自举编译", "实验目标是在 StarryOS userland 中运行 cargo build，完成 StarryOS 自身构建并输出 PASS marker。");
   const steps = ["启动内核", "挂载 rootfs", "运行 cargo", "定位 ELF", "PASS"];
   const colors = [C.blue, C.violet, C.orange, C.green, C.red];
   steps.forEach((step, i) => {
@@ -340,7 +357,7 @@ function selfBuild(p) {
 }
 
 function speed(p) {
-  const s = base(p, "11", "多核编译性能结果", "通过脚本和构建参数调节，guest 完整 self-build 从 951s 降到 331s，约 3 倍，已稳定进入 400s 内。");
+  const s = base(p, "14", "多核编译性能结果", "通过脚本和构建参数调节，guest 完整 self-build 从 951s 降到 331s，约 3 倍，已稳定进入 400s 内。");
   metric(s, "951s", "最慢 guest baseline", 95, 250, 210, C.red);
   metric(s, "642s", "默认 8 核 guest", 328, 250, 210, C.orange);
   metric(s, "331s", "当前最快 guest", 561, 250, 210, C.green);
@@ -356,7 +373,7 @@ function speed(p) {
 }
 
 function timeModel(p) {
-  const s = base(p, "12", "性能模型与测试细项", "每个瓶颈都用接近 Cargo 行为的微基准拆开验证，而不是只给粗略归因。");
+  const s = base(p, "15", "性能模型与测试细项", "每个瓶颈都用接近 Cargo 行为的微基准拆开验证，而不是只给粗略归因。");
   text(s, "T_build(N) = T_std/cache + T_serial + T_parallel/N + T_fs(N) + T_smp(N) + T_wait(N)", {
     x: 96,
     y: 206,
@@ -378,7 +395,7 @@ function timeModel(p) {
 }
 
 function cpuTimeline(p) {
-  const s = base(p, "13", "SMP8 CPU 利用率与阶段分析", "诊断 run 使用 GUEST_CPU_MONITOR=1 和 cargo JSON timing，耗时 457s；监控有开销，但能解释 8 核为什么没有线性加速。");
+  const s = base(p, "16", "SMP8 CPU 利用率与阶段分析", "诊断 run 使用 GUEST_CPU_MONITOR=1 和 cargo JSON timing，耗时 457s；监控有开销，但能解释 8 核为什么没有线性加速。");
   const chartX = 112;
   const chartY = 222;
   const chartW = 760;
@@ -413,7 +430,7 @@ function cpuTimeline(p) {
 }
 
 function alignedAnalysis(p) {
-  const s = base(p, "14", "对齐对比：为什么 host 能 2.93x，guest 只有 1.24x", "这页把同一 StarryOS kernel 构建任务的 host 参考和 guest jobs-only 放在一起，说明差距来自哪里。");
+  const s = base(p, "17", "对齐对比：为什么 host 能 2.93x，guest 只有 1.24x", "这页把同一 StarryOS kernel 构建任务的 host 参考和 guest jobs-only 放在一起，说明差距来自哪里。");
   metric(s, "85s -> 29s", "host 对齐参考，2.93x", 118, 238, 300, C.blue);
   metric(s, "422s -> 341s", "guest jobs-only，1.24x", 490, 238, 300, C.orange);
   metric(s, "951s -> 331s", "guest 端到端调优，2.87x", 862, 238, 300, C.green);
@@ -424,7 +441,7 @@ function alignedAnalysis(p) {
 }
 
 function causeMatrix(p) {
-  const s = base(p, "15", "成因拆解：Cargo、OS、QEMU 分别承担什么", "最后把瓶颈按归属拆清楚，避免把所有慢都归因给 QEMU 或 Cargo。");
+  const s = base(p, "18", "成因拆解：Cargo、OS、QEMU 分别承担什么", "最后把瓶颈按归属拆清楚，避免把所有慢都归因给 QEMU 或 Cargo。");
   text(s, "观测", { x: 72, y: 226, w: 120, h: 28, size: 20, color: C.muted, bold: true });
   text(s, "归因", { x: 372, y: 226, w: 120, h: 28, size: 20, color: C.muted, bold: true });
   text(s, "已经做了什么", { x: 762, y: 226, w: 180, h: 28, size: 20, color: C.muted, bold: true });
@@ -476,8 +493,11 @@ async function main() {
   harnessPhaseOne(presentation);
   harnessCurrent(presentation);
   prMap(presentation);
+  vforkBackground(presentation);
   prVfork(presentation);
+  futexBackground(presentation);
   prFutex(presentation);
+  fsBackground(presentation);
   prFs(presentation);
   selfBuild(presentation);
   speed(presentation);
