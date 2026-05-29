@@ -44,11 +44,25 @@ AI 驱动的持续迭代框架
 | 编译并行收益 | 同一 optional-ddebug profile 下 guest `jobs=1 422s` -> `jobs=8 341s` | `1.24x` | 严格只看 guest 内 Cargo jobs 并行；host 对齐参考为 `85s -> 29s = 2.93x`，表示同一 StarryOS kernel 构建任务在 host 侧可并行，但不进入 guest。 |
 | 链接/串行尾段收益 | guest 默认 8 核 release `642s` -> no LTO `515s` -> opt0+cgu256 `427s` | `1.50x` | 这是 LTO/codegen/link 后段工作量缩短，不是独立 link-only benchmark；日志没有单独拆出纯链接器耗时。 |
 
-本报告重点讲 BigLab-B。BigLab-A/基础训练部分在本次工作中主要作为背景能力：熟悉 ArceOS/TGOSKit 的构建、QEMU 运行、test-suit、`no_std` Rust、VFS、进程和 syscall 相关结构；真正的实验主体是 BigLab-B 中围绕 StarryOS 真实 workload 的持续内核改进。
+本报告重点讲 BigLab-B。BigLab-A/基础训练部分在本次工作中主要作为背景能力；BigLab-B Task 1 是 `tg-arceos-tutorial/test` 分支上的 5 个基础 `exercise-*`，Task 2 才进入 Harness、StarryOS PR、自举编译和多核性能分析。
 
-## 二、实验 1：AI 驱动的内核改进持续迭代框架
+## 二、BigLab-B Task 1：tg-arceos-tutorial 基础练习
 
-实验 1 的目标是让 AI 不只是一次性写补丁，而是在 OS 工程里形成可持续运行的闭环。实际工作中形成了下面这套规则：
+Task 1 的内容是 fork <https://github.com/rcore-os/tg-arceos-tutorial/tree/test>，在自己的仓库中完成规定的 5 个基础 `exercise-*` 练习。我的对应仓库是 <https://github.com/yks23/tg-arceos-tutorial>，本地完成项包括：
+
+| exercise | 训练内容 |
+| --- | --- |
+| `exercise-printcolor` | 基础输出、控制台路径和 QEMU 运行调试。 |
+| `exercise-hashmap` | 集合结构、hash map 和 no_std Rust 工程组织。 |
+| `exercise-altalloc` | 替代 allocator、内存分配路径和模块替换。 |
+| `exercise-ramfs-rename` | RAMFS/VFS rename 语义，和后续 StarryOS 文件系统问题直接相关。 |
+| `exercise-sysmap` | 系统符号、地址映射和异常定位基础。 |
+
+这部分是进入 TGOSKit/StarryOS 真实内核改进前的基础训练，不应和后面的 Harness 混在一起讲。
+
+## 三、BigLab-B Task 2 阶段 1：AI 驱动 Harness 与内核改进闭环
+
+Task 2 阶段 1 的目标是让 AI 不只是一次性写补丁，而是在 OS 工程里形成可持续运行的闭环。实际工作中形成了下面这套规则：
 
 ```text
 同步 dev 基线
@@ -73,7 +87,7 @@ AI 驱动的持续迭代框架
 
 这个框架在后续实验中的价值很明显：StarryOS 自举编译不是一次跑出来的，而是靠持续缩短反馈链路、抽出 OS bug、修复再验证，逐步从“能看到 Rust/Cargo workload”推进到“8 核 guest 内 full build PASS”。
 
-## 三、实验 2：syscall / Linux ABI 兼容性与 OS 行为 PR
+## 四、BigLab-B Task 2：syscall / Linux ABI 兼容性与 OS 行为 PR
 
 这一部分的核心不是堆 syscall 数量，而是把真实 workload 暴露出的 Linux ABI 差异变成可合入的 OS 修复。
 
@@ -159,7 +173,7 @@ AI 驱动的持续迭代框架
 | `#844` tmpfs rename exec ELF | tmpfs 中 copy -> rename -> readback -> exec 是构建和脚本常见路径；rename 后 ELF 内容和可执行语义必须稳定。 | 加 tmpfs rename + ELF readback + exec 回归，影响 BusyBox/tmpfs 和构建临时文件替换。 |
 | `#878` teardown usercopy/futex | 退出清理路径不能假设当前任务仍是普通用户线程，否则 futex/usercopy teardown 可能在错误上下文中访问。 | 让 teardown 对当前上下文更保守，配合 futex 退出路径验证。 |
 
-## 四、实验 3：应用影响范围
+## 五、BigLab-B Task 2：应用影响范围
 
 BusyBox 这一类小应用在本实验中不是答辩 PPT 的单独一页，但它是非常重要的真实 workload。它的价值在于：一个 applet 往往组合触发多个 OS 接口，而不是只测一个 syscall。
 
@@ -175,7 +189,7 @@ BusyBox 这一类小应用在本实验中不是答辩 PPT 的单独一页，但�
 
 这里的结论是：应用级失败只是入口，最终 PR 必须回到内核语义。比如 `#693` 不是“修 BusyBox 脚本”，而是修 Linux `CLONE_VFORK` ABI；`#844` 不是“让某个 copy 脚本过”，而是给 tmpfs rename + ELF exec 加回归保护。
 
-## 五、实验 4：StarryOS 自举编译 StarryOS
+## 六、BigLab-B Task 2：StarryOS 自举编译 StarryOS
 
 实验 4 是本次 BigLab-B 的主菜。目标是让 StarryOS 支撑一个真实大型 Rust/Cargo workload：在 StarryOS guest 内执行 `cargo build`，编译出 StarryOS。
 
@@ -315,7 +329,7 @@ after  jobs=1/2/4/8:  5.6 /  5.0 / 11.4 / 14.5s
 
 `jobs=8` 从 `47.5s` 到 `14.5s`，约 `3.27x`。只替换 kernel 的完整 self-build 控制变量也 PASS，用时 `511s`。这证明 FS 短链路收益成立，但完整 cargo 仍被其他瓶颈主导，所以这个候选 PR 应按“文件系统性能/语义”来写，不包装成 full build 新最快。
 
-## 六、可复现材料与 Demo
+## 七、可复现材料与 Demo
 
 当前材料主要分三层：
 
@@ -336,7 +350,7 @@ after  jobs=1/2/4/8:  5.6 /  5.0 / 11.4 / 14.5s
 - 稳定 demo：展示本地复现命令、PASS marker、结果表和已有 logs，不现场跑完整 331s build。
 - 可选 demo：现场运行短基准，例如 `fork+exec+wait` wave 或 rootfs 检查，证明环境和 StarryOS userland 可进入。
 
-## 七、对 OS 内核理解的总结
+## 八、对 OS 内核理解的总结
 
 这次实验让我对几个 OS 层问题有了更实在的理解：
 
@@ -346,7 +360,7 @@ after  jobs=1/2/4/8:  5.6 /  5.0 / 11.4 / 14.5s
 4. **性能优化必须分解。** 不能只看 `-j8` 是否快，要拆 `T_fs(N)`、`T_smp(N)`、`T_wait(N)`、`T_serial` 和 `T_parallel/N`。
 5. **AI 可以放大工程能力，但必须被测试和 review 约束。** AI 很适合读代码、生成候选修复、提取日志、写 PR body；但必须有 test-suit、CI、review 和 root cause，否则容易把 workaround 当成果。
 
-## 八、对 OS 课程和实验设计的思考
+## 九、对 OS 课程和实验设计的思考
 
 在 AI 能力快速发展的情况下，OS 课实验可以更强调“真实系统工程闭环”：
 
@@ -356,7 +370,7 @@ after  jobs=1/2/4/8:  5.6 /  5.0 / 11.4 / 14.5s
 - AI agent 应作为实验对象的一部分：让学生学会设计 prompt、skill、workflow、日志和 review，而不是让 AI 代替理解。
 - 对于复杂系统，最重要的能力是把长反馈链路缩短，把模糊失败拆成小的 OS 行为问题。
 
-## 九、答辩时重点讲法
+## 十、答辩时重点讲法
 
 最稳的一句话：
 

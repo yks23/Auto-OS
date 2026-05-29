@@ -39,7 +39,16 @@ Host aligned reference: 29s
 j1=85s，j8=29s，host 对齐参考编译并行加速比 2.93x；不用于计算 guest speedup。
 ```
 
-### 3. 实验1：AI 迭代框架
+### 3. BigLab-B Task 1：tg-arceos-tutorial 基础练习
+
+讲清楚这不是 Harness，而是 BigLab-B 第一项规定任务：
+
+- fork `rcore-os/tg-arceos-tutorial/tree/test` 到自己的仓库；
+- 在 `test` 分支完成 5 个基础 `exercise-*`；
+- 本地对应完成项：`exercise-printcolor`、`exercise-hashmap`、`exercise-altalloc`、`exercise-ramfs-rename`、`exercise-sysmap`；
+- 这部分训练 ArceOS 小实验、no_std Rust、allocator、RAMFS/VFS、系统符号/地址映射和 QEMU 运行。
+
+### 4. BigLab-B Task 2 阶段 1：Harness / AI 迭代框架
 
 画流程：
 
@@ -59,9 +68,9 @@ daily sync dev -> choose OS target -> reproduce -> shorten loop
 
 口播：
 
-> 这套框架的作用是把“跑一个很久的大实验”拆成一组可复现、可 review、可合入的 OS 行为改进。
+> 这套框架属于 Task 2 的第一阶段。它的作用是把“跑一个很久的大实验”拆成一组可复现、可 review、可合入的 OS 行为改进。
 
-### 4. PR 总览：按 OS 层分组
+### 5. PR 总览：按 OS 层分组
 
 不要按编号堆列表。按层分组：
 
@@ -73,7 +82,7 @@ daily sync dev -> choose OS target -> reproduce -> shorten loop
 
 注：页面角落标注“截至 2026-05-29：表内 12 个核心 PR 均已合入 `dev`”。本地复现材料和性能日志只作为实验过程证据，不放入已合入 PR 主表。
 
-### 5. 重点 PR 1：vfork 不是小细节
+### 6. 重点 PR 1：vfork 不是小细节
 
 讲 `#693`。
 

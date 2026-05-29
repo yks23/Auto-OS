@@ -164,27 +164,27 @@ function cover(p) {
 }
 
 function bigLabA(p) {
-  const s = base(p, "02", "BigLab-A：ArceOS 小实验与系统能力训练", "BigLab-A 里我主要完成 tg-arceos-tutorial/test 分支上的 ArceOS 小实验，从单个组件逐步走到应用、文件系统和虚拟化路径。");
-  card(s, "基础 OS app", "完成 app-helloworld / app-collections\n完成 exercise-printcolor / hashmap / altalloc\n\n熟悉 no_std Rust、axstd、allocator、集合结构和 QEMU 启动调试。", 74, 218, 520, 172, C.blue);
-  card(s, "任务、调度与内存", "完成 app-childtask / app-fairsched\n完成 app-lazymapping / exercise-sysmap\n\n覆盖任务创建、调度公平性、lazy mapping、符号/地址映射和异常定位。", 686, 218, 520, 172, C.green);
-  card(s, "文件系统与设备", "完成 app-readblk / app-readpflash\n完成 exercise-ramfs-rename / app-msgqueue\n\n练习块设备、pflash、RAMFS rename、消息队列和文件/设备抽象。", 74, 438, 520, 172, C.orange);
-  card(s, "用户态与虚拟化", "完成 app-runlinuxapp / app-userprivilege\n完成 app-guestmode / app-guestaspace / app-guestvdev\n\n接触用户态加载、权限切换、guest 地址空间和虚拟设备路径。", 686, 438, 520, 172, C.violet);
+  const s = base(p, "02", "BigLab-A：前置训练回顾", "BigLab-A 主要作为进入 BigLab-B 前的 OS 基础训练；本次答辩只简要说明它给后续 StarryOS 工作提供的能力基础。");
+  card(s, "Rust 与 no_std 工程", "熟悉 Rust crate 组织、无标准库环境、交叉编译、QEMU 运行和实验文档整理。", 74, 238, 340, 186, C.blue);
+  card(s, "OS 基础概念", "围绕内存、任务、文件系统、设备和 syscall 等模块建立基本的分层理解。", 470, 238, 340, 186, C.green);
+  card(s, "过渡到 BigLab-B", "后续工作转向 TGOSKit / StarryOS：从教学小实验进入真实内核 PR 和大型 workload。", 866, 238, 340, 186, C.orange);
+  footer(s, "本页只做 BigLab-A 简要承接；BigLab-B 的具体 Task 1 在下一页展开。");
 }
 
 function task1(p) {
-  const s = base(p, "03", "BigLab-B Task 1：AI 驱动工程框架", "Task 1 的重点不是单次修 bug，而是建立一套能持续同步、运行、定位、修复和提交的工作流。");
-  card(s, "目标", "把 AI 辅助开发放进真实 OS 工程闭环：从问题发现到 PR 合并都保留证据。", 76, 226, 340, 186, C.blue);
-  card(s, "原则", "反馈链路超过 2 小时就先缩短：小测例、低日志、resume/cache、宿主预检、直接 QEMU。", 470, 226, 340, 186, C.orange);
-  card(s, "产物", "规则、harness、自动同步、PR 检测、日志归档、showtime 文档与可复现脚本。", 864, 226, 340, 186, C.green);
+  const s = base(p, "03", "BigLab-B Task 1：tg-arceos-tutorial 基础练习", "Task 1 是基于 rcore-os/tg-arceos-tutorial 的 test 分支，在自己的 fork 中完成 5 个规定的 exercise-* 基础练习。");
+  card(s, "仓库与分支", "fork 上游 tg-arceos-tutorial/test，到自己的仓库继续完成代码和总结文档。\n\n本地对应仓库：github.com/yks23/tg-arceos-tutorial", 76, 226, 340, 186, C.blue);
+  card(s, "完成的 5 个 exercise", "exercise-printcolor\nexercise-hashmap\nexercise-altalloc\nexercise-ramfs-rename\nexercise-sysmap", 470, 226, 340, 186, C.green);
+  card(s, "训练到的能力", "从基础输出、集合/哈希表、替代 allocator，到 RAMFS rename、系统符号/地址映射，逐步补齐 ArceOS 小实验能力。", 864, 226, 340, 186, C.orange);
   bullet(s, [
-    { text: "持续和 TGOSKit dev 对齐，避免长期偏离上游导致 PR 难合并。", color: C.blue },
-    { text: "发现 OS bug 后，不停留在实验日志，而是整理 root cause、test-suite 和 PR 文案。", color: C.green },
-    { text: "长任务用于验收，短任务用于定位；两者分开，减少无效等待。", color: C.orange },
+    { text: "这一部分不是 Harness，也不是 StarryOS PR；它是 BigLab-B 的基础训练任务。", color: C.blue },
+    { text: "完成后才进入 Task 2：把方法迁移到 TGOSKit / StarryOS 的真实内核改进。", color: C.green },
+    { text: "后面的 Harness、PR、自举编译和多核测速都属于 Task 2 主线。", color: C.orange },
   ], 116, 480, 1030, 46, 21);
 }
 
 function harnessPhaseOne(p) {
-  const s = base(p, "04", "Task 2 Harness 第一阶段：模型驱动测试挖掘", "第一阶段尝试让模型生成测试并自动运行，用测试失败来反推 StarryOS 的 bug。");
+  const s = base(p, "04", "BigLab-B Task 2 阶段 1：Harness 初版", "进入 Task 2 后，第一阶段尝试让模型生成测试并自动运行，用测试失败来反推 StarryOS 的 bug。");
   split(
     s,
     "做法",
@@ -196,7 +196,7 @@ function harnessPhaseOne(p) {
 }
 
 function harnessCurrent(p) {
-  const s = base(p, "05", "Task 2 Harness 当前方案：与 StarryOS dev 紧密联动", "现在的框架以可合并 PR 为目标：每天同步 dev，在真实 StarryOS 任务中暴露问题，并沉淀测例。");
+  const s = base(p, "05", "BigLab-B Task 2 阶段 1：Harness 当前闭环", "Harness 后来从泛化测试挖掘，收敛到和 StarryOS dev 紧密联动：跑真实任务、读输出、修内核、补测例、提 PR。");
   const xs = [78, 308, 538, 768, 998];
   const items = [
     ["09:00", "同步 dev", C.blue],
