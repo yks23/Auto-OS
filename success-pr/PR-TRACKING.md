@@ -44,6 +44,15 @@
 
 ### Daily Sync Log
 
+2026-05-31
+
+- fetch：FAILED（当前运行环境无法连接外网 GitHub：`Failed to connect to 127.0.0.1 port 6789`）；本次未更新 `origin` / `upstream` 引用
+- `origin/dev = abbb705e6`（基于本地缓存引用，可能已过期）
+- `upstream/dev = f0a27a0a4`（基于本地缓存引用，可能已过期）
+- `sync/dev-live = abbb705e6`（已在干净临时 worktree `/private/tmp/tgoskits-sync-dev-live` 本地 reset 对齐 `origin/dev`；push: SKIPPED，同样受网络阻断）
+- `merge-base(origin/dev, upstream/dev) = 2dad8b394`
+- `origin/dev...upstream/dev = 43 / 1925`（基于本地缓存引用，可能已过期）
+
 2026-05-28
 
 - fetch：已更新本地引用（`origin` / `upstream`）
