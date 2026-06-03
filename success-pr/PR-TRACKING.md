@@ -44,6 +44,17 @@
 
 ### Daily Sync Log
 
+2026-06-03
+
+- fetch：FAILED（两次提权 `git fetch origin dev` / `git fetch upstream dev` 都被自动审批超时拒绝；本次无法确认 GitHub 最新远端状态）
+- `origin/dev = abbb705e6`（基于本地缓存引用，可能已过期）
+- `upstream/dev = f0a27a0a4`（基于本地缓存引用，可能已过期）
+- `sync/dev-live = abbb705e6`（临时 worktree `/private/tmp/tgoskits-sync-dev-live` 仍干净对齐缓存的 `origin/dev`；`git status` / `git diff --check` PASS；push: SKIPPED，未在未确认新远端状态下推送）
+- `merge-base(origin/dev, upstream/dev) = 2dad8b394`
+- `origin/dev...upstream/dev = 43 / 1925`（基于本地缓存引用，可能已过期）
+- 基线债：缓存的 `origin/dev` 仍包含历史 conflict markers：`docs/tgoskits-dependency.md`（例如 959/960/961/967/972/1024/1025/1163/1164/1165/1172/1177/1297 行）；本次未混入清理
+- PR 分支：未新建、未重基、未推送；主 submodule 检出当前仍有用户在做的本地分支 `fix/starry-usercopy-nonthread-efault` 和未提交改动，因此未在主检出执行任何 reset/checkout
+
 2026-05-31
 
 - fetch：FAILED（当前运行环境无法连接外网 GitHub：`Failed to connect to 127.0.0.1 port 6789`）；本次未更新 `origin` / `upstream` 引用
