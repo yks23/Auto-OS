@@ -55,6 +55,18 @@
 - 基线债：缓存的 `origin/dev` 仍包含历史 conflict markers：`docs/tgoskits-dependency.md`（例如 959/960/961/967/972/1024/1025/1163/1164/1165/1172/1177/1297 行）；本次未混入清理
 - PR 分支：未新建、未重基、未推送；主 submodule 检出当前仍有用户在做的本地分支 `fix/starry-usercopy-nonthread-efault` 和未提交改动，因此未在主检出执行任何 reset/checkout
 
+2026-06-03 12:25 CST rerun
+
+- fetch：FAILED（再次尝试提权抓取 `origin/dev` / `upstream/dev`，仍被自动审批超时拒绝；本次结论继续基于本地缓存引用）
+- `origin/dev = abbb705e6`
+- `upstream/dev = b3adb9817`（相对同日更早记录中的 `f0a27a0a4` 已变化，但本次未能确认该变化来自最新远端抓取还是本地已有缓存更新）
+- `sync/dev-live = abbb705e6`（在临时 worktree `/private/tmp/tgoskits-sync-dev-live.2s0zb7` 校验，`HEAD` 干净；`git diff --check` PASS；`git diff --check origin/dev...sync/dev-live` PASS）
+- `merge-base(origin/dev, upstream/dev) = 2dad8b394`
+- `origin/dev...upstream/dev = 43 / 1964`（基于本地缓存引用）
+- 基线债：`origin/dev` 与 `sync/dev-live` 都仍包含历史 conflict markers：`docs/tgoskits-dependency.md` 959/960/961/967/972/1024/1025/1163/1164/1165/1172/1177/1297 等；未新增 marker，也未混入清理
+- push：SKIPPED；在无法确认最新远端状态前，不推送 `origin/sync/dev-live`
+- PR 分支：未新建、未重基、未推送；继续避免碰主 submodule 检出的用户分支 `fix/starry-usercopy-nonthread-efault`
+
 2026-05-31
 
 - fetch：FAILED（当前运行环境无法连接外网 GitHub：`Failed to connect to 127.0.0.1 port 6789`）；本次未更新 `origin` / `upstream` 引用
