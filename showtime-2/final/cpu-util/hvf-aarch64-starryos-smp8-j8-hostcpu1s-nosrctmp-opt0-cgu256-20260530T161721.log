@@ -1,0 +1,45 @@
+
+       d8888                            .d88888b.   .d8888b.
+      d88888                           d88P" "Y88b d88P  Y88b
+     d88P888                           888     888 Y88b.
+    d88P 888 888d888  .d8888b  .d88b.  888     888  "Y888b.
+   d88P  888 888P"   d88P"    d8P  Y8b 888     888     "Y88b.
+  d88P   888 888     888      88888888 888     888       "888
+ d8888888888 888     Y88b.    Y8b.     Y88b. .d88P Y88b  d88P
+d88P     888 888      "Y8888P  "Y8888   "Y88888P"   "Y8888P"
+
+arch = aarch64
+platform = aarch64-qemu-virt
+target = aarch64-unknown-none-softfloat
+build_mode = 
+log_level = warn
+backtrace = false
+smp = 8
+
+Boot at 2026-05-30 08:17:21.002658209 UTC
+
+[37m[  0.094741 ax_net_ng:172] [33m  No vsock device found![m
+[m[37m[  0.095058 ax_display:26] [33m  No display device found![m
+[mInitialized 2 tracepoints
+Welcome to [96m[1mStarry OS[0m!
+USER=root
+HOSTNAME=starry
+SHLVL=1
+HOME=/root
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PWD=/
+
+Use [1m[3mapk[0m to install packages.
+
+===HVF-smp8-j8-hostcpu1s-nosrctmp-opt0-cgu256-RUN-BEGIN===
+===STARRYOS-BUILD-ENV-BEGIN===
+jobs=8
+target_dir=/tmp/target-hvf-smp8-j8-hostcpu1s-nosrctmp-opt0-cgu256-20260530T161721
+sysroot=/opt/rust-nightly
+cpu_count=8
+rustflags= -Clink-arg=-Tlinker.x -Clink-arg=-no-pie -Clink-arg=-znostart-stop-gc
+rustc 1.97.0-nightly (ca9a134e0 2026-04-26)
+cargo 1.91.1 (ea2d97820 2025-10-10) (Alpine Linux Rust 1.91.1-r1)
+===STARRYOS-BUILD-ENV-END===
+===STARRYOS-BUILD-START jobs=8 start=1780129043===
+qemu-system-aarch64: terminating on signal 15 from pid 16855 (<unknown process>)

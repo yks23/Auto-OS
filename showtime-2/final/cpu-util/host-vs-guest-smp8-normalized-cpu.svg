@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="440" viewBox="0 0 1040 440">
+<rect width="100%" height="100%" fill="#fff"/>
+<text x="72" y="30" font-size="21" font-weight="700" fill="#0f172a">macOS native release vs StarryOS guest: SMP8 normalized CPU</text>
+<text x="72" y="50" font-size="12" fill="#475569">Y axis is percent of 8-core/8-vCPU capacity. Host uses native release profile; guest line is the available 24s QEMU top sample.</text>
+<line x1="72" y1="370.0" x2="1012" y2="370.0" stroke="#e5e7eb"/>
+<text x="62" y="374.0" text-anchor="end" font-size="12" fill="#475569">0%</text>
+<line x1="72" y1="331.0" x2="1012" y2="331.0" stroke="#f1f5f9"/>
+<line x1="72" y1="292.0" x2="1012" y2="292.0" stroke="#e5e7eb"/>
+<text x="62" y="296.0" text-anchor="end" font-size="12" fill="#475569">10%</text>
+<line x1="72" y1="253.0" x2="1012" y2="253.0" stroke="#f1f5f9"/>
+<line x1="72" y1="214.0" x2="1012" y2="214.0" stroke="#e5e7eb"/>
+<text x="62" y="218.0" text-anchor="end" font-size="12" fill="#475569">20%</text>
+<line x1="72" y1="175.0" x2="1012" y2="175.0" stroke="#f1f5f9"/>
+<line x1="72" y1="136.0" x2="1012" y2="136.0" stroke="#e5e7eb"/>
+<text x="62" y="140.0" text-anchor="end" font-size="12" fill="#475569">30%</text>
+<line x1="72" y1="97.0" x2="1012" y2="97.0" stroke="#f1f5f9"/>
+<line x1="72" y1="58.0" x2="1012" y2="58.0" stroke="#e5e7eb"/>
+<text x="62" y="62.0" text-anchor="end" font-size="12" fill="#475569">40%</text>
+<line x1="72.0" y1="58" x2="72.0" y2="370" stroke="#f1f5f9"/>
+<text x="72.0" y="394" text-anchor="middle" font-size="12" fill="#475569">0s</text>
+<line x1="260.0" y1="58" x2="260.0" y2="370" stroke="#f1f5f9"/>
+<text x="260.0" y="394" text-anchor="middle" font-size="12" fill="#475569">10s</text>
+<line x1="448.0" y1="58" x2="448.0" y2="370" stroke="#f1f5f9"/>
+<text x="448.0" y="394" text-anchor="middle" font-size="12" fill="#475569">20s</text>
+<line x1="636.0" y1="58" x2="636.0" y2="370" stroke="#f1f5f9"/>
+<text x="636.0" y="394" text-anchor="middle" font-size="12" fill="#475569">30s</text>
+<line x1="824.0" y1="58" x2="824.0" y2="370" stroke="#f1f5f9"/>
+<text x="824.0" y="394" text-anchor="middle" font-size="12" fill="#475569">40s</text>
+<line x1="1012.0" y1="58" x2="1012.0" y2="370" stroke="#f1f5f9"/>
+<text x="1012.0" y="394" text-anchor="middle" font-size="12" fill="#475569">50s</text>
+<line x1="72" y1="58" x2="72" y2="370" stroke="#94a3b8"/>
+<line x1="72" y1="370" x2="1012" y2="370" stroke="#94a3b8"/>
+<polyline points="81.8,370.0 101.7,205.4 121.3,105.4 140.7,198.2 160.4,77.7 179.8,246.0 199.7,191.7 219.4,263.5 239.0,217.1 258.4,283.0 278.2,208.1 297.7,335.8 317.2,369.2 336.6,213.2 356.4,310.6 376.1,189.0 395.8,210.5 415.5,262.8 435.3,173.8 454.9,273.7 474.6,343.9 494.1,278.4 513.9,370.0 533.3,359.0 552.7,274.5 572.2,235.8 591.7,260.0 611.0,279.4 630.4,273.4 649.8,273.6 669.2,274.2 688.5,273.4 707.9,274.0 727.3,274.5 746.7,274.8 766.1,273.9 785.5,273.4 804.8,272.5 824.1,274.4 843.5,274.1 862.9,274.4" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+<line x1="692" y1="78" x2="732" y2="78" stroke="#2563eb" stroke-width="2.5"/><text x="742" y="82" font-size="13" fill="#0f172a">macOS native -j8, full 42s build</text>
+<polyline points="90.8,209.2 109.6,209.1 128.4,212.1 147.2,227.7 166.0,213.0 184.8,236.5 203.6,204.2 222.4,217.0 241.2,207.1 260.0,212.1 278.8,207.2 297.6,208.1 316.4,205.2 335.2,200.4 354.0,204.2 372.8,210.1 391.6,206.2 410.4,204.2 429.2,205.2 448.0,218.9 466.8,206.2 485.6,205.3 504.4,202.3 523.2,204.2" fill="none" stroke="#dc2626" stroke-width="2.5"/>
+<line x1="692" y1="104" x2="732" y2="104" stroke="#dc2626" stroke-width="2.5"/><text x="742" y="108" font-size="13" fill="#0f172a">StarryOS guest QEMU, partial 24s sample</text>
+<text x="72" y="418" font-size="12" fill="#475569">host native -j8 mean 14.1%, peak 37.5%; guest partial mean 20.5%, peak 21.8%; guest full build elapsed 457s.</text>
+</svg>

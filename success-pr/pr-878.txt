@@ -1,0 +1,5 @@
+PR #878
+title: fix(starry): avoid teardown usercopy from kernel tasks
+mergedAt: 2026-05-25T03:03:39Z
+url: https://github.com/rcore-os/tgoskits/pull/878
+archivedAt: 2026-05-29T19:13:07Z

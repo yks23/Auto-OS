@@ -7,6 +7,7 @@ STAMP="${STAMP:-$(date +%Y%m%dT%H%M%S)}"
 LOG_DIR="${LOG_DIR:-$ROOT/showtime-2/logs}"
 JOBS="${JOBS:-8}"
 SMP="${SMP:-8}"
+PROFILE_MODE="${PROFILE_MODE:-guest-aligned}"
 
 mkdir -p "$LOG_DIR"
 
@@ -49,18 +50,29 @@ ax-config-gen \
   echo "settings: host=$(uname -s) $(uname -m) jobs=$JOBS smp=$SMP"
   echo "settings: command=cargo build -p starryos --bin starryos --target aarch64-unknown-none-softfloat -Z build-std=core,alloc,compiler_builtins --features qemu,gic-v3,cntv-timer,smp --release"
   echo "settings: AX_CONFIG_PATH=$AX_CONFIG"
-  echo "settings: CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=0 CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256"
+  echo "settings: PROFILE_MODE=$PROFILE_MODE"
+  if [ "$PROFILE_MODE" = "guest-aligned" ]; then
+    echo "settings: CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=0 CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256"
+  else
+    echo "settings: CARGO_PROFILE_RELEASE_* overrides disabled; using workspace profile.release"
+  fi
   echo "settings: FAST_ALLOC_SLAB_ONLY=1 FAST_SELFBUILD_NO_DYNAMIC_DEBUG=1"
-  echo "settings: note=aligned-to-guest-profile; no StarryOS guest, no QEMU/HVF, no guest FS/syscall/scheduler"
+  echo "settings: note=host build only; no StarryOS guest, no QEMU/HVF, no guest FS/syscall/scheduler"
   cd "$SRC_COPY"
   export RUSTC_BOOTSTRAP=1
   export CARGO_INCREMENTAL=0
   export CARGO_NET_OFFLINE=true
   export CARGO_BUILD_JOBS="$JOBS"
   export RAYON_NUM_THREADS="$JOBS"
-  export CARGO_PROFILE_RELEASE_LTO=false
-  export CARGO_PROFILE_RELEASE_OPT_LEVEL=0
-  export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256
+  if [ "$PROFILE_MODE" = "guest-aligned" ]; then
+    export CARGO_PROFILE_RELEASE_LTO=false
+    export CARGO_PROFILE_RELEASE_OPT_LEVEL=0
+    export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256
+  else
+    unset CARGO_PROFILE_RELEASE_LTO
+    unset CARGO_PROFILE_RELEASE_OPT_LEVEL
+    unset CARGO_PROFILE_RELEASE_CODEGEN_UNITS
+  fi
   export AX_ARCH=aarch64
   export AX_PLATFORM=aarch64-qemu-virt
   export AX_MODE=release
@@ -69,6 +81,7 @@ ax-config-gen \
   rustc --version
   cargo --version
   start="$(date +%s)"
+  echo "===HOST-ALIGNED-STARRYOS-BUILD-START jobs=$JOBS start=$start==="
   set +e
   cargo build \
     -p starryos \
@@ -82,7 +95,7 @@ ax-config-gen \
   set -e
   end="$(date +%s)"
   elapsed="$((end - start))"
-  echo "===HOST-ALIGNED-STARRYOS-END jobs=$JOBS rc=$rc elapsed=$elapsed==="
+  echo "===HOST-ALIGNED-STARRYOS-END jobs=$JOBS rc=$rc elapsed=$elapsed end=$end==="
   if [ "$rc" = "0" ]; then
     ls -lh "$TARGET_DIR/aarch64-unknown-none-softfloat/release/starryos" || true
     echo "===HOST-ALIGNED-STARRYOS-PASS jobs=$JOBS elapsed=$elapsed==="

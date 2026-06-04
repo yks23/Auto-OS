@@ -1,0 +1,55 @@
+===01-BUILD-STARRYOS-BEGIN===
+purpose=host-side StarryOS kernel build
+profile=xtask
+cwd=/Users/txc/code/Auto-OS/tgoskits
+arch=aarch64
+target=aarch64-unknown-none-softfloat
+smp=1
+CARGO_BUILD_JOBS=8
+RAYON_NUM_THREADS=8
+log=/Users/txc/code/Auto-OS/showtime-2/final/live-demo/out/01-build-starryos-aarch64-smp1-j8-xtask-20260529T181753.log
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.59s
+     Running `target/debug/tg-xtask starry build --arch aarch64 --smp 1`
+Using build config: /Users/txc/code/Auto-OS/tgoskits/tmp/axbuild/config/starryos/build-aarch64-unknown-none-softfloat.toml
+AX_GW=10.0.2.2
+AX_ARCH=aarch64
+AX_CONFIG_PATH=/Users/txc/code/Auto-OS/tgoskits/tmp/axbuild/axconfig/starryos/aarch64-unknown-none-softfloat/.axconfig.toml
+AX_IP=10.0.2.15
+AX_TARGET=aarch64-unknown-none-softfloat
+SMP=1
+AX_PLATFORM=aarch64-qemu-virt
+AX_LOG=warn
+cargo build -p starryos --target aarch64-unknown-none-softfloat -Z unstable-options --target-dir /Users/txc/code/Auto-OS/tgoskits/target --features ax-feat/defplat,qemu --config target.aarch64-unknown-none-softfloat.rustflags=["-Clink-arg=-Tlinker.x","-Clink-arg=-no-pie","-Clink-arg=-znostart-stop-gc"] --bin starryos --release --message-format json-render-diagnostics
+   Compiling ax-config v0.5.10 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axconfig)
+   Compiling ax-plat v0.5.8 (/Users/txc/code/Auto-OS/tgoskits/components/axplat_crates/axplat)
+   Compiling ax-plat-aarch64-qemu-virt v0.5.10 (/Users/txc/code/Auto-OS/tgoskits/components/axplat_crates/platforms/axplat-aarch64-qemu-virt)
+   Compiling ax-hal v0.5.15 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axhal)
+   Compiling ax-plat-aarch64-peripherals v0.5.10 (/Users/txc/code/Auto-OS/tgoskits/components/axplat_crates/platforms/axplat-aarch64-peripherals)
+   Compiling ax-task v0.5.16 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axtask)
+   Compiling ax-driver v0.5.16 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axdriver)
+   Compiling ax-mm v0.5.15 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axmm)
+   Compiling ax-ipi v0.5.14 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axipi)
+   Compiling ax-fs v0.5.14 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axfs)
+   Compiling ax-sync v0.5.15 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axsync)
+   Compiling ax-fs-ng v0.5.15 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axfs-ng)
+   Compiling ax-net v0.5.14 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axnet)
+   Compiling ax-input v0.5.14 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axinput)
+   Compiling ax-display v0.5.14 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axdisplay)
+   Compiling ax-net-ng v0.6.1 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axnet-ng)
+   Compiling ax-runtime v0.5.16 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/modules/axruntime)
+   Compiling ax-feat v0.5.16 (/Users/txc/code/Auto-OS/tgoskits/os/arceos/api/axfeat)
+   Compiling starry-kernel v0.5.12 (/Users/txc/code/Auto-OS/tgoskits/os/StarryOS/kernel)
+   Compiling starryos v0.5.12 (/Users/txc/code/Auto-OS/tgoskits/os/StarryOS/starryos)
+    Finished `release` profile [optimized] target(s) in 22.36s
+warning: the following packages contain code that will be rejected by a future version of Rust: memchr v2.8.0
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+Converting ELF to BIN format...
+  elf: /Users/txc/code/Auto-OS/tgoskits/target/aarch64-unknown-none-softfloat/release/starryos
+  bin: /Users/txc/code/Auto-OS/tgoskits/target/aarch64-unknown-none-softfloat/release/starryos.bin
+rust-objcopy --strip-all -O binary /Users/txc/code/Auto-OS/tgoskits/target/aarch64-unknown-none-softfloat/release/starryos /Users/txc/code/Auto-OS/tgoskits/target/aarch64-unknown-none-softfloat/release/starryos.bin
+===01-BUILD-STARRYOS-OUTPUT===
+-rwxr-xr-x@ 1 txc  staff   3.6M May 29 18:18 /Users/txc/code/Auto-OS/showtime-2/final/live-demo/out/starryos-host-aarch64-smp1.bin
+-rwxr-xr-x@ 1 txc  staff   4.5M May 29 18:18 /Users/txc/code/Auto-OS/showtime-2/final/live-demo/out/starryos-host-aarch64-smp1.elf
+/Users/txc/code/Auto-OS/showtime-2/final/live-demo/out/starryos-host-aarch64-smp1.elf: ELF 64-bit LSB executable, ARM aarch64, version 1 (GNU/Linux), statically linked, not stripped
+/Users/txc/code/Auto-OS/showtime-2/final/live-demo/out/starryos-host-aarch64-smp1.bin: Linux kernel ARM64 boot executable Image, little-endian, 4K pages
+===01-BUILD-STARRYOS-PASS elapsed=27===

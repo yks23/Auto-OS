@@ -1,0 +1,81 @@
+
+       d8888                            .d88888b.   .d8888b.
+      d88888                           d88P" "Y88b d88P  Y88b
+     d88P888                           888     888 Y88b.
+    d88P 888 888d888  .d8888b  .d88b.  888     888  "Y888b.
+   d88P  888 888P"   d88P"    d8P  Y8b 888     888     "Y88b.
+  d88P   888 888     888      88888888 888     888       "888
+ d8888888888 888     Y88b.    Y8b.     Y88b. .d88P Y88b  d88P
+d88P     888 888      "Y8888P  "Y8888   "Y88888P"   "Y8888P"
+
+arch = aarch64
+platform = aarch64-qemu-virt
+target = 
+build_mode = 
+log_level = info
+backtrace = false
+smp = 8
+
+Boot at 2026-05-29 12:55:46.002103166 UTC
+
+[37m[  0.002798 ax_runtime:171] [32mLogging is enabled.[m
+[m[37m[  0.003006 ax_runtime:172] [32mPrimary CPU 0 started, arg = 0x40492000.[m
+[m[37m[  0.003281 ax_runtime:174] [32mFound physcial memory regions:[m
+[m[37m[  0.003527 ax_runtime:176] [32m  [PA:0x8000000, PA:0x8200000) mmio (READ | WRITE | DEVICE | RESERVED)[m
+[m[37m[  0.003899 ax_runtime:176] [32m  [PA:0x9000000, PA:0x9001000) mmio (READ | WRITE | DEVICE | RESERVED)[m
+[m[37m[  0.004271 ax_runtime:176] [32m  [PA:0x9100000, PA:0x9101000) mmio (READ | WRITE | DEVICE | RESERVED)[m
+[m[37m[  0.004644 ax_runtime:176] [32m  [PA:0xa000000, PA:0xa004000) mmio (READ | WRITE | DEVICE | RESERVED)[m
+[m[37m[  0.005016 ax_runtime:176] [32m  [PA:0x10000000, PA:0x3eff0000) mmio (READ | WRITE | DEVICE | RESERVED)[m
+[m[37m[  0.005391 ax_runtime:176] [32m  [PA:0x40000000, PA:0x40200000) free memory (READ | WRITE | FREE)[m
+[m[37m[  0.005746 ax_runtime:176] [32m  [PA:0x40200000, PA:0x4044d000) .text (READ | EXECUTE | RESERVED)[m
+[m[37m[  0.006110 ax_runtime:176] [32m  [PA:0x4044d000, PA:0x4048e000) .rodata (READ | RESERVED)[m
+[m[37m[  0.006445 ax_runtime:176] [32m  [PA:0x4048e000, PA:0x40598000) .data .tdata .tbss .percpu (READ | WRITE | RESERVED)[m
+[m[37m[  0.006862 ax_runtime:176] [32m  [PA:0x40598000, PA:0x405d8000) boot stack (READ | WRITE | RESERVED)[m
+[m[37m[  0.007225 ax_runtime:176] [32m  [PA:0x405d8000, PA:0x405fe000) .bss (READ | WRITE | RESERVED)[m
+[m[37m[  0.007567 ax_runtime:176] [32m  [PA:0x405fe000, PA:0x140000000) free memory (READ | WRITE | FREE)[m
+[m[37m[  0.007921 ax_runtime:176] [32m  [PA:0x4010000000, PA:0x4020000000) mmio (READ | WRITE | DEVICE | RESERVED)[m
+[m[37m[  0.008303 ax_runtime:303] [32mInitialize global memory allocator...[m
+[m[37m[  0.008561 ax_runtime:304] [32m  use slab allocator.[m
+[m[37m[  0.008858 ax_runtime:211] [32mkernel aspace: [VA:0xffff000000000000, VA:0xfffffffffffff000)[m
+[m[37m[  0.009192 ax_mm:91] [32mInitialize virtual memory management...[m
+[m[37m[  0.015251 ax_runtime:223] [32mInitialize platform devices...[m
+[m[37m[  0.015541 ax_plat_aarch64_peripherals::gic:239] [32mInitialize GICv3 (system-register CPU interface)...[m
+[m[37m[  0.016008 ax_task::api:129] [32mInitialize scheduling...[m
+[m[37m[  0.016287 ax_task::api:134] [32m  use Round-robin scheduler.[m
+[m[37m[  0.016570 ax_driver:181] [32mInitialize device drivers...[m
+[m[37m[  0.016828 ax_driver:182] [32m  device model: static[m
+[m[37m[  0.018579 virtio_drivers::device::blk:63] [32mfound a block device of size 16777216KB[m
+[m[37m[  0.019039 ax_driver::bus::pci:111] [32mregistered a new Block device at 00:01.0: "virtio-blk"[m
+[m[37m[  0.020907 virtio_drivers::device::net::dev_raw:33] [32mnegotiated_features Features(MAC | STATUS | RING_INDIRECT_DESC | RING_EVENT_IDX | VERSION_1)[m
+[m[37m[  0.022020 ax_driver::bus::pci:111] [32mregistered a new Net device at 00:02.0: "virtio-net"[m
+[m[37m[  0.086871 ax_fs_ng:95] [32mInitialize filesystem subsystem...[m
+[m[37m[  0.087349 ax_fs_ng:175] [32m  block device 0 (virtio-blk) has no partition table[m
+[m[37m[  0.087732 ax_fs_ng:181] [32m    raw device fs=Some(Ext4)[m
+[m[37m[  0.088026 ax_fs_ng:389] [32m  only one raw block device is available; using it as root[m
+[m[37m[  0.088381 ax_fs_ng:120] [32m  selected root device: disk0 raw device[m
+[m[37m[  0.089788 rsext4::ext4::mount:270] [32m/lost+found exists (path resolution)[m
+[m[37m[  0.090136 rsext4::ext4::mount:381] [32mExt4 filesystem mounted[m
+[m[37m[  0.090376 rsext4::ext4::mount:382] [32m  - block size: 4096 bytes[m
+[m[37m[  0.090623 rsext4::ext4::mount:383] [32m  - total blocks: 4194304[m
+[m[37m[  0.090879 rsext4::ext4::mount:384] [32m  - free blocks: 3118558[m
+[m[37m[  0.091120 rsext4::ext4::mount:385] [32m  - total inodes: 1048576[m
+[m[37m[  0.091368 rsext4::ext4::mount:386] [32m  - free inodes: 968490[m
+[m[37m[  0.091604 rsext4::ext4::sync:13] [32mSyncing filesystem...[m
+[m[37m[  0.091984 rsext4::ext4::mount:455] [32mExt4 filesystem mounted[m
+[m[37m[  0.092242 ax_fs_ng:128] [32m  filesystem type: "ext4"[m
+[m[37m[  0.092460 ax_net_ng:85] [32mInitialize network subsystem...[m
+[m[37m[  0.092732 ax_net_ng:103] [32m  use NIC 0: "virtio-net"[m
+[m[37m[  0.092951 ax_net_ng:115] [32meth0:[m
+[m[37m[  0.093102 ax_net_ng:116] [32m  mac:  52-54-00-12-34-56[m
+[m[37m[  0.093312 ax_net_ng:131] [32m  mode: dhcp[m
+[m[37m[  0.093481 ax_net_ng:141] [32mDevice: lo[m
+[m[37m[  0.093643 ax_net_ng:141] [32mDevice: eth0[m
+[m[37m[  0.093817 ax_net_ng::service:212] [32meth0: DHCP enabled[m
+[m[37m[  0.094083 ax_net_ng:165] [32mInitialize vsock subsystem...[m
+[m[37m[  0.094315 ax_net_ng:172] [33m  No vsock device found![m
+[m[37m[  0.094526 ax_display:20] [32mInitialize display subsystem...[m
+[m[37m[  0.094806 ax_display:26] [33m  No display device found![m
+[m[37m[  0.095035 ax_input:20] [32mInitialize input subsystem...[m
+[m[37m[  0.095291 ax_plat_aarch64_peripherals::psci:174] [32mStarting CPU 1 ON ...[m
+[m[37m[  0.095606 ax_plat_aarch64_peripherals::psci:177] [31mfailed to boot CPU 1 (InvalidParams)[m
+[mqemu-system-aarch64: terminating on signal 2 from pid 62839 (<unknown process>)

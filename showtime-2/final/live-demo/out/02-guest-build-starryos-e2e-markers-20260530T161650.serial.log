@@ -1,0 +1,7 @@
+[m===LIVE-GUEST-REBUILD-BEGIN===
+[m===LIVE-GUEST-REBUILD-COPY-SOURCE-BEGIN===
+===LIVE-GUEST-REBUILD-COPY-SOURCE-END===
+===LIVE-GUEST-REBUILD-ENV-BEGIN===
+[m===LIVE-GUEST-REBUILD-ENV-END===
+[m===LIVE-GUEST-REBUILD-CARGO-BEGIN start=1780129087===
+[mqemu-system-aarch64: terminating on signal 15 from pid 17970 (<unknown process>)

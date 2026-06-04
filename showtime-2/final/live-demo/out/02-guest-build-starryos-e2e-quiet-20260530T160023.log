@@ -1,0 +1,543 @@
+
+       d8888                            .d88888b.   .d8888b.
+      d88888                           d88P" "Y88b d88P  Y88b
+     d88P888                           888     888 Y88b.
+    d88P 888 888d888  .d8888b  .d88b.  888     888  "Y888b.
+   d88P  888 888P"   d88P"    d8P  Y8b 888     888     "Y88b.
+  d88P   888 888     888      88888888 888     888       "888
+ d8888888888 888     Y88b.    Y8b.     Y88b. .d88P Y88b  d88P
+d88P     888 888      "Y8888P  "Y8888   "Y88888P"   "Y8888P"
+
+arch = aarch64
+platform = aarch64-qemu-virt
+target = 
+build_mode = 
+log_level = info
+backtrace = false
+smp = 8
+
+Boot at 2026-05-30 08:00:23.002076166 UTC
+
+[37m[  0.002482 ax_runtime:171] [32mLogging is enabled.[m
+[m[37m[  0.002725 ax_runtime:172] [32mPrimary CPU 0 started, arg = 0x40492000.[m
+[m[37m[  0.003013 ax_runtime:174] [32mFound physcial memory regions:[m
+[m[37m[  0.003265 ax_runtime:176] [32m  [PA:0x8000000, PA:0x8200000) mmio (READ | WRITE | DEVICE | RESERVED)[m
+[m[37m[  0.003643 ax_runtime:176] [32m  [PA:0x9000000, PA:0x9001000) mmio (READ | WRITE | DEVICE | RESERVED)[m
+[m[37m[  0.004007 ax_runtime:176] [32m  [PA:0x9100000, PA:0x9101000) mmio (READ | WRITE | DEVICE | RESERVED)[m
+[m[37m[  0.004371 ax_runtime:176] [32m  [PA:0xa000000, PA:0xa004000) mmio (READ | WRITE | DEVICE | RESERVED)[m
+[m[37m[  0.004745 ax_runtime:176] [32m  [PA:0x10000000, PA:0x3eff0000) mmio (READ | WRITE | DEVICE | RESERVED)[m
+[m[37m[  0.005124 ax_runtime:176] [32m  [PA:0x40000000, PA:0x40200000) free memory (READ | WRITE | FREE)[m
+[m[37m[  0.005475 ax_runtime:176] [32m  [PA:0x40200000, PA:0x4044d000) .text (READ | EXECUTE | RESERVED)[m
+[m[37m[  0.005826 ax_runtime:176] [32m  [PA:0x4044d000, PA:0x4048e000) .rodata (READ | RESERVED)[m
+[m[37m[  0.006156 ax_runtime:176] [32m  [PA:0x4048e000, PA:0x40598000) .data .tdata .tbss .percpu (READ | WRITE | RESERVED)[m
+[m[37m[  0.006572 ax_runtime:176] [32m  [PA:0x40598000, PA:0x405d8000) boot stack (READ | WRITE | RESERVED)[m
+[m[37m[  0.006942 ax_runtime:176] [32m  [PA:0x405d8000, PA:0x405fe000) .bss (READ | WRITE | RESERVED)[m
+[m[37m[  0.007285 ax_runtime:176] [32m  [PA:0x405fe000, PA:0x140000000) free memory (READ | WRITE | FREE)[m
+[m[37m[  0.007640 ax_runtime:176] [32m  [PA:0x4010000000, PA:0x4020000000) mmio (READ | WRITE | DEVICE | RESERVED)[m
+[m[37m[  0.008045 ax_runtime:303] [32mInitialize global memory allocator...[m
+[m[37m[  0.008312 ax_runtime:304] [32m  use slab allocator.[m
+[m[37m[  0.008604 ax_runtime:211] [32mkernel aspace: [VA:0xffff000000000000, VA:0xfffffffffffff000)[m
+[m[37m[  0.009202 ax_mm:91] [32mInitialize virtual memory management...[m
+[m[37m[  0.015084 ax_runtime:223] [32mInitialize platform devices...[m
+[m[37m[  0.015356 ax_plat_aarch64_peripherals::gic:239] [32mInitialize GICv3 (system-register CPU interface)...[m
+[m[37m[  0.015800 ax_task::api:129] [32mInitialize scheduling...[m
+[m[37m[  0.016059 ax_task::api:134] [32m  use Round-robin scheduler.[m
+[m[37m[  0.016329 ax_driver:181] [32mInitialize device drivers...[m
+[m[37m[  0.016581 ax_driver:182] [32m  device model: static[m
+[m[37m[  0.018031 virtio_drivers::device::blk:63] [32mfound a block device of size 16777216KB[m
+[m[37m[  0.018477 ax_driver::bus::pci:111] [32mregistered a new Block device at 00:01.0: "virtio-blk"[m
+[m[37m[  0.020317 virtio_drivers::device::net::dev_raw:33] [32mnegotiated_features Features(MAC | STATUS | RING_INDIRECT_DESC | RING_EVENT_IDX | VERSION_1)[m
+[m[37m[  0.021675 ax_driver::bus::pci:111] [32mregistered a new Net device at 00:02.0: "virtio-net"[m
+[m[37m[  0.085941 ax_fs_ng:95] [32mInitialize filesystem subsystem...[m
+[m[37m[  0.086568 ax_fs_ng:175] [32m  block device 0 (virtio-blk) has no partition table[m
+[m[37m[  0.087000 ax_fs_ng:181] [32m    raw device fs=Some(Ext4)[m
+[m[37m[  0.087329 ax_fs_ng:389] [32m  only one raw block device is available; using it as root[m
+[m[37m[  0.087737 ax_fs_ng:120] [32m  selected root device: disk0 raw device[m
+[m[37m[  0.089190 rsext4::ext4::mount:270] [32m/lost+found exists (path resolution)[m
+[m[37m[  0.089561 rsext4::ext4::mount:381] [32mExt4 filesystem mounted[m
+[m[37m[  0.089798 rsext4::ext4::mount:382] [32m  - block size: 4096 bytes[m
+[m[37m[  0.090045 rsext4::ext4::mount:383] [32m  - total blocks: 4194304[m
+[m[37m[  0.090303 rsext4::ext4::mount:384] [32m  - free blocks: 3118558[m
+[m[37m[  0.090574 rsext4::ext4::mount:385] [32m  - total inodes: 1048576[m
+[m[37m[  0.090845 rsext4::ext4::mount:386] [32m  - free inodes: 968490[m
+[m[37m[  0.091088 rsext4::ext4::sync:13] [32mSyncing filesystem...[m
+[m[37m[  0.091456 rsext4::ext4::mount:455] [32mExt4 filesystem mounted[m
+[m[37m[  0.091711 ax_fs_ng:128] [32m  filesystem type: "ext4"[m
+[m[37m[  0.091928 ax_net_ng:85] [32mInitialize network subsystem...[m
+[m[37m[  0.092212 ax_net_ng:103] [32m  use NIC 0: "virtio-net"[m
+[m[37m[  0.092817 ax_net_ng:115] [32meth0:[m
+[m[37m[  0.092972 ax_net_ng:116] [32m  mac:  52-54-00-12-34-56[m
+[m[37m[  0.093205 ax_net_ng:131] [32m  mode: dhcp[m
+[m[37m[  0.093525 ax_net_ng:141] [32mDevice: lo[m
+[m[37m[  0.093734 ax_net_ng:141] [32mDevice: eth0[m
+[m[37m[  0.093917 ax_net_ng::service:212] [32meth0: DHCP enabled[m
+[m[37m[  0.094166 ax_net_ng:165] [32mInitialize vsock subsystem...[m
+[m[37m[  0.094407 ax_net_ng:172] [33m  No vsock device found![m
+[m[37m[  0.094631 ax_display:20] [32mInitialize display subsystem...[m
+[m[37m[  0.094878 ax_display:26] [33m  No display device found![m
+[m[37m[  0.095114 ax_input:20] [32mInitialize input subsystem...[m
+[m[37m[  0.095382 ax_plat_aarch64_peripherals::psci:174] [32mStarting CPU 1 ON ...[m
+[m[37m[  0.095727 ax_runtime::mp:133] [32mSecondary CPU 1 started.[m
+[m[37m[  0.095758 ax_plat_aarch64_peripherals::psci:174] [32mStarting CPU 2 ON ...[m
+[m[37m[  0.096195 ax_runtime::mp:149] [32mSecondary CPU 1 init OK.[m
+[m[37m[  0.096442 ax_plat_aarch64_peripherals::psci:174] [32mStarting CPU 3 ON ...[m
+[m[37m[  0.096410 ax_runtime::mp:133] [32mSecondary CPU 2 started.[m
+[m[37m[  0.096980 ax_runtime::mp:133] [32mSecondary CPU 3 started.[m
+[m[37m[  0.097010 ax_plat_aarch64_peripherals::psci:174] [32mStarting CPU 4 ON ...[m
+[m[37m[  0.097736 ax_runtime::mp:149] [32mSecondary CPU 2 init OK.[m
+[m[37m[  0.098134 ax_plat_aarch64_peripherals::psci:174] [32mStarting CPU 5 ON ...[m
+[m[37m[  0.098395 ax_runtime::mp:149] [32mSecondary CPU 3 init OK.[m
+[m[37m[  0.098104 ax_runtime::mp:133] [32mSecondary CPU 4 started.[m
+[m[37m[  0.099481 ax_plat_aarch64_peripherals::psci:174] [32mStarting CPU 6 ON ...[m
+[m[37m[  0.099452 ax_runtime::mp:133] [32mSecondary CPU 5 started.[m
+[m[37m[  0.101050 ax_plat_aarch64_peripherals::psci:174] [32mStarting CPU 7 ON ...[m
+[m[37m[  0.101685 ax_runtime::mp:149] [32mSecondary CPU 5 init OK.[m
+[m[37m[  0.101105 ax_runtime::mp:149] [32mSecondary CPU 4 init OK.[m
+[m[37m[  0.101771 ax_runtime::mp:133] [32mSecondary CPU 7 started.[m
+[m[37m[  0.101020 ax_runtime::mp:133] [32mSecondary CPU 6 started.[m
+[m[37m[  0.104186 ax_runtime::mp:149] [32mSecondary CPU 7 init OK.[m
+[m[37m[  0.104948 ax_runtime::mp:149] [32mSecondary CPU 6 init OK.[m
+[m[37m[  0.101771 ax_runtime:269] [32mInitialize interrupt handlers...[m
+[m[37m[  0.105792 ax_runtime:281] [32mPrimary CPU 0 init OK.[m
+[m[37m[  0.106003 0:2 ktracepoint:282] [32mtracepoint_data_start: 0xffff000040596968, tracepoint_data_end: 0xffff000040596988[m
+[m[37m[  0.107108 0:2 ktracepoint:297] [32mtracepoint_data_len: 2[m
+[m[37m[  0.107748 0:2 ktracepoint:314] [32mtracepoint registered: syscalls:sys_enter_openat[m
+[m[37m[  0.108710 0:2 ktracepoint:314] [32mtracepoint registered: syscalls:sys_mkdirat[m
+[mInitialized 2 tracepoints
+[37m[  0.110210 0:2 starry_kernel::pseudofs:82] [32mInitialize pseudofs...[m
+[m[37m[  0.111215 0:2 starry_kernel::pseudofs:76] [32mMounted devfs at /dev[m
+[m[37m[  0.112388 0:2 starry_kernel::pseudofs:76] [32mMounted tmpfs at /dev/shm[m
+[m[37m[  0.112871 0:2 starry_kernel::pseudofs:76] [32mMounted tmpfs at /tmp[m
+[m[37m[  0.113115 0:2 starry_kernel::dyn_debug:61] [32mdebug_init: initializing dynamic debug sites[m
+[m[37m[  0.113465 0:2 starry_kernel::dyn_debug:64] [32mdebug_init: found 129 dynamic debug sites[m
+[m[37m[  0.113811 0:2 starry_kernel::pseudofs:76] [32mMounted proc at /proc[m
+[m[37m[  0.114076 0:2 starry_kernel::pseudofs:76] [32mMounted sysfs at /sys[m
+[m[37m[  0.114321 0:2 starry_kernel::pseudofs:76] [32mMounted debug at /sys/kernel/debug[m
+[m[37m[  0.114612 0:2 starry_kernel::task::timer:330] [32mInitialize alarm...[m
+[m[37m[  0.126094 4:22 starry_kernel::task::user:23] [32mEnter user space: ip=0x6016953c, sp=0x7ffefffffac0[m
+[mWelcome to [96m[1mStarry OS[0m!
+[37m[  0.138142 4:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.148032 5:23 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff250[m
+[mUSER=root
+HOSTNAME=starry
+SHLVL=1
+HOME=/root
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PWD=/
+[37m[  0.149567 5:23 starry_kernel::task::ops:443] [32mTask(23, "busybox") exit with code: 0[m
+[m[37m[  0.149915 5:23 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 22[m
+[m[37m[  0.152210 6:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.152589 6:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m
+Use [1m[3mapk[0m to install packages.
+
+[37m[  0.153579 6:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.153959 6:24 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff250[m
+[m[37m[  0.154938 6:24 starry_kernel::task::ops:443] [32mTask(24, "busybox") exit with code: 256[m
+[m[37m[  0.155259 6:24 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 22[m
+[m[37m[  0.160991 7:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.161528 7:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.161990 7:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.162365 7:25 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff250[m
+[m[37m[  0.163278 7:25 starry_kernel::task::ops:443] [32mTask(25, "busybox") exit with code: 256[m
+[m[37m[  0.163584 7:25 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 22[m
+[m[37m[  0.163930 0:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.164456 0:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.165062 0:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.165510 0:26 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff250[m
+[m[37m[  0.166326 0:26 starry_kernel::task::ops:443] [32mTask(26, "busybox") exit with code: 256[m
+[m[37m[  0.166791 0:26 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 22[m
+[m[37m[  0.172799 1:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.173234 1:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.185590 1:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.185971 1:27 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff250[m
+[m[37m[  0.187204 1:27 starry_kernel::task::ops:443] [32mTask(27, "busybox") exit with code: 0[m
+[m[37m[  0.187513 1:27 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 22[m
+[m[37m[  0.189600 2:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.190021 2:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.195027 2:22 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WUNTRACED)[m
+[m[37m[  0.195498 2:28 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff4a0[m
+[m===LIVE-GUEST-REBUILD-BEGIN===
+kernel_source=guest-built StarryOS kernel
+[37m[  0.198367 3:29 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff3d0[m
+[m[37m[  0.199011 3:29 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.208210 4:30 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffeffffef70[m
+[m[37m[  0.210382 4:30 starry_kernel::task::ops:443] [32mTask(30, "busybox") exit with code: 0[m
+[m[37m[  0.210703 4:30 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 29[m
+[m[37m[  0.212228 6:29 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.212633 6:29 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.213032 6:29 starry_kernel::task::ops:443] [32mTask(29, "busybox") exit with code: 0[m
+[m[37m[  0.213335 6:29 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  0.216772 5:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.217161 5:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[mcpu_count=8
+[37m[  0.217788 5:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.221327 7:31 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff450[m
+[mLinux starry 10.0.0 10.0.0 aarch64 Linux
+[37m[  0.223116 7:31 starry_kernel::task::ops:443] [32mTask(31, "busybox") exit with code: 0[m
+[m[37m[  0.223440 7:31 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  0.223766 0:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.224272 0:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.224867 0:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.225316 0:32 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff450[m
+[m[37m[  0.228701 0:32 starry_kernel::task::ops:443] [32mTask(32, "busybox") exit with code: 256[m
+[m[37m[  0.229046 0:32 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  0.233911 1:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.234338 1:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.234872 1:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.235284 1:33 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff450[m
+[m[37m[  0.235955 1:33 starry_kernel::task::ops:443] [32mTask(33, "busybox") exit with code: 256[m
+[m[37m[  0.236300 1:33 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  0.238083 2:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.238453 2:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.239021 2:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.239445 2:34 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff5f0[m
+[m[37m[  0.240496 2:34 starry_kernel::task::ops:443] [32mTask(34, "busybox") exit with code: 0[m
+[m[37m[  0.240797 2:34 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  0.246739 3:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.247128 3:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.247604 3:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.248021 3:35 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff5f0[m
+[m[37m[  0.249996 3:35 starry_kernel::task::ops:443] [32mTask(35, "busybox") exit with code: 0[m
+[m[37m[  0.250323 3:35 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  0.257484 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.257917 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m===LIVE-GUEST-REBUILD-COPY-SOURCE-BEGIN===
+[37m[  0.259011 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.260231 4:36 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  0.262480 4:36 starry_kernel::task::ops:443] [32mTask(36, "busybox") exit with code: 0[m
+[m[37m[  0.262790 4:36 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  0.267021 5:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.267450 5:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.268163 5:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.268623 5:37 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  0.272285 5:37 starry_kernel::task::ops:443] [32mTask(37, "busybox") exit with code: 0[m
+[m[37m[  0.272606 5:37 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  0.282299 6:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.282762 6:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.283610 6:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.283978 6:38 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  0.285604 6:38 starry_kernel::task::ops:443] [32mTask(38, "busybox") exit with code: 0[m
+[m[37m[  0.285935 6:38 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  0.292102 7:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.292621 7:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.293127 7:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.293520 7:39 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  0.295328 7:39 starry_kernel::task::ops:443] [32mTask(39, "busybox") exit with code: 0[m
+[m[37m[  0.295675 7:39 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  0.295966 0:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.296371 0:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  0.296854 0:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  0.297237 0:40 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  1.846468 0:40 starry_kernel::task::ops:443] [32mTask(40, "busybox") exit with code: 0[m
+[m[37m[  1.846810 0:40 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  1.853152 1:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  1.853538 1:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  1.853996 1:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  1.854351 1:41 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  2.813188 1:41 starry_kernel::task::ops:443] [32mTask(41, "busybox") exit with code: 0[m
+[m[37m[  2.813507 1:41 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  2.819901 2:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  2.820283 2:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  2.820749 2:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  2.821107 2:42 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  3.032794 2:42 starry_kernel::task::ops:443] [32mTask(42, "busybox") exit with code: 0[m
+[m[37m[  3.033120 2:42 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  3.036303 3:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  3.036684 3:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  3.037137 3:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  3.037569 3:43 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  3.679509 3:43 starry_kernel::task::ops:443] [32mTask(43, "busybox") exit with code: 0[m
+[m[37m[  3.679836 3:43 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  3.687536 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  3.687932 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  3.688414 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  3.688775 4:44 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  3.784491 4:44 starry_kernel::task::ops:443] [32mTask(44, "busybox") exit with code: 0[m
+[m[37m[  3.784807 4:44 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  3.787910 5:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  3.788371 5:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  3.788866 5:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  3.789274 5:45 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  3.870292 5:45 starry_kernel::task::ops:443] [32mTask(45, "busybox") exit with code: 0[m
+[m[37m[  3.870612 5:45 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  3.882444 6:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  3.882836 6:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  3.883469 6:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  3.883836 6:46 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  3.892086 6:46 starry_kernel::task::ops:443] [32mTask(46, "busybox") exit with code: 0[m
+[m[37m[  3.892821 6:46 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  3.902787 7:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  3.903189 7:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  3.903665 7:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  3.904062 7:47 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  3.906441 7:47 starry_kernel::task::ops:443] [32mTask(47, "busybox") exit with code: 0[m
+[m[37m[  3.906739 7:47 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  3.907028 0:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  3.907428 0:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  3.907922 0:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  3.909223 0:48 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[  5.443729 0:48 starry_kernel::task::ops:443] [32mTask(48, "busybox") exit with code: 0[m
+[m[37m[  5.444079 0:48 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[  5.453183 1:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  5.453564 1:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[  5.454033 1:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[  5.454394 1:49 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff260[m
+[m[37m[ 55.562650 1:49 starry_kernel::task::ops:443] [32mTask(49, "busybox") exit with code: 0[m
+[m[37m[ 55.563081 1:49 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[ 55.569932 2:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 55.570433 2:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[ 55.572362 2:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 55.572832 2:50 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff450[m
+[m[37m[ 55.576271 2:50 starry_kernel::task::ops:443] [32mTask(50, "busybox") exit with code: 0[m
+[m[37m[ 55.576672 2:50 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[ 55.583912 3:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 55.584428 3:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[ 55.584987 3:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 55.585455 3:51 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff110[m
+[m[37m[ 55.588908 3:51 starry_kernel::task::ops:443] [32mTask(51, "busybox") exit with code: 0[m
+[m[37m[ 55.589247 3:51 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[ 55.589621 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 55.590049 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[ 55.590561 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 55.590975 4:52 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff110[m
+[m[37m[ 55.592142 4:52 starry_kernel::task::ops:443] [32mTask(52, "busybox") exit with code: 0[m
+[m[37m[ 55.592739 4:52 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[ 55.593918 5:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 55.594418 5:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m===LIVE-GUEST-FAST-ALLOC-SLAB-ONLY===
+[37m[ 55.595063 5:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 55.595477 5:53 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff2b0[m
+[m[37m[ 55.596445 5:53 starry_kernel::task::ops:443] [32mTask(53, "busybox") exit with code: 0[m
+[m[37m[ 55.596783 5:53 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[ 55.603632 6:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 55.604199 6:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m===LIVE-GUEST-FAST-NO-DYNAMIC-DEBUG===
+===LIVE-GUEST-REBUILD-COPY-SOURCE-END===
+===LIVE-GUEST-REBUILD-ENV-BEGIN===
+target_dir=/opt/tgoskits/target-live-demo
+work_dir=/tmp/live-rebuild-src
+jobs=8
+rustflags=-Z threads=2 -Clink-arg=-Tlinker.x -Clink-arg=-no-pie -Clink-arg=-znostart-stop-gc
+[37m[ 55.605724 6:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 55.606177 6:54 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff450[m
+[mrustc 1.97.0-nightly (ca9a134e0 2026-04-26)
+[37m[ 56.074026 7:55 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 56.095376 1:54 starry_kernel::task::ops:443] [32mTask(54, "rustc") exit with code: 0[m
+[m[37m[ 56.095729 1:54 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 55[m
+[m[37m[ 56.099634 2:55 starry_kernel::task::ops:443] [32mTask(55, "ctrl-c") exit with code: 9[m
+[m[37m[ 56.100086 2:55 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[ 56.103528 2:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 56.103967 2:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m[37m[ 56.104484 2:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 56.104920 3:56 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff450[m
+[mcargo 1.91.1 (ea2d97820 2025-10-10) (Alpine Linux Rust 1.91.1-r1)
+[37m[ 56.187003 3:56 starry_kernel::task::ops:443] [32mTask(56, "cargo") exit with code: 0[m
+[m[37m[ 56.187341 3:56 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[ 56.189757 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 56.191190 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m===LIVE-GUEST-REBUILD-ENV-END===
+[37m[ 56.193877 6:57 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff3d0[m
+[m[37m[ 56.197931 6:57 starry_kernel::task::ops:443] [32mTask(57, "busybox") exit with code: 0[m
+[m[37m[ 56.198269 6:57 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 28[m
+[m[37m[ 56.198746 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 56.199176 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(WNOHANG)[m
+[m===LIVE-GUEST-REBUILD-CARGO-BEGIN start=1780128079===
+[37m[ 56.199881 4:28 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: -1, options: WaitPidOptions(0x0)[m
+[m[37m[ 56.202314 7:58 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x7ffefffff5f0[m
+[m[37m[ 56.355749 0:59 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x7ffeffff6750[m
+[m[37m[ 56.739332 2:60 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 56.750183 0:59 starry_kernel::task::ops:443] [32mTask(59, "rustc") exit with code: 0[m
+[m[37m[ 56.750548 0:59 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 60[m
+[m[37m[ 56.752271 5:60 starry_kernel::task::ops:443] [32mTask(60, "ctrl-c") exit with code: 9[m
+[m[37m[ 56.752629 5:60 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 58[m
+[m[37m[ 56.753897 1:58 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: 59, options: WaitPidOptions(0x0)[m
+[m[37m[ 56.763707 6:61 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x7ffeffff68c0[m
+[m[37m[ 57.169594 0:62 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 57.194204 5:63 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd871940[m
+[m[37m[ 57.204124 6:64 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xda9b940[m
+[m[37m[ 57.360662 5:63 starry_kernel::task::ops:443] [32mTask(63, "rustc") exit with code: 0[m
+[m[37m[ 57.372945 6:61 starry_kernel::task::ops:443] [32mTask(61, "rustc") exit with code: 0[m
+[m[37m[ 57.373395 6:61 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 62[m
+[m[37m[ 57.373816 6:61 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 64[m
+[m[37m[ 57.374284 6:62 starry_kernel::task::ops:443] [32mTask(62, "ctrl-c") exit with code: 9[m
+[m[37m[ 57.384141 7:64 starry_kernel::task::ops:443] [32mTask(64, "rustc") exit with code: 9[m
+[m[37m[ 57.384746 7:64 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 58[m
+[m[37m[ 57.389227 7:58 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: 61, options: WaitPidOptions(0x0)[m
+[m[37m[ 57.397868 4:65 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x7ffeffff6ae0[m
+[m[37m[ 57.843810 6:66 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 57.856931 0:67 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd86d940[m
+[m[37m[ 57.863913 1:68 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xda92940[m
+[m[37m[ 57.921015 3:67 starry_kernel::task::ops:443] [32mTask(67, "rustc") exit with code: 0[m
+[m[37m[ 57.930194 5:65 starry_kernel::task::ops:443] [32mTask(65, "rustc") exit with code: 0[m
+[m[37m[ 57.930588 5:65 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 66[m
+[m[37m[ 57.930936 5:65 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 68[m
+[m[37m[ 57.931286 5:68 starry_kernel::task::ops:443] [32mTask(68, "rustc") exit with code: 9[m
+[m[37m[ 57.939624 4:66 starry_kernel::task::ops:443] [32mTask(66, "ctrl-c") exit with code: 9[m
+[m[37m[ 57.940059 4:66 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 58[m
+[m[37m[ 57.944269 6:58 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: 65, options: WaitPidOptions(0x0)[m
+[m[37m[ 57.953757 5:69 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x7ffeffff6270[m
+[m[37m[ 58.393754 7:70 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 58.402950 3:72 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xda95940[m
+[m[37m[ 58.408415 4:73 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xe29e940[m
+[m[37m[ 58.409091 2:71 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd274940[m
+[m[37m[ 58.474261 5:73 starry_kernel::task::ops:443] [32mTask(73, "rustc") exit with code: 0[m
+[m[37m[ 58.479676 4:72 starry_kernel::task::ops:443] [32mTask(72, "rustc") exit with code: 0[m
+[m[37m[ 58.490451 6:69 starry_kernel::task::ops:443] [32mTask(69, "rustc") exit with code: 0[m
+[m[37m[ 58.490823 6:69 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 70[m
+[m[37m[ 58.491173 6:69 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 71[m
+[m[37m[ 58.491785 6:71 starry_kernel::task::ops:443] [32mTask(71, "rustc") exit with code: 9[m
+[m[37m[ 58.493995 5:70 starry_kernel::task::ops:443] [32mTask(70, "ctrl-c") exit with code: 9[m
+[m[37m[ 58.494367 5:70 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 58[m
+[m[37m[ 58.502989 7:58 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: 69, options: WaitPidOptions(0x0)[m
+[m[37m[ 58.504158 3:74 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x7ffeffff6490[m
+[m[37m[ 59.004287 5:75 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 59.019192 3:77 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xda8a940[m
+[m[37m[ 59.019703 2:76 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd269940[m
+[m[37m[ 59.030097 4:78 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xe293940[m
+[m[37m[ 59.144443 6:78 starry_kernel::task::ops:443] [32mTask(78, "rustc") exit with code: 0[m
+[m[37m[ 59.159483 0:74 starry_kernel::task::ops:443] [32mTask(74, "rustc") exit with code: 0[m
+[m[37m[ 59.160085 2:77 starry_kernel::task::ops:443] [32mTask(77, "rustc") exit with code: 0[m
+[m[37m[ 59.160282 0:74 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 75[m
+[m[37m[ 59.161134 0:74 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 76[m
+[m[37m[ 59.165027 3:75 starry_kernel::task::ops:443] [32mTask(75, "ctrl-c") exit with code: 9[m
+[m[37m[ 59.169509 4:76 starry_kernel::task::ops:443] [32mTask(76, "rustc") exit with code: 9[m
+[m[37m[ 59.169903 4:76 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 58[m
+[m[37m[ 59.173846 4:58 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: 74, options: WaitPidOptions(0x0)[m
+[m[37m[ 59.456204 4:58 ax_net_ng::service:118] [32meth0: DHCP offered address 10.0.2.15 from 10.0.2.2[m
+[m[37m[ 59.617066 4:58 ax_net_ng::service:271] [33meth0: DHCP acquired address 10.0.2.15/24[m
+[m[37m[ 59.617501 4:58 ax_net_ng::service:273] [33meth0: DHCP router 10.0.2.2[m
+[m[37m[ 59.617888 4:58 ax_net_ng::service:277] [32meth0: DHCP DNS 10.0.2.3[m
+[m[37m[ 59.663872 1:79 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x7ffeffff6a80[m
+[m[37m[ 60.115044 3:80 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 60.127948 1:79 starry_kernel::task::ops:443] [32mTask(79, "rustc") exit with code: 0[m
+[m[37m[ 60.128412 1:79 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 80[m
+[m[37m[ 60.133776 6:80 starry_kernel::task::ops:443] [32mTask(80, "ctrl-c") exit with code: 9[m
+[m[37m[ 60.134219 6:80 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 58[m
+[m[37m[ 60.139710 2:58 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: 79, options: WaitPidOptions(0x0)[m
+[m[37m[ 60.893990 3:81 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x2df829d0[m
+[m[37m[ 60.899815 4:82 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x2e1889d0[m
+[m[37m[ 60.914102 7:83 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x2e38e9d0[m
+[m[37m[ 60.929689 0:87 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x2e9a09d0[m
+[m[37m[ 60.929957 2:84 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x2e187680[m
+[m[37m[ 60.931217 2:89 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x2edac9d0[m
+[m[37m[ 60.933772 6:85 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x2e5949d0[m
+[m[37m[ 60.934414 1:88 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x2eba69d0[m
+[m[37m[ 60.933901 3:90 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x2efb29d0[m
+[m[37m[ 60.934599 7:86 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x2e79a9d0[m
+[m[37m[ 60.963957 5:91 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x2efb1680[m
+[m[37m[ 60.969327 4:92 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x2e38d680[m
+[m[37m[ 61.003663 5:94 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x2e99f680[m
+[m[37m[ 61.027890 0:95 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x2e799680[m
+[m[37m[ 61.027922 2:93 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x2e593680[m
+[m[37m[ 64.022158 1:96 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 64.073842 6:97 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd276940[m
+[m[37m[ 64.084458 3:99 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xe2a0940[m
+[m[37m[ 64.089309 4:100 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 64.153980 1:102 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd874940[m
+[m[37m[ 64.162644 5:101 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 64.177898 2:98 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xda97940[m
+[m[37m[ 64.183105 6:104 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xda9d940[m
+[m[37m[ 64.202159 1:103 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x2edab680[m
+[m[37m[ 64.211786 6:105 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd873940[m
+[m[37m[ 64.233216 3:106 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xda9c940[m
+[m[37m[ 64.284690 7:107 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x2eba5680[m
+[m[37m[ 64.312843 5:108 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 64.577995 2:109 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd879940[m
+[m[37m[ 64.727956 2:110 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xda9e940[m
+[m[37m[ 67.166184 7:111 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 67.229495 4:112 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x12acd940[m
+[m[37m[ 67.230297 5:113 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x12cd6940[m
+[m[37m[ 67.446545 2:114 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 67.466733 2:115 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd875940[m
+[m[37m[ 67.479983 3:116 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xda9a940[m
+[m[37m[ 67.549828 3:117 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd87b940[m
+[m[37m[ 67.570039 4:118 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xdaa0940[m
+[m[37m[ 67.850076 5:119 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x12ef2940[m
+[m[37m[ 67.866192 6:120 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 67.959686 3:121 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd878940[m
+[m[37m[ 67.968133 4:122 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xda9d940[m
+[m[37m[ 68.138334 5:119 starry_kernel::task::ops:443] [32mTask(119, "opt cgu.0") exit with code: 0[m
+[m[37m[ 68.140372 5:113 starry_kernel::task::signal:198] [32mSend signal SIGUSR1 to thread 112[m
+[m[37m[ 68.451738 1:113 starry_kernel::task::signal:198] [32mSend signal SIGUSR1 to thread 112[m
+[m[37m[ 68.458762 5:112 starry_kernel::task::ops:443] [32mTask(112, "rustc") exit with code: 0[m
+[m[37m[ 69.428162 1:113 starry_kernel::task::ops:443] [32mTask(113, "coordinator") exit with code: 0[m
+[m[37m[ 69.633298 0:105 starry_kernel::task::ops:443] [32mTask(105, "rustc") exit with code: 0[m
+[m[37m[ 69.670719 2:91 starry_kernel::task::ops:443] [32mTask(91, "rustc") exit with code: 0[m
+[m[37m[ 69.758662 2:91 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 101[m
+[m[37m[ 69.760846 2:91 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 106[m
+[m[37m[ 69.828561 2:106 starry_kernel::task::ops:443] [32mTask(106, "rustc") exit with code: 9[m
+[m[37m[ 69.857884 1:101 starry_kernel::task::ops:443] [32mTask(101, "ctrl-c") exit with code: 9[m
+[m[37m[ 69.968713 1:101 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 58[m
+[m[37m[ 69.969910 2:90 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: 91, options: WaitPidOptions(0x0)[m
+[m[37m[ 70.019860 6:123 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x2f1b89d0[m
+[m[37m[ 70.049978 4:124 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x2f1b7680[m
+[m[37m[ 70.058919 2:90 starry_kernel::task::ops:443] [32mTask(90, "cargo") exit with code: 0[m
+[m[37m[ 71.869427 5:126 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x12cde940[m
+[m[37m[ 71.908398 4:125 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x12ad5940[m
+[m[37m[ 71.979416 0:127 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x12ef8940[m
+[m[37m[ 72.128203 3:128 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 72.253151 0:129 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd874940[m
+[m[37m[ 72.268384 2:130 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xda9d940[m
+[m[37m[ 72.416555 2:127 starry_kernel::task::ops:443] [32mTask(127, "opt cgu.0") exit with code: 0[m
+[m[37m[ 72.430609 6:126 starry_kernel::task::signal:198] [32mSend signal SIGUSR1 to thread 125[m
+[m[37m[ 72.434070 0:125 starry_kernel::task::ops:443] [32mTask(125, "rustc") exit with code: 0[m
+[m[37m[ 72.908958 6:132 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x13a6a940[m
+[m[37m[ 72.911061 5:131 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x13861940[m
+[m[37m[ 72.913437 1:126 starry_kernel::task::ops:443] [32mTask(126, "coordinator") exit with code: 0[m
+[m[37m[ 73.045019 2:102 starry_kernel::task::ops:443] [32mTask(102, "rustc") exit with code: 0[m
+[m[37m[ 73.101415 4:95 starry_kernel::task::ops:443] [32mTask(95, "rustc") exit with code: 0[m
+[m[37m[ 73.140077 6:133 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x13dbb940[m
+[m[37m[ 73.148386 4:95 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 100[m
+[m[37m[ 73.150427 4:95 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 104[m
+[m[37m[ 73.150445 0:100 starry_kernel::task::ops:443] [32mTask(100, "ctrl-c") exit with code: 9[m
+[m[37m[ 73.209630 1:104 starry_kernel::task::ops:443] [32mTask(104, "rustc") exit with code: 9[m
+[m[37m[ 73.258611 2:135 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd874940[m
+[m[37m[ 73.260546 1:134 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xd059940[m
+[m[37m[ 73.308278 1:104 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 58[m
+[m[37m[ 73.358886 2:86 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: 95, options: WaitPidOptions(0x0)[m
+[m[37m[ 73.396275 7:136 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0xda99940[m
+[m[37m[ 73.446883 2:86 starry_kernel::task::ops:443] [32mTask(86, "cargo") exit with code: 0[m
+[m[37m[ 73.628090 0:137 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x2e79a9d0[m
+[m[37m[ 73.699342 2:139 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x15623940[m
+[m[37m[ 73.820091 2:140 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x2e799680[m
+[m[37m[ 73.822642 6:133 starry_kernel::task::ops:443] [32mTask(133, "opt cgu.0") exit with code: 0[m
+[m[37m[ 73.833491 1:138 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x1541a940[m
+[m[37m[ 73.909480 0:141 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x1599c940[m
+[m[37m[ 74.027968 1:132 starry_kernel::task::signal:198] [32mSend signal SIGUSR1 to thread 131[m
+[m[37m[ 74.030682 3:131 starry_kernel::task::ops:443] [32mTask(131, "rustc") exit with code: 0[m
+[m[37m[ 74.041065 5:132 starry_kernel::task::ops:443] [32mTask(132, "coordinator") exit with code: 0[m
+[m[37m[ 74.273436 4:121 starry_kernel::task::ops:443] [32mTask(121, "rustc") exit with code: 0[m
+[m[37m[ 74.301500 5:107 starry_kernel::task::ops:443] [32mTask(107, "rustc") exit with code: 0[m
+[m[37m[ 74.302471 5:107 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 120[m
+[m[37m[ 74.304687 5:107 starry_kernel::task::signal:198] [32mSend signal SIGKILL to thread 122[m
+[m[37m[ 74.306693 5:120 starry_kernel::task::ops:443] [32mTask(120, "ctrl-c") exit with code: 9[m
+[m[37m[ 74.309007 6:122 starry_kernel::task::ops:443] [32mTask(122, "rustc") exit with code: 9[m
+[m[37m[ 74.311490 6:122 starry_kernel::task::signal:222] [32mSend signal SIGCHLD to process 58[m
+[m[37m[ 74.325027 6:88 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: 107, options: WaitPidOptions(0x0)[m
+[m[37m[ 74.380343 5:88 starry_kernel::task::ops:443] [32mTask(88, "cargo") exit with code: 0[m
+[m[37m[ 74.679263 0:141 starry_kernel::task::ops:443] [32mTask(141, "opt cgu.0") exit with code: 0[m
+[m[37m[ 74.681673 0:139 starry_kernel::task::signal:198] [32mSend signal SIGUSR1 to thread 138[m
+[m[37m[ 74.730415 3:142 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x2eba69d0[m
+[m[37m[ 74.909015 6:143 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0x2eba5680[m
+[m[37m[ 75.059080 1:138 starry_kernel::task::ops:443] [32mTask(138, "rustc") exit with code: 0[m
+[m[37m[ 75.086665 3:139 starry_kernel::task::ops:443] [32mTask(139, "coordinator") exit with code: 0[m
+[m[37m[ 75.353326 6:146 starry_kernel::task::user:23] [32mEnter user space: ip=0x6014826c, sp=0xd86ada0[m
+[m[37m[ 75.360531 4:145 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x152e4940[m
+[m[37m[ 75.360843 3:144 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x150db940[m
+[m[37m[ 75.610354 6:147 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x7ffeffffd0b0[m
+[m[37m[ 75.619262 3:146 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: 147, options: WaitPidOptions(0x0)[m
+[m[37m[ 75.678742 2:148 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x7ffeffffd870[m
+[m[37m[ 75.683718 0:147 starry_kernel::syscall::task::wait:71] [32msys_waitpid <= pid: 148, options: WaitPidOptions(0x0)[m
+[m[37m[ 75.709488 1:149 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x155e9940[m
+[m[37m[ 76.665126 1:150 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x158ce940[m
+[m[37m[ 76.688359 2:151 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x15ad7940[m
+[m[37m[ 76.709019 7:145 starry_kernel::task::signal:198] [32mSend signal SIGUSR1 to thread 144[m
+[m[37m[ 76.730352 3:145 starry_kernel::task::signal:198] [32mSend signal SIGUSR1 to thread 144[m
+[m[37m[ 76.750676 4:145 starry_kernel::task::signal:198] [32mSend signal SIGUSR1 to thread 144[m
+[m[37m[ 76.779999 3:145 starry_kernel::task::signal:198] [32mSend signal SIGUSR1 to thread 144[m
+[m[37m[ 76.791536 1:149 starry_kernel::task::ops:443] [32mTask(149, "opt cgu.0") exit with code: 0[m
+[m[37m[ 76.898801 2:152 starry_kernel::task::user:23] [32mEnter user space: ip=0x60160854, sp=0x15f60940[m
+[m[37m[ 77.198299 2:144 starry_kernel::task::ops:443] [32mTask(144, "rustc") exit with code: 0[m
+[m[37m[ 77.221196 0:145 starry_kernel::task::ops:443] [32mTask(145, "coordinator") exit with code: 0[m
+[mqemu-system-aarch64: terminating on signal 15 from pid 71305 (<unknown process>)

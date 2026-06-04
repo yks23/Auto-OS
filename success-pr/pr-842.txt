@@ -1,0 +1,5 @@
+PR #842
+title: fix(starry): expose SMP CPU topology in sysfs
+mergedAt: 2026-05-24T01:07:57Z
+url: https://github.com/rcore-os/tgoskits/pull/842
+archivedAt: 2026-05-29T19:13:07Z

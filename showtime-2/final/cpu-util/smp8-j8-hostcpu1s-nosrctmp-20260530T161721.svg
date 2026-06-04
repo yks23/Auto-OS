@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="64" y="26" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#0f172a">StarryOS self-build SMP8: host CPU utilization</text>
+  <line x1='64' y1='372.00' x2='1176' y2='372.00' stroke='#e5e7eb'/><text x='54' y='376.00' text-anchor='end' font-size='12' fill='#475569'>0%</text><line x1='64' y1='306.00' x2='1176' y2='306.00' stroke='#e5e7eb'/><text x='54' y='310.00' text-anchor='end' font-size='12' fill='#475569'>20%</text><line x1='64' y1='240.00' x2='1176' y2='240.00' stroke='#e5e7eb'/><text x='54' y='244.00' text-anchor='end' font-size='12' fill='#475569'>40%</text><line x1='64' y1='174.00' x2='1176' y2='174.00' stroke='#e5e7eb'/><text x='54' y='178.00' text-anchor='end' font-size='12' fill='#475569'>60%</text><line x1='64' y1='108.00' x2='1176' y2='108.00' stroke='#e5e7eb'/><text x='54' y='112.00' text-anchor='end' font-size='12' fill='#475569'>80%</text><line x1='64' y1='42.00' x2='1176' y2='42.00' stroke='#e5e7eb'/><text x='54' y='46.00' text-anchor='end' font-size='12' fill='#475569'>100%</text><line x1='64.00' y1='42' x2='64.00' y2='372' stroke='#f1f5f9'/><text x='64.00' y='402' text-anchor='middle' font-size='12' fill='#475569'>0s</text>
+  <line x1="64" y1="42" x2="64" y2="372" stroke="#334155"/>
+  <line x1="64" y1="372" x2="1176" y2="372" stroke="#334155"/>
+  <polyline fill="none" stroke="#2563eb" stroke-width="2.5" points="110.33,303.94 156.67,303.94 203.00,305.18 249.33,311.78 295.67,305.59 342.00,315.49 388.33,301.87 434.67,307.24 481.00,303.11 527.33,305.17 573.67,303.11 620.00,303.52 666.33,302.29 712.67,300.23 759.00,301.87 805.33,304.35 851.67,302.70 898.00,301.88 944.33,302.29 990.67,308.06 1037.00,302.70 1083.33,302.29 1129.67,301.05 1176.00,301.88"/>
+  <line x1="64" y1="42.00" x2="1176" y2="42.00" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="6 6"/>
+  <text x="1172" y="36.00" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="#dc2626">8-vCPU full capacity</text>
+  <text x="600.00" y="416" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#475569">compile time</text>
+  <text transform="translate(16 210.00) rotate(-90)" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#475569">normalized CPU utilization</text>
+</svg>

@@ -1,0 +1,5 @@
+PR #800
+title: fix(ax-fs-ng): complete direct device transfers
+mergedAt: 2026-05-24T00:54:18Z
+url: https://github.com/rcore-os/tgoskits/pull/800
+archivedAt: 2026-05-29T19:13:07Z

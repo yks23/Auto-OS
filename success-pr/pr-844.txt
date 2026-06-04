@@ -1,0 +1,5 @@
+PR #844
+title: test(starry): regress tmpfs rename exec ELF
+mergedAt: 2026-05-24T01:09:54Z
+url: https://github.com/rcore-os/tgoskits/pull/844
+archivedAt: 2026-05-29T19:13:07Z

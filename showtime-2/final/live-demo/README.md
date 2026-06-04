@@ -10,12 +10,12 @@ are meant to be run by hand, on stage, from the Auto-OS workspace.
 - Existing rootfs:
   `/Users/txc/code/Auto-OS/.guest-runs/aarch64-hvf/rootfs-hvf-cargo-8g.img`
 
-The demo directory intentionally keeps only four entry scripts. The scripts are
+The demo directory intentionally keeps five entry scripts. The scripts are
 self-contained wrappers: they prepare the boot image when needed, copy a clean
 rootfs using APFS clone when available, inject `/opt/hvf-auto.sh`, run QEMU/HVF
 with `-cpu max`, and print explicit PASS markers.
 
-## Four-script demo order
+## Five-script demo order
 
 Run from the repository root:
 
@@ -30,6 +30,7 @@ bash showtime-2/final/live-demo/01-build-starryos --check
 bash showtime-2/final/live-demo/02-guest-build-starryos --check
 bash showtime-2/final/live-demo/03-test-kernel-result --check
 bash showtime-2/final/live-demo/04-try-kernel --check
+bash showtime-2/final/live-demo/05-speed-ratios --check
 ```
 
 1. Build StarryOS on the host as the reference baseline:
@@ -58,6 +59,12 @@ This boots the prepared StarryOS kernel, runs guest `cargo build`, and extracts:
 
 - `showtime-2/final/live-demo/out/starryos-live-rebuilt.elf`
 - `showtime-2/final/live-demo/out/starryos-live-rebuilt.bin`
+
+Default setting: `QEMU_SMP=8`, `CARGO_BUILD_JOBS=8`,
+`RAYON_NUM_THREADS=8`. The script prints
+`===02-GUEST-BUILD-STARRYOS-PASS===` after extracting the rebuilt kernel. It
+removes the temporary working rootfs by default; set `KEEP_ROOTFS=1` only when
+debugging the guest filesystem after the run.
 
 3. Test the kernel produced by the guest build:
 
@@ -89,7 +96,23 @@ ls -la /opt/tgoskits
 
 Exit QEMU with `Ctrl-A`, then `X`.
 
-Only these four scripts should be used in the final presentation.
+5. Print or rerun the speed-ratio evidence:
+
+```bash
+bash showtime-2/final/live-demo/05-speed-ratios
+```
+
+Default mode parses the existing evidence logs and writes
+`showtime-2/final/live-demo/out/05-speed-ratios-summary.txt`. Use explicit
+rerun flags only when time permits:
+
+```bash
+DEMO_TASK_COUNT=1000 bash showtime-2/final/live-demo/05-speed-ratios --run-demo
+bash showtime-2/final/live-demo/05-speed-ratios --run-guest
+bash showtime-2/final/live-demo/05-speed-ratios --run-host
+```
+
+Only these five scripts should be used in the final presentation.
 
 ## What the speed numbers mean
 
@@ -109,6 +132,10 @@ Only these four scripts should be used in the final presentation.
   slow baseline to tuned best. This is not the strict jobs-only speedup.
 - `422s -> 341s = 1.24x`: strict guest jobs-only comparison under the same
   optional-ddebug profile.
+- `05-speed-ratios` prints the three requested 1-way vs 8-way comparisons:
+  demo fork/exec benchmark, actual StarryOS guest compile, and macOS host
+  aligned compile. For the report-compatible demo/guest numbers, QEMU/HVF stays
+  at `SMP=8`; the compared variable is cargo/demo job parallelism `1 -> 8`.
 - `642s -> 427s = 1.50x`: LTO/codegen/link serial-tail reduction from the
   default 8-core guest release profile to no-LTO plus opt0/cgu256. This is not
   a separately measured pure link-only benchmark.
