@@ -1,0 +1,361 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="/Users/txc/code/Auto-OS"
+BOOT_KERNEL="${BOOT_KERNEL:-$ROOT/过程记录/最终材料/final/live-demo/out/starryos-guestbuilt-aarch64-hvf-j8.bin}"
+GUEST_BUILT_ELF="${GUEST_BUILT_ELF:-$ROOT/.guest-runs/aarch64-hvf/starryos-guestbuilt-aarch64-hvf-j8.elf}"
+SRC_ROOTFS="${SRC_ROOTFS:-$ROOT/.guest-runs/aarch64-hvf/rootfs-hvf-cargo-8g.img}"
+WORK_ROOTFS="${WORK_ROOTFS:-$ROOT/过程记录/最终材料/final/live-demo/out/rootfs-02-guest-build-starryos.img}"
+OUT_DIR="${OUT_DIR:-$ROOT/过程记录/最终材料/final/live-demo/out}"
+OUT_ELF="${OUT_ELF:-$OUT_DIR/starryos-live-rebuilt.elf}"
+OUT_BIN="${OUT_BIN:-$OUT_DIR/starryos-live-rebuilt.bin}"
+LOG="${LOG:-$OUT_DIR/02-guest-build-starryos.log}"
+DEBUGFS="/opt/homebrew/opt/e2fsprogs/sbin/debugfs"
+QEMU="/opt/homebrew/bin/qemu-system-aarch64"
+QEMU_CPU="${QEMU_CPU:-max}"
+QEMU_SMP="${QEMU_SMP:-8}"
+KEEP_ROOTFS="${KEEP_ROOTFS:-0}"
+QUIET_SERIAL="${QUIET_SERIAL:-0}"
+SERIAL_LOG_MODE="${SERIAL_LOG_MODE:-markers}" # markers | full
+
+filter_serial_markers() {
+  perl -ne 'BEGIN { $| = 1 } print if /LIVE-GUEST-REBUILD-|panic|trap|Segmentation|FATAL|qemu-system-aarch64:/i'
+}
+
+serial_filter_pid=""
+serial_fifo=""
+
+cleanup_serial_filter() {
+  if [ -n "$serial_filter_pid" ]; then
+    wait "$serial_filter_pid" 2>/dev/null || true
+    serial_filter_pid=""
+  fi
+  if [ -n "$serial_fifo" ]; then
+    rm -f "$serial_fifo"
+    serial_fifo=""
+  fi
+}
+
+trap cleanup_serial_filter EXIT
+
+copy_rootfs() {
+  local src="$1"
+  local dst="$2"
+  rm -f "$dst"
+  if cp -c "$src" "$dst" 2>/dev/null; then
+    return 0
+  fi
+  cp "$src" "$dst"
+}
+
+find_objcopy() {
+  if [ -n "${OBJCOPY:-}" ] && [ -x "$OBJCOPY" ]; then
+    printf '%s\n' "$OBJCOPY"
+    return 0
+  fi
+  local sysroot host candidate
+  sysroot="$(rustc --print sysroot 2>/dev/null || true)"
+  host="$(rustc -vV 2>/dev/null | sed -n 's/^host: //p' || true)"
+  candidate="$sysroot/lib/rustlib/$host/bin/llvm-objcopy"
+  if [ -x "$candidate" ]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+  if command -v llvm-objcopy >/dev/null 2>&1; then
+    command -v llvm-objcopy
+    return 0
+  fi
+  return 1
+}
+
+check_env() {
+  local ok=1
+  [ -x "$DEBUGFS" ] || { echo "missing debugfs: $DEBUGFS" >&2; ok=0; }
+  [ -x "$QEMU" ] || { echo "missing qemu-system-aarch64: $QEMU" >&2; ok=0; }
+  [ -f "$SRC_ROOTFS" ] || { echo "missing rootfs: $SRC_ROOTFS" >&2; ok=0; }
+  case "$QEMU_SMP" in ''|*[!0-9]*|0) echo "invalid QEMU_SMP=$QEMU_SMP" >&2; ok=0 ;; esac
+  if [ ! -f "$BOOT_KERNEL" ] && [ ! -f "$GUEST_BUILT_ELF" ]; then
+    echo "missing boot kernel and fallback guest-built ELF: $BOOT_KERNEL / $GUEST_BUILT_ELF" >&2
+    ok=0
+  fi
+  find_objcopy >/dev/null 2>&1 || { echo "missing llvm-objcopy; install rust llvm-tools or set OBJCOPY=/path/to/llvm-objcopy" >&2; ok=0; }
+  if [ "$ok" = "1" ]; then
+    echo "===02-GUEST-BUILD-STARRYOS-CHECK-PASS==="
+    return 0
+  fi
+  echo "===02-GUEST-BUILD-STARRYOS-CHECK-FAIL==="
+  return 1
+}
+
+if [ "${1:-}" = "--check" ]; then
+  check_env
+  exit $?
+fi
+
+check_env >/dev/null
+
+OBJCOPY_BIN="$(find_objcopy)" || {
+  echo "missing llvm-objcopy; install rust llvm-tools or set OBJCOPY=/path/to/llvm-objcopy" >&2
+  exit 1
+}
+
+if [ ! -f "$BOOT_KERNEL" ]; then
+  [ -f "$GUEST_BUILT_ELF" ] || { echo "missing guest-built ELF: $GUEST_BUILT_ELF" >&2; exit 1; }
+  mkdir -p "$(dirname "$BOOT_KERNEL")"
+  "$OBJCOPY_BIN" -O binary "$GUEST_BUILT_ELF" "$BOOT_KERNEL"
+fi
+[ -f "$BOOT_KERNEL" ] || { echo "missing boot kernel: $BOOT_KERNEL" >&2; exit 1; }
+[ -f "$SRC_ROOTFS" ] || { echo "missing rootfs: $SRC_ROOTFS" >&2; exit 1; }
+
+mkdir -p "$OUT_DIR"
+rm -f "$OUT_ELF" "$OUT_BIN" "$LOG"
+copy_rootfs "$SRC_ROOTFS" "$WORK_ROOTFS"
+
+GUEST_AUTO="/tmp/hvf-live-guest-build-starryos.sh"
+DEBUGFS_CMD="/tmp/hvf-live-rebuild-debugfs.cmd"
+
+cat >"$GUEST_AUTO" <<EOF
+#!/bin/sh
+set -u
+QUIET_SERIAL="$QUIET_SERIAL"
+EOF
+cat >>"$GUEST_AUTO" <<'EOF'
+
+finish_guest() {
+  rc="$1"
+  echo "===LIVE-GUEST-REBUILD-DONE rc=$rc==="
+  sync 2>/dev/null || true
+  # Keep the guest alive briefly; the host watcher will stop QEMU after marker.
+  sleep 3
+  exit "$rc"
+}
+
+echo "===LIVE-GUEST-REBUILD-BEGIN==="
+echo "kernel_source=guest-built StarryOS kernel"
+echo "cpu_count=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || true)"
+uname -a 2>/dev/null || true
+dmesg -D >/dev/null 2>&1 || true
+dmesg -n 1 >/dev/null 2>&1 || true
+
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/rust-nightly/bin"
+export LD_LIBRARY_PATH="/usr/lib:/opt/rust-nightly/lib:${LD_LIBRARY_PATH:-}"
+export RUSTC="/opt/rustc-nightly-sysroot"
+export RUSTDOC="/opt/rustdoc-nightly-sysroot"
+export RUSTC_BOOTSTRAP=1
+export CARGO_INCREMENTAL=0
+export CARGO_NET_OFFLINE=true
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-8}"
+export RAYON_NUM_THREADS="${RAYON_NUM_THREADS:-8}"
+export CARGO_TERM_PROGRESS_WHEN=never
+export CARGO_PROFILE_RELEASE_LTO=false
+export CARGO_PROFILE_RELEASE_OPT_LEVEL=0
+export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256
+
+WORK_DIR="/tmp/live-rebuild-src"
+TARGET_DIR="/tmp/live-rebuild-target"
+PERSIST_TARGET_DIR="/opt/tgoskits/target-live-demo"
+RESULT_FILE="/opt/live-rebuild-result.env"
+rm -rf "$WORK_DIR" "$TARGET_DIR" "$PERSIST_TARGET_DIR"
+mkdir -p "$WORK_DIR" "$TARGET_DIR"
+
+echo "===LIVE-GUEST-REBUILD-COPY-SOURCE-BEGIN==="
+for p in Cargo.toml Cargo.lock rust-toolchain.toml .cargo components os apps drivers platform scripts tools xtask test-suit vendor; do
+  if [ -e "/opt/tgoskits/$p" ]; then
+    cp -a "/opt/tgoskits/$p" "$WORK_DIR/"
+  fi
+done
+if [ -f "$WORK_DIR/.cargo/config.toml" ]; then
+  sed -i "s#/opt/tgoskits/vendor#$WORK_DIR/vendor#g" "$WORK_DIR/.cargo/config.toml"
+fi
+
+axalloc_toml="$WORK_DIR/os/arceos/modules/axalloc/Cargo.toml"
+if [ -f "$axalloc_toml" ]; then
+  sed -i 's/default = \["tlsf", "ax-allocator\/page-alloc-4g"\]/default = ["slab", "ax-allocator\/page-alloc-4g"]/g' "$axalloc_toml"
+  sed -i '/^[[:space:]]*"tlsf",[[:space:]]*$/d' "$axalloc_toml"
+  echo "===LIVE-GUEST-FAST-ALLOC-SLAB-ONLY==="
+fi
+
+starryos_toml="$WORK_DIR/os/StarryOS/starryos/Cargo.toml"
+if [ -f "$starryos_toml" ]; then
+  sed -i 's#starry-kernel = { workspace = true, features = \["dev-log", "ext4"\] }#starry-kernel = { version = "0.5.12", path = "../kernel", default-features = false, features = ["dev-log", "ext4"] }#g' "$starryos_toml"
+  echo "===LIVE-GUEST-FAST-NO-DYNAMIC-DEBUG==="
+fi
+echo "===LIVE-GUEST-REBUILD-COPY-SOURCE-END==="
+
+cd "$WORK_DIR" || finish_guest 2
+export AX_CONFIG_PATH="$WORK_DIR/os/StarryOS/.axconfig.toml"
+export RUSTFLAGS="-Z threads=2 -Clink-arg=-Tlinker.x -Clink-arg=-no-pie -Clink-arg=-znostart-stop-gc"
+
+echo "===LIVE-GUEST-REBUILD-ENV-BEGIN==="
+echo "target_dir=$TARGET_DIR"
+echo "persist_target_dir=$PERSIST_TARGET_DIR"
+echo "work_dir=$WORK_DIR"
+echo "jobs=$CARGO_BUILD_JOBS"
+echo "rustflags=$RUSTFLAGS"
+$RUSTC --version 2>/dev/null || true
+/usr/bin/cargo --version 2>/dev/null || true
+echo "===LIVE-GUEST-REBUILD-ENV-END==="
+
+start=$(date +%s)
+echo "===LIVE-GUEST-REBUILD-CARGO-BEGIN start=$start==="
+set +e
+/usr/bin/cargo build \
+  -q \
+  -p starryos \
+  --bin starryos \
+  --target aarch64-unknown-none-softfloat \
+  -Z build-std=core,alloc,compiler_builtins \
+  --target-dir "$TARGET_DIR" \
+  --features qemu,gic-v3,cntv-timer,smp \
+  --release
+cargo_rc=$?
+set -e
+end=$(date +%s)
+elapsed=$((end - start))
+rc="$cargo_rc"
+artifact="$TARGET_DIR/aarch64-unknown-none-softfloat/release/starryos"
+persist_artifact="$PERSIST_TARGET_DIR/aarch64-unknown-none-softfloat/release/starryos"
+if [ "$rc" = "0" ]; then
+  mkdir -p "$(dirname "$persist_artifact")"
+  cp "$artifact" "$persist_artifact" || rc=$?
+fi
+{
+  echo "cargo_rc=$cargo_rc"
+  echo "final_rc=$rc"
+  echo "cargo_elapsed=$elapsed"
+  echo "jobs=$CARGO_BUILD_JOBS"
+  echo "qemu_smp=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || true)"
+} > "$RESULT_FILE"
+echo "===LIVE-GUEST-REBUILD-CARGO-END rc=$cargo_rc final_rc=$rc elapsed=$elapsed==="
+if [ "$rc" = "0" ]; then
+  ls -lh "$persist_artifact" 2>/dev/null || true
+  echo "===LIVE-GUEST-REBUILD-PASS elapsed=$elapsed==="
+else
+  echo "===LIVE-GUEST-REBUILD-FAIL rc=$rc elapsed=$elapsed==="
+fi
+finish_guest "$rc"
+EOF
+chmod +x "$GUEST_AUTO"
+
+cat >"$DEBUGFS_CMD" <<EOF
+rm /opt/hvf-auto.sh
+write $GUEST_AUTO /opt/hvf-auto.sh
+sif /opt/hvf-auto.sh mode 0100755
+EOF
+
+"$DEBUGFS" -w -f "$DEBUGFS_CMD" "$WORK_ROOTFS" >/dev/null
+
+echo "===LIVE-REBUILD-HOST-BEGIN==="
+echo "boot_kernel=$BOOT_KERNEL"
+echo "work_rootfs=$WORK_ROOTFS"
+echo "log=$LOG"
+echo "qemu_smp=$QEMU_SMP"
+echo "qemu_cpu=$QEMU_CPU"
+echo "keep_rootfs=$KEEP_ROOTFS"
+echo "quiet_serial=$QUIET_SERIAL"
+echo "serial_log_mode=$SERIAL_LOG_MODE"
+
+serial_args=(-serial mon:stdio)
+if [ "$QUIET_SERIAL" = "1" ]; then
+  serial_args=(-serial null)
+fi
+
+qemu_cmd=(
+  "$QEMU"
+  -nographic
+  -accel hvf
+  -machine virt,gic-version=3
+  -cpu "$QEMU_CPU"
+  -m 4096M
+  -smp "$QEMU_SMP"
+  -device virtio-blk-pci,drive=disk0
+  -drive "id=disk0,if=none,format=raw,file=$WORK_ROOTFS,file.locking=off"
+  -device virtio-net-pci,netdev=net0
+  -netdev user,id=net0
+  -kernel "$BOOT_KERNEL"
+  -monitor none
+  "${serial_args[@]}"
+)
+
+if [ "$QUIET_SERIAL" = "1" ] || [ "$SERIAL_LOG_MODE" = "full" ]; then
+  "${qemu_cmd[@]}" >"$LOG" 2>&1 &
+else
+  : >"$LOG"
+  serial_fifo="$OUT_DIR/.02-guest-build-starryos-serial.$$.$RANDOM.fifo"
+  rm -f "$serial_fifo"
+  mkfifo "$serial_fifo"
+  filter_serial_markers <"$serial_fifo" >"$LOG" &
+  serial_filter_pid="$!"
+  "${qemu_cmd[@]}" >"$serial_fifo" 2>&1 &
+fi
+qemu_pid=$!
+
+rc=124
+RESULT_HOST="$OUT_DIR/02-guest-build-starryos-result.env"
+rm -f "$RESULT_HOST" "$RESULT_HOST.tmp"
+deadline=$((SECONDS + ${LIVE_REBUILD_TIMEOUT_SEC:-1800}))
+while kill -0 "$qemu_pid" 2>/dev/null; do
+  if [ "$QUIET_SERIAL" = "1" ]; then
+    rm -f "$RESULT_HOST.tmp"
+    "$DEBUGFS" -R "dump /opt/live-rebuild-result.env $RESULT_HOST.tmp" "$WORK_ROOTFS" >/dev/null 2>&1 || true
+    if [ -s "$RESULT_HOST.tmp" ] && grep -qa '^cargo_rc=' "$RESULT_HOST.tmp"; then
+      mv "$RESULT_HOST.tmp" "$RESULT_HOST"
+      rc="$(sed -n 's/^cargo_rc=\([0-9][0-9]*\)$/\1/p' "$RESULT_HOST" | tail -1)"
+      break
+    fi
+  else
+    if grep -qa "===LIVE-GUEST-REBUILD-DONE rc=" "$LOG"; then
+      rc="$(sed -n 's/^===LIVE-GUEST-REBUILD-DONE rc=\([0-9][0-9]*\)===.*/\1/p' "$LOG" | tail -1)"
+      break
+    fi
+    if grep -qaiE "panic|trap|Segmentation|FATAL" "$LOG"; then
+      rc=1
+      break
+    fi
+  fi
+  if [ "$SECONDS" -ge "$deadline" ]; then
+    rc=124
+    break
+  fi
+  sleep 2
+done
+
+if kill -0 "$qemu_pid" 2>/dev/null; then
+  kill "$qemu_pid" 2>/dev/null || true
+  wait "$qemu_pid" 2>/dev/null || true
+else
+  wait "$qemu_pid" || rc=$?
+fi
+cleanup_serial_filter
+
+echo "===LIVE-REBUILD-HOST-QEMU-END rc=$rc==="
+if [ "$QUIET_SERIAL" = "1" ]; then
+  cat "$RESULT_HOST" 2>/dev/null || true
+else
+  grep -aE "LIVE-GUEST-REBUILD-(BEGIN|ENV-BEGIN|CARGO-BEGIN|CARGO-END|PASS|FAIL|DONE)" "$LOG" || true
+fi
+
+if [ "$rc" != "0" ]; then
+  echo "guest rebuild failed; see log: $LOG" >&2
+  exit "$rc"
+fi
+
+EXTRACT_CMD="/tmp/hvf-live-rebuild-extract.cmd"
+cat >"$EXTRACT_CMD" <<EOF
+dump /opt/tgoskits/target-live-demo/aarch64-unknown-none-softfloat/release/starryos $OUT_ELF
+EOF
+rm -f "$OUT_ELF" "$OUT_BIN"
+"$DEBUGFS" -f "$EXTRACT_CMD" "$WORK_ROOTFS" >/dev/null
+"$OBJCOPY_BIN" -O binary "$OUT_ELF" "$OUT_BIN"
+
+echo "===LIVE-REBUILD-EXTRACTED-KERNEL==="
+file "$OUT_ELF" "$OUT_BIN" || true
+ls -lh "$OUT_ELF" "$OUT_BIN"
+stat -f "%Sm %N" "$OUT_ELF" "$OUT_BIN" 2>/dev/null || true
+
+if [ "$KEEP_ROOTFS" != "1" ]; then
+  rm -f "$WORK_ROOTFS"
+  echo "cleaned_temp_rootfs=$WORK_ROOTFS"
+fi
+
+echo "===02-GUEST-BUILD-STARRYOS-PASS==="

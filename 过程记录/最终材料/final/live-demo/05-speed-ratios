@@ -1,0 +1,284 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="${ROOT:-/Users/txc/code/Auto-OS}"
+LOG_DIR="${LOG_DIR:-$ROOT/过程记录/最终材料/logs}"
+OUT_DIR="${OUT_DIR:-$ROOT/过程记录/最终材料/final/live-demo/out}"
+SUMMARY="${SUMMARY:-$OUT_DIR/05-speed-ratios-summary.txt}"
+
+DEMO_J1_LOG="${DEMO_J1_LOG:-$LOG_DIR/hvf-aarch64-forkexec-wave-smp8-j1-count1000-curve-20260526T020706.log}"
+DEMO_J8_LOG="${DEMO_J8_LOG:-$LOG_DIR/hvf-aarch64-forkexec-wave-smp8-j8-count1000-curve-20260526T020744.log}"
+GUEST_J1_LOG="${GUEST_J1_LOG:-$LOG_DIR/hvf-aarch64-starryos-smp8-j1-wakelocal-optionalddebug-stage-opt0-cgu256-20260525T201745.log}"
+GUEST_J8_LOG="${GUEST_J8_LOG:-$LOG_DIR/hvf-aarch64-starryos-smp8-j8-wakelocal-optionalddebug-stage-opt0-cgu256-20260525T200940.log}"
+HOST_J1_LOG="${HOST_J1_LOG:-$LOG_DIR/host-starryos-aligned-aarch64-smp8-j1-20260529T175427-aligned-j1.log}"
+HOST_J8_LOG="${HOST_J8_LOG:-$LOG_DIR/host-starryos-aligned-aarch64-smp8-j8-20260529T175620-aligned-j8.log}"
+
+RUN_DEMO=0
+RUN_GUEST=0
+RUN_HOST=0
+CHECK_ONLY=0
+COMMANDS_ONLY=0
+
+usage() {
+  cat <<EOF
+Usage:
+  bash 过程记录/最终材料/final/live-demo/05-speed-ratios [options]
+
+Default: parse existing evidence logs and print the three report speed ratios.
+
+Options:
+  --check       verify the evidence logs are present and parseable
+  --commands    print the exact rerun entry points
+  --run-demo    rerun the fork/exec demo benchmark, jobs=1 and jobs=8
+  --run-guest   rerun the actual guest StarryOS build, jobs=1 and jobs=8
+  --run-host    rerun the macOS host aligned build, jobs=1 and jobs=8
+  --run-all     rerun all three groups before printing the report
+  -h, --help    show this help
+
+Environment overrides:
+  OUT_DIR, SUMMARY, DEMO_TASK_COUNT, DEMO_TIMEOUT_SEC, DEMO_SMP,
+  GUEST_KERNEL, GUEST_IMG, KEEP_BUILD_TEMP, and the *_LOG paths.
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --check) CHECK_ONLY=1 ;;
+    --commands) COMMANDS_ONLY=1 ;;
+    --run-demo) RUN_DEMO=1 ;;
+    --run-guest) RUN_GUEST=1 ;;
+    --run-host) RUN_HOST=1 ;;
+    --run-all) RUN_DEMO=1; RUN_GUEST=1; RUN_HOST=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+extract_elapsed() {
+  local marker="$1"
+  local file="$2"
+  local line elapsed
+  [ -f "$file" ] || { echo "missing log: $file" >&2; return 1; }
+  line="$(grep -a "$marker" "$file" | tail -n 1 || true)"
+  [ -n "$line" ] || { echo "missing marker '$marker' in $file" >&2; return 1; }
+  elapsed="${line##*elapsed=}"
+  elapsed="${elapsed%%[!0-9]*}"
+  [ -n "$elapsed" ] || { echo "missing elapsed= value in $file" >&2; return 1; }
+  printf '%s\n' "$elapsed"
+}
+
+ratio_of() {
+  local base="$1"
+  local fast="$2"
+  awk -v base="$base" -v fast="$fast" 'BEGIN {
+    if (fast <= 0) {
+      printf "n/a"
+    } else {
+      printf "%.2f", base / fast
+    }
+  }'
+}
+
+check_report_evidence() {
+  local ok=1
+  extract_elapsed "===FORKEXEC-WAVE-PASS" "$DEMO_J1_LOG" >/dev/null || ok=0
+  extract_elapsed "===FORKEXEC-WAVE-PASS" "$DEMO_J8_LOG" >/dev/null || ok=0
+  extract_elapsed "===STARRYOS-BUILD-PASS jobs=1" "$GUEST_J1_LOG" >/dev/null || ok=0
+  extract_elapsed "===STARRYOS-BUILD-PASS jobs=8" "$GUEST_J8_LOG" >/dev/null || ok=0
+  extract_elapsed "===HOST-ALIGNED-STARRYOS-PASS jobs=1" "$HOST_J1_LOG" >/dev/null || ok=0
+  extract_elapsed "===HOST-ALIGNED-STARRYOS-PASS jobs=8" "$HOST_J8_LOG" >/dev/null || ok=0
+
+  [ -f "$ROOT/过程记录/最终材料/scripts/run-hvf-forkexec-wave.sh" ] || { echo "missing helper: 过程记录/最终材料/scripts/run-hvf-forkexec-wave.sh" >&2; ok=0; }
+  [ -f "$ROOT/过程记录/最终材料/scripts/run-hvf-starryos-guest-build.sh" ] || { echo "missing helper: 过程记录/最终材料/scripts/run-hvf-starryos-guest-build.sh" >&2; ok=0; }
+  [ -f "$ROOT/过程记录/最终材料/scripts/run-host-aligned-starryos-oracle.sh" ] || { echo "missing helper: 过程记录/最终材料/scripts/run-host-aligned-starryos-oracle.sh" >&2; ok=0; }
+
+  if [ "$ok" = "1" ]; then
+    echo "===05-SPEED-RATIOS-CHECK-PASS==="
+    return 0
+  fi
+  echo "===05-SPEED-RATIOS-CHECK-FAIL==="
+  return 1
+}
+
+print_commands() {
+  cat <<EOF
+# Quick report from existing evidence logs:
+bash 过程记录/最终材料/final/live-demo/05-speed-ratios
+
+# 1. Demo benchmark: fork/exec/wait wave, jobs=1 vs jobs=8:
+DEMO_TASK_COUNT=1000 bash 过程记录/最终材料/final/live-demo/05-speed-ratios --run-demo
+
+# 2. Actual StarryOS guest build: guest cargo build, jobs=1 vs jobs=8:
+bash 过程记录/最终材料/final/live-demo/05-speed-ratios --run-guest
+
+# 3. macOS host aligned build: same StarryOS build profile, jobs=1 vs jobs=8:
+bash 过程记录/最终材料/final/live-demo/05-speed-ratios --run-host
+
+# All groups, sequential:
+DEMO_TASK_COUNT=1000 bash 过程记录/最终材料/final/live-demo/05-speed-ratios --run-all
+EOF
+}
+
+run_demo() {
+  local helper="$ROOT/过程记录/最终材料/scripts/run-hvf-forkexec-wave.sh"
+  local stamp count timeout smp case_j1 case_j8
+  [ -f "$helper" ] || { echo "missing helper: $helper" >&2; exit 1; }
+  mkdir -p "$OUT_DIR"
+  stamp="${STAMP:-$(date +%Y%m%dT%H%M%S)}"
+  count="${DEMO_TASK_COUNT:-1000}"
+  timeout="${DEMO_TIMEOUT_SEC:-180}"
+  smp="${DEMO_SMP:-8}"
+  case_j1="forkexec-wave-smp${smp}-j1-count${count}-live-speed"
+  case_j8="forkexec-wave-smp${smp}-j8-count${count}-live-speed"
+  DEMO_J1_LOG="$OUT_DIR/hvf-aarch64-${case_j1}-${stamp}-j1.log"
+  DEMO_J8_LOG="$OUT_DIR/hvf-aarch64-${case_j8}-${stamp}-j8.log"
+
+  echo "===05-RUN-DEMO-BEGIN count=$count smp=$smp==="
+  TASK_COUNT="$count" TIMEOUT_SEC="$timeout" SMP="$smp" JOBS=1 CASE_NAME="$case_j1" LOG="$DEMO_J1_LOG" LOG_DIR="$OUT_DIR" "$helper"
+  TASK_COUNT="$count" TIMEOUT_SEC="$timeout" SMP="$smp" JOBS=8 CASE_NAME="$case_j8" LOG="$DEMO_J8_LOG" LOG_DIR="$OUT_DIR" "$helper"
+  echo "===05-RUN-DEMO-PASS==="
+}
+
+run_guest() {
+  local helper="$ROOT/过程记录/最终材料/scripts/run-hvf-starryos-guest-build.sh"
+  local stamp kernel img features j case_name log
+  [ -f "$helper" ] || { echo "missing helper: $helper" >&2; exit 1; }
+  mkdir -p "$OUT_DIR"
+  stamp="${STAMP:-$(date +%Y%m%dT%H%M%S)}"
+  kernel="${GUEST_KERNEL:-$ROOT/.guest-runs/aarch64-hvf/starryos-hvf-smp8-hvfopt-wake-local-20260524.bin}"
+  img="${GUEST_IMG:-$ROOT/.guest-runs/aarch64-hvf/rootfs-hvf-cargo-8g.img}"
+  features="${FEATURES:-ax-feat/defplat,ax-feat/irq,ax-feat/ipi,ax-feat/rtc,ax-feat/bus-pci,gic-v3,cntv-timer,smp}"
+  [ -f "$kernel" ] || { echo "missing guest kernel: $kernel" >&2; exit 1; }
+  [ -f "$img" ] || { echo "missing guest rootfs: $img" >&2; exit 1; }
+
+  echo "===05-RUN-GUEST-BEGIN==="
+  for j in 1 8; do
+    case_name="starryos-smp8-j${j}-wakelocal-optionalddebug-stage-opt0-cgu256-live-speed"
+    log="$OUT_DIR/hvf-aarch64-${case_name}-${stamp}-j${j}.log"
+    PROFILE=release \
+      SOURCE_TMPFS=1 \
+      FAST_ALLOC_SLAB_ONLY=1 \
+      FAST_SELFBUILD_NO_DYNAMIC_DEBUG=1 \
+      CARGO_PROFILE_RELEASE_LTO=false \
+      CARGO_PROFILE_RELEASE_OPT_LEVEL=0 \
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256 \
+      FEATURES="$features" \
+      SMP=8 \
+      JOBS="$j" \
+      CASE_NAME="$case_name" \
+      KERNEL="$kernel" \
+      IMG="$img" \
+      LOG="$log" \
+      LOG_DIR="$OUT_DIR" \
+      "$helper"
+    if [ "$j" = "1" ]; then
+      GUEST_J1_LOG="$log"
+    else
+      GUEST_J8_LOG="$log"
+    fi
+  done
+  echo "===05-RUN-GUEST-PASS==="
+}
+
+run_host() {
+  local helper="$ROOT/过程记录/最终材料/scripts/run-host-aligned-starryos-oracle.sh"
+  local stamp j src_copy target_dir log
+  [ -f "$helper" ] || { echo "missing helper: $helper" >&2; exit 1; }
+  mkdir -p "$OUT_DIR"
+  stamp="${STAMP:-$(date +%Y%m%dT%H%M%S)}"
+
+  echo "===05-RUN-HOST-BEGIN==="
+  for j in 1 8; do
+    src_copy="/private/tmp/host-starryos-aligned-speed-j${j}-src-${stamp}"
+    target_dir="/private/tmp/host-starryos-aligned-speed-j${j}-target-${stamp}"
+    log="$OUT_DIR/host-starryos-aligned-aarch64-smp8-j${j}-${stamp}.log"
+    ROOT="$ROOT" \
+      SRC_REPO="$ROOT/tgoskits" \
+      STAMP="${stamp}-j${j}" \
+      LOG_DIR="$OUT_DIR" \
+      LOG="$log" \
+      JOBS="$j" \
+      SMP=8 \
+      SRC_COPY="$src_copy" \
+      TARGET_DIR="$target_dir" \
+      "$helper"
+    if [ "${KEEP_BUILD_TEMP:-0}" != "1" ]; then
+      rm -rf "$src_copy" "$target_dir"
+    fi
+    if [ "$j" = "1" ]; then
+      HOST_J1_LOG="$log"
+    else
+      HOST_J8_LOG="$log"
+    fi
+  done
+  echo "===05-RUN-HOST-PASS==="
+}
+
+print_row() {
+  local name="$1"
+  local base="$2"
+  local fast="$3"
+  local note="$4"
+  local ratio
+  ratio="$(ratio_of "$base" "$fast")"
+  printf '%-28s %8ss %8ss %8sx  %s\n' "$name" "$base" "$fast" "$ratio" "$note"
+}
+
+emit_report() {
+  local demo_1 demo_8 guest_1 guest_8 host_1 host_8
+  demo_1="$(extract_elapsed "===FORKEXEC-WAVE-PASS" "$DEMO_J1_LOG")"
+  demo_8="$(extract_elapsed "===FORKEXEC-WAVE-PASS" "$DEMO_J8_LOG")"
+  guest_1="$(extract_elapsed "===STARRYOS-BUILD-PASS jobs=1" "$GUEST_J1_LOG")"
+  guest_8="$(extract_elapsed "===STARRYOS-BUILD-PASS jobs=8" "$GUEST_J8_LOG")"
+  host_1="$(extract_elapsed "===HOST-ALIGNED-STARRYOS-PASS jobs=1" "$HOST_J1_LOG")"
+  host_8="$(extract_elapsed "===HOST-ALIGNED-STARRYOS-PASS jobs=8" "$HOST_J8_LOG")"
+
+  mkdir -p "$OUT_DIR"
+  {
+    echo "===05-SPEED-RATIOS-BEGIN==="
+    echo "scope=report-compatible 1-way vs 8-way parallelism"
+    echo "note=demo and guest evidence keep QEMU/HVF SMP=8 and compare jobs=1 vs jobs=8"
+    echo "summary=$SUMMARY"
+    echo
+    printf '%-28s %9s %9s %9s  %s\n' "case" "1-way" "8-way" "speedup" "meaning"
+    printf '%-28s %9s %9s %9s  %s\n' "----" "-----" "-----" "-------" "-------"
+    print_row "demo_benchmark" "$demo_1" "$demo_8" "fork/exec/wait wave, count=1000"
+    print_row "actual_guest_build" "$guest_1" "$guest_8" "StarryOS guest cargo build, optional-ddebug opt0/cgu256"
+    print_row "macos_host_build" "$host_1" "$host_8" "macOS host aligned StarryOS build profile"
+    echo
+    echo "Evidence logs:"
+    echo "demo_j1=$DEMO_J1_LOG"
+    echo "demo_j8=$DEMO_J8_LOG"
+    echo "guest_j1=$GUEST_J1_LOG"
+    echo "guest_j8=$GUEST_J8_LOG"
+    echo "host_j1=$HOST_J1_LOG"
+    echo "host_j8=$HOST_J8_LOG"
+    echo
+    echo "Rerun entry points:"
+    print_commands
+    echo "===05-SPEED-RATIOS-PASS==="
+  } | tee "$SUMMARY"
+}
+
+if [ "$CHECK_ONLY" = "1" ]; then
+  check_report_evidence
+  exit $?
+fi
+
+if [ "$COMMANDS_ONLY" = "1" ]; then
+  print_commands
+  exit 0
+fi
+
+if [ "$RUN_DEMO" = "1" ]; then
+  run_demo
+fi
+if [ "$RUN_GUEST" = "1" ]; then
+  run_guest
+fi
+if [ "$RUN_HOST" = "1" ]; then
+  run_host
+fi
+
+emit_report

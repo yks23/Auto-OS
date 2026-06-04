@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-ROOT="${ROOT:-/Users/txc/code/Auto-OS}"
-exec "$ROOT/showtime-2/final/live-demo/01-build-starryos" "$@"
