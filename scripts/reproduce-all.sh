@@ -122,6 +122,6 @@ $DOCKER run --rm "${PLATFORM_ARGS[@]}" --privileged --network host \
 log "done. See:"
 echo "    .guest-runs/riscv64-m5/results.txt   (M5: cargo build hello world inside starry)"
 if (( WITH_M6 )); then
-    echo "    .guest-runs/riscv64-m6/results.txt   (M6: starry sources + nightly toolchain inside starry guest)"
+    echo "    .guest-runs/riscv64-m6/results.txt   (M6: starry sources + musl toolchain inside starry guest)"
 fi
 exit 0

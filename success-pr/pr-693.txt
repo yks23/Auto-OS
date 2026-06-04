@@ -1,0 +1,5 @@
+PR #693
+title: fix(starry): preserve vfork parent blocking
+mergedAt: 2026-05-25T01:11:28Z
+url: https://github.com/rcore-os/tgoskits/pull/693
+archivedAt: 2026-05-29T19:13:07Z

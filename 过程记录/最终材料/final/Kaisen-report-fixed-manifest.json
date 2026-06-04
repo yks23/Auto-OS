@@ -1,0 +1,13 @@
+{
+  "source": "/Users/txc/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files/wxid_cj6e081ynl6222_ef34/temp/drag/Kaisen-report.pptx  -  只读.pptx",
+  "output": "/Users/txc/code/Auto-OS/showtime-2/final/Kaisen-report-fixed.pptx",
+  "pdf": "/Users/txc/code/Auto-OS/showtime-2/final/Kaisen-report-fixed.pdf",
+  "contactSheet": "/Users/txc/code/Auto-OS/showtime-2/final/Kaisen-report-fixed-contact-sheet.png",
+  "slideCount": 19,
+  "edits": [
+    "slide 13 rebuilt with single-core attempts and slow feedback evidence",
+    "slide 14 rebuilt with 951s->331s and guest/host speedup ratios",
+    "slide 16 replaced old 24s partial chart with full 551s occupancy-time chart",
+    "slides 18-19 restored as cause breakdown and course advice/thoughts"
+  ]
+}

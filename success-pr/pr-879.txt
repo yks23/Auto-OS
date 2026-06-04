@@ -1,0 +1,5 @@
+PR #879
+title: fix(axsync): release raw mutex before waking waiter
+mergedAt: 2026-05-25T03:05:38Z
+url: https://github.com/rcore-os/tgoskits/pull/879
+archivedAt: 2026-05-29T19:13:07Z

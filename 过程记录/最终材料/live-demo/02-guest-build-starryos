@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="${ROOT:-/Users/txc/code/Auto-OS}"
+exec "$ROOT/过程记录/最终材料/final/live-demo/02-guest-build-starryos" "$@"

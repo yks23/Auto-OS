@@ -27,6 +27,10 @@ FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+# Rust nightly date: must match tgoskits/rust-toolchain.toml.
+# Single pin point — bump here when upgrading toolchain.
+ARG RUST_NIGHTLY=2026-04-27
+
 # 1. apt deps: build essentials, qemu (system + user), binfmt-support, e2fsprogs,
 #    plus everything required for the rootfs builder (chroot + mkfs.ext4 + xz).
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -50,6 +54,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         binfmt-support \
         ipxe-qemu \
         sudo \
+        strace \
         tar \
         xz-utils \
     && rm -rf /var/lib/apt/lists/*
@@ -57,26 +62,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Allow git operations on bind-mounted /work even when host UID != container UID
 RUN git config --global --add safe.directory '*'
 
-# 2. rustup + nightly (matches tgoskits/rust-toolchain.toml). We also add the
-#    cross targets and components we always need.
-ENV RUSTUP_HOME=/usr/local/rustup \
-    CARGO_HOME=/usr/local/cargo \
-    PATH=/usr/local/cargo/bin:/usr/local/rustup/bin:/usr/local/bin:/opt/riscv64-linux-musl-cross/bin:$PATH
-
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-        | sh -s -- -y --default-toolchain nightly-2026-04-01 --profile minimal \
-            --component rust-src --component llvm-tools-preview \
-            --target riscv64gc-unknown-none-elf
-
-# 3. cargo helper subcommands the StarryOS Makefile / scripts use.
-RUN cargo install cargo-axplat ax-config-gen cargo-binutils
-
-# 4. lwext4_rust 需要 riscv64-linux-musl-cc（TARGETARCH 见 docker/install-riscv-musl-cross.sh）
-ARG TARGETARCH
-COPY docker/install-riscv-musl-cross.sh /tmp/install-riscv-musl-cross.sh
-RUN chmod +x /tmp/install-riscv-musl-cross.sh \
-    && TARGETARCH="${TARGETARCH}" /tmp/install-riscv-musl-cross.sh \
-    && rm -f /tmp/install-riscv-musl-cross.sh
+# 2. Local scripts (cheap layers — place before expensive installs so script edits
+#    don't bust the rust/cargo cache).
+COPY docker/register-binfmt.sh /usr/local/bin/register-binfmt
+COPY docker/entrypoint-work.sh /usr/local/bin/entrypoint-work
+RUN chmod +x /usr/local/bin/register-binfmt /usr/local/bin/entrypoint-work
 
 # Symlink ipxe roms into qemu's expected lookup path. qemu searches
 # /usr/share/qemu/<rom>; debian/ubuntu's ipxe-qemu lays them out under
@@ -88,13 +78,27 @@ RUN for r in efi-virtio.rom efi-e1000.rom efi-rtl8139.rom efi-vmxnet3.rom \
             ln -sf "/usr/lib/ipxe/qemu/$r" "/usr/share/qemu/$r" || true; \
     done
 
-# 5. binfmt 注册脚本：由 reproduce-in-container / rootfs 脚本在适当时机调用（勿在
-#    容器 PID1 入口最先执行，否则在部分 Docker Desktop 环境下会破坏随后 exec bash）。
-COPY docker/register-binfmt.sh /usr/local/bin/register-binfmt
-RUN chmod +x /usr/local/bin/register-binfmt
+# 3. musl cross toolchain (moderate cost, changes with install script edits).
+ARG TARGETARCH
+COPY docker/install-riscv-musl-cross.sh /tmp/install-riscv-musl-cross.sh
+RUN chmod +x /tmp/install-riscv-musl-cross.sh \
+    && TARGETARCH="${TARGETARCH}" /tmp/install-riscv-musl-cross.sh \
+    && rm -f /tmp/install-riscv-musl-cross.sh
 
-COPY docker/entrypoint-work.sh /usr/local/bin/entrypoint-work
-RUN chmod +x /usr/local/bin/entrypoint-work
+# 4. rustup + nightly (matches tgoskits/rust-toolchain.toml). We also add the
+#    cross targets and components we always need.
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:/usr/local/rustup/bin:/usr/local/bin:/opt/riscv64-linux-musl-cross/bin:$PATH
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+        | sh -s -- -y --default-toolchain "nightly-${RUST_NIGHTLY}" --profile minimal \
+            --component rust-src --component llvm-tools-preview \
+            --target riscv64gc-unknown-none-elf
+
+# 5. cargo helper subcommands the StarryOS Makefile / scripts use.
+#    Pinned versions for deterministic rebuilds.
+RUN cargo install cargo-axplat ax-config-gen cargo-binutils
 
 # 入口仅 exec "$@"；binfmt 见上。
 WORKDIR /work

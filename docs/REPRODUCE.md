@@ -178,6 +178,10 @@ installs for the compiler driver. Whether the full guest `cargo build` reaches
 `===M6-SELFBUILD-PASS===` depends on the workspace vs the Alpine rustc version
 (see `tests/selfhost/build-selfbuild-rootfs.sh`).
 
+For the current full StarryOS guest build recipe, success markers, checkpoint
+layout, and 2-core/8-core speed validation plan, see
+[`docs/STARRYOS-M6-FULL-BUILD-REPRODUCE.md`](./STARRYOS-M6-FULL-BUILD-REPRODUCE.md).
+
 ---
 
 ## 7. Manual / debug recipes

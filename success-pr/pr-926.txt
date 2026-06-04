@@ -1,0 +1,5 @@
+PR #926
+title: fix(axtask): kick remote CPUs on SMP wakeups
+mergedAt: 2026-05-26T08:08:00Z
+url: https://github.com/rcore-os/tgoskits/pull/926
+archivedAt: 2026-05-29T19:13:07Z

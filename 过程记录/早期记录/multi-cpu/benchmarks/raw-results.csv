@@ -1,0 +1,4 @@
+date,label,target,qemu_cpu,qemu_accel,cargo_jobs,rayon_threads,result,time_seconds,notes
+2026-05-17,initial-j1,riscv64-qemu-virt,-smp 1,tcg,1,,pass,176,small hello-world cargo workspace
+2026-05-17,initial-j4,riscv64-qemu-virt,-smp 4,"tcg,thread=multi",4,,pass,62,small hello-world cargo workspace
+

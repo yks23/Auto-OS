@@ -1,0 +1,279 @@
+# utc_iso elapsed_s log_bytes log_lines last_signal
+2026-05-18T02:19:30Z 60 3190 79 [M6 2026-05-18T02:18:43Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-18T02:20:31Z 121 3190 79 [M6 2026-05-18T02:18:43Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-18T02:21:31Z 181 3190 79 [M6 2026-05-18T02:18:43Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-18T02:22:31Z 241 4474 98 [M6 2026-05-18T02:21:45Z] restore cargo target checkpoint from /opt/tgoskits/.m6-checkpoints/target.tar 
+2026-05-18T02:23:32Z 301 5427 110 [M6 2026-05-18T02:22:42Z] [2] start cargo build -p starry-kernel (lib)  
+2026-05-18T02:24:32Z 362 5510 111    Compiling core v0.0.0 (/opt/alpine-rust/usr/lib/rustlib/src/rust/library/core) 
+2026-05-18T02:25:32Z 422 5619 112 [M6 2026-05-18T02:24:44Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:26:34Z 483 5619 112 [M6 2026-05-18T02:24:44Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:27:33Z 543 5728 113 [M6 2026-05-18T02:26:45Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:28:33Z 603 5728 113 [M6 2026-05-18T02:26:45Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:29:33Z 663 5837 114 [M6 2026-05-18T02:28:47Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:30:35Z 725 5837 114 [M6 2026-05-18T02:28:47Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:31:37Z 787 5946 115 [M6 2026-05-18T02:30:49Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:32:39Z 848 5946 115 [M6 2026-05-18T02:30:49Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:33:38Z 908 6055 116 [M6 2026-05-18T02:32:50Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:34:39Z 969 6055 116 [M6 2026-05-18T02:32:50Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:35:39Z 1029 6164 117 [M6 2026-05-18T02:34:52Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:36:39Z 1089 6164 117 [M6 2026-05-18T02:34:52Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:37:39Z 1149 6273 118 [M6 2026-05-18T02:36:53Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:38:39Z 1209 6273 118 [M6 2026-05-18T02:36:53Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:39:41Z 1271 6382 119 [M6 2026-05-18T02:38:55Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:40:42Z 1332 6382 119 [M6 2026-05-18T02:38:55Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:41:43Z 1393 6491 120 [M6 2026-05-18T02:40:58Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:42:45Z 1455 6491 120 [M6 2026-05-18T02:40:58Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:43:45Z 1515 6600 121 [M6 2026-05-18T02:42:59Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:44:47Z 1577 6600 121 [M6 2026-05-18T02:42:59Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:45:47Z 1637 6709 122 [M6 2026-05-18T02:45:00Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:46:47Z 1697 6709 122 [M6 2026-05-18T02:45:00Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:47:47Z 1757 6818 123 [M6 2026-05-18T02:47:01Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:48:47Z 1817 6818 123 [M6 2026-05-18T02:47:01Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:49:47Z 1877 6927 124 [M6 2026-05-18T02:49:02Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:50:48Z 1938 7056 125    Compiling compiler_builtins v0.1.160 (/opt/alpine-rust/usr/lib/rustlib/src/rust/library/compiler-builtins/compiler-builtins) 
+2026-05-18T02:51:50Z 2000 7165 126 [M6 2026-05-18T02:51:04Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:52:50Z 2060 7165 126 [M6 2026-05-18T02:51:04Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:53:50Z 2120 7274 127 [M6 2026-05-18T02:53:07Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:54:50Z 2180 7359 128    Compiling alloc v0.0.0 (/opt/alpine-rust/usr/lib/rustlib/src/rust/library/alloc) 
+2026-05-18T02:55:51Z 2241 7468 129 [M6 2026-05-18T02:55:08Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:56:51Z 2301 7468 129 [M6 2026-05-18T02:55:08Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:57:51Z 2361 7577 130 [M6 2026-05-18T02:57:10Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:58:52Z 2422 7577 130 [M6 2026-05-18T02:57:10Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T02:59:52Z 2482 7749 133    Compiling quote v1.0.45 
+2026-05-18T03:00:53Z 2543 7749 133    Compiling quote v1.0.45 
+2026-05-18T03:01:54Z 2603 7858 134 [M6 2026-05-18T03:01:17Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:02:53Z 2663 7858 134 [M6 2026-05-18T03:01:17Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:03:54Z 2724 7994 136 [M6 2026-05-18T03:03:19Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:04:54Z 2784 7994 136 [M6 2026-05-18T03:03:19Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:05:54Z 2844 8103 137 [M6 2026-05-18T03:05:22Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:06:54Z 2904 8103 137 [M6 2026-05-18T03:05:22Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:07:55Z 2965 8212 138 [M6 2026-05-18T03:07:24Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:08:56Z 3026 8212 138 [M6 2026-05-18T03:07:24Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:09:56Z 3086 8321 139 [M6 2026-05-18T03:09:27Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:10:57Z 3147 8321 139 [M6 2026-05-18T03:09:27Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:11:58Z 3208 8430 140 [M6 2026-05-18T03:11:29Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:12:59Z 3269 8456 141    Compiling log v0.4.29 
+2026-05-18T03:14:01Z 3331 8596 143    Compiling bitflags v2.11.1 
+2026-05-18T03:15:03Z 3392 8596 143    Compiling bitflags v2.11.1 
+2026-05-18T03:16:04Z 3454 8737 145    Compiling scopeguard v1.2.0 
+2026-05-18T03:17:05Z 3515 8796 147    Compiling lock_api v0.4.14 
+2026-05-18T03:18:06Z 3576 8905 148 [M6 2026-05-18T03:17:38Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:19:07Z 3637 8940 149    Compiling strum_macros v0.27.2 
+2026-05-18T03:20:09Z 3699 9049 150 [M6 2026-05-18T03:19:39Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:21:09Z 3759 9049 150 [M6 2026-05-18T03:19:39Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:22:10Z 3820 9251 153    Compiling strum v0.27.2 
+2026-05-18T03:23:11Z 3881 9251 153    Compiling strum v0.27.2 
+2026-05-18T03:24:12Z 3942 9443 155 [M6 2026-05-18T03:23:46Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:25:14Z 4003 9521 156    Compiling ax-kernel-guard v0.3.10 (/opt/tgoskits/components/kernel_guard) 
+2026-05-18T03:26:13Z 4063 9657 158    Compiling syn v1.0.109 
+2026-05-18T03:27:14Z 4124 9657 158    Compiling syn v1.0.109 
+2026-05-18T03:28:15Z 4185 9766 159 [M6 2026-05-18T03:27:51Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:29:16Z 4246 9766 159 [M6 2026-05-18T03:27:51Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:30:17Z 4306 9875 160 [M6 2026-05-18T03:29:53Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:31:16Z 4366 9875 160 [M6 2026-05-18T03:29:53Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:32:17Z 4427 9984 161 [M6 2026-05-18T03:31:55Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:33:18Z 4487 9984 161 [M6 2026-05-18T03:31:55Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:34:17Z 4547 10093 162 [M6 2026-05-18T03:33:56Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:35:17Z 4607 10123 163    Compiling anstream v1.0.0 
+2026-05-18T03:36:19Z 4669 10264 165    Compiling bit_field v0.10.3 
+2026-05-18T03:37:20Z 4730 10351 166    Compiling ax-memory-addr v0.6.8 (/opt/tgoskits/components/axmm_crates/memory_addr) 
+2026-05-18T03:38:21Z 4791 10494 168 [M6 2026-05-18T03:38:02Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:39:21Z 4851 10494 168 [M6 2026-05-18T03:38:02Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:40:21Z 4911 10603 169 [M6 2026-05-18T03:40:04Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:41:21Z 4971 10603 169 [M6 2026-05-18T03:40:04Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:42:22Z 5032 10808 172 [M6 2026-05-18T03:42:05Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:43:23Z 5093 10808 172 [M6 2026-05-18T03:42:05Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:44:23Z 5153 10917 173 [M6 2026-05-18T03:44:09Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:45:23Z 5213 10950 174    Compiling toml_edit v0.22.27 
+2026-05-18T03:46:25Z 5275 11059 175 [M6 2026-05-18T03:46:10Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:47:25Z 5335 11059 175 [M6 2026-05-18T03:46:10Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:48:26Z 5396 11221 178 [M6 2026-05-18T03:48:11Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:49:28Z 5458 11358 181    Compiling paste v1.0.15 
+2026-05-18T03:50:29Z 5519 11555 183 [M6 2026-05-18T03:50:15Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:51:30Z 5580 11555 183 [M6 2026-05-18T03:50:15Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:52:31Z 5641 11698 185 [M6 2026-05-18T03:52:17Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:53:32Z 5702 11698 185 [M6 2026-05-18T03:52:17Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:54:33Z 5763 11807 186 [M6 2026-05-18T03:54:19Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:55:33Z 5823 11807 186 [M6 2026-05-18T03:54:19Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:56:34Z 5884 12010 188 [M6 2026-05-18T03:56:22Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:57:36Z 5945 12010 188 [M6 2026-05-18T03:56:22Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:58:37Z 6006 12119 189 [M6 2026-05-18T03:58:24Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T03:59:38Z 6068 12119 189 [M6 2026-05-18T03:58:24Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:00:39Z 6129 12228 190 [M6 2026-05-18T04:00:27Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:01:40Z 6189 12262 191    Compiling riscv-macros v0.4.0 
+2026-05-18T04:02:40Z 6250 12405 193 [M6 2026-05-18T04:02:30Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:03:42Z 6312 12469 194    Compiling axpanic v0.1.0 (/opt/tgoskits/components/axpanic) 
+2026-05-18T04:04:43Z 6373 12609 196 [M6 2026-05-18T04:04:31Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:05:44Z 6434 12647 197    Compiling critical-section v1.2.0 
+2026-05-18T04:06:46Z 6495 12906 201    Compiling toml_parser v1.1.2+spec-1.1.0 
+2026-05-18T04:07:46Z 6556 12906 201    Compiling toml_parser v1.1.2+spec-1.1.0 
+2026-05-18T04:08:47Z 6617 13102 203 [M6 2026-05-18T04:08:36Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:09:48Z 6678 13102 203 [M6 2026-05-18T04:08:36Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:10:49Z 6739 13242 205 [M6 2026-05-18T04:10:39Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:11:51Z 6800 13272 206    Compiling heapless v0.9.3 
+2026-05-18T04:12:51Z 6860 13409 208 [M6 2026-05-18T04:12:43Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:13:50Z 6920 13409 208 [M6 2026-05-18T04:12:43Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:14:50Z 6980 13546 210 [M6 2026-05-18T04:14:46Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:15:51Z 7041 13581 211    Compiling serde_spanned v1.1.1 
+2026-05-18T04:16:52Z 7102 13736 213 [M6 2026-05-18T04:16:48Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:17:53Z 7163 13842 214    Compiling ax-page-table-entry v0.8.9 (/opt/tgoskits/components/page_table_multiarch/page_table_entry) 
+2026-05-18T04:18:54Z 7224 13951 215 [M6 2026-05-18T04:18:50Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:19:54Z 7284 13989 216    Compiling bytemuck_derive v1.10.2 
+2026-05-18T04:20:55Z 7345 14098 217 [M6 2026-05-18T04:20:53Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:21:56Z 7406 14143 218    Compiling buddy_system_allocator v0.12.0 
+2026-05-18T04:22:57Z 7467 14218 220    Compiling const-default v1.0.0 
+2026-05-18T04:23:59Z 7529 14356 222    Compiling bitmaps v3.2.1 
+2026-05-18T04:24:59Z 7589 14356 222    Compiling bitmaps v3.2.1 
+2026-05-18T04:26:00Z 7650 14502 224    Compiling toml v1.1.2+spec-1.1.0 
+2026-05-18T04:27:01Z 7711 14502 224    Compiling toml v1.1.2+spec-1.1.0 
+2026-05-18T04:28:02Z 7772 14637 226    Compiling rlsf v0.2.2 
+2026-05-18T04:29:03Z 7833 14637 226    Compiling rlsf v0.2.2 
+2026-05-18T04:30:04Z 7894 14746 227 [M6 2026-05-18T04:29:06Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:31:05Z 7955 14746 227 [M6 2026-05-18T04:29:06Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:32:05Z 8015 14894 229    Compiling ax_slab_allocator v0.4.0 
+2026-05-18T04:33:05Z 8075 14925 230    Compiling bytemuck v1.25.0 
+2026-05-18T04:34:07Z 8137 15034 231 [M6 2026-05-18T04:33:10Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:35:08Z 8198 15034 231 [M6 2026-05-18T04:33:10Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:36:09Z 8259 15215 233    Compiling axbacktrace v0.3.9 (/opt/tgoskits/components/axbacktrace) 
+2026-05-18T04:37:10Z 8320 15297 234    Compiling bitmap-allocator v0.4.5 (/opt/tgoskits/components/bitmap-allocator) 
+2026-05-18T04:38:10Z 8380 15406 235 [M6 2026-05-18T04:37:16Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:39:11Z 8441 15436 236    Compiling arrayvec v0.7.6 
+2026-05-18T04:40:12Z 8502 15649 239    Compiling ax-allocator v0.5.0 (/opt/tgoskits/components/axallocator) 
+2026-05-18T04:41:13Z 8563 15710 240    Compiling ax-cpu v0.6.2 (/opt/tgoskits/components/axcpu) 
+2026-05-18T04:42:13Z 8623 15819 241 [M6 2026-05-18T04:41:20Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:43:13Z 8683 15888 242    Compiling ax-hal v0.5.13 (/opt/tgoskits/os/arceos/modules/axhal) 
+2026-05-18T04:44:14Z 8744 16023 244    Compiling spin v0.9.8 
+2026-05-18T04:45:15Z 8804 16061 245    Compiling zerocopy-derive v0.8.48 
+2026-05-18T04:46:16Z 8866 16170 246 [M6 2026-05-18T04:45:25Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:47:17Z 8927 16170 246 [M6 2026-05-18T04:45:25Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:48:18Z 8988 16370 248    Compiling ax-plat-macros v0.3.6 (/opt/tgoskits/components/axplat_crates/axplat-macros) 
+2026-05-18T04:49:19Z 9049 16449 249    Compiling ax-handler-table v0.3.7 (/opt/tgoskits/components/handler_table) 
+2026-05-18T04:50:20Z 9110 16589 251    Compiling const-str v1.1.0 
+2026-05-18T04:51:21Z 9171 16589 251    Compiling const-str v1.1.0 
+2026-05-18T04:52:22Z 9232 16775 253    Compiling ax-plat v0.5.8 (/opt/tgoskits/components/axplat_crates/axplat) 
+2026-05-18T04:53:23Z 9293 16775 253    Compiling ax-plat v0.5.8 (/opt/tgoskits/components/axplat_crates/axplat) 
+2026-05-18T04:54:24Z 9354 16884 254 [M6 2026-05-18T04:53:35Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:55:25Z 9415 16884 254 [M6 2026-05-18T04:53:35Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:56:25Z 9475 16993 255 [M6 2026-05-18T04:55:37Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:57:26Z 9536 16993 255 [M6 2026-05-18T04:55:37Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:58:27Z 9597 17102 256 [M6 2026-05-18T04:57:39Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T04:59:28Z 9657 17102 256 [M6 2026-05-18T04:57:39Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:00:29Z 9718 17211 257 [M6 2026-05-18T04:59:42Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:01:29Z 9779 17211 257 [M6 2026-05-18T04:59:42Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:02:30Z 9840 17392 259    Compiling ax-alloc v0.7.0 (/opt/tgoskits/os/arceos/modules/axalloc) 
+2026-05-18T05:03:32Z 9902 17392 259    Compiling ax-alloc v0.7.0 (/opt/tgoskits/os/arceos/modules/axalloc) 
+2026-05-18T05:04:33Z 9963 17615 261    Compiling ax-page-table-multiarch v0.8.8 (/opt/tgoskits/components/page_table_multiarch/page_table_multiarch) 
+2026-05-18T05:05:34Z 10024 17648 262    Compiling crc-catalog v2.5.0 
+2026-05-18T05:06:35Z 10085 17796 264    Compiling pin-project-lite v0.2.17 
+2026-05-18T05:07:36Z 10146 17829 265    Compiling fdt-parser v0.4.19 
+2026-05-18T05:08:37Z 10207 17938 266 [M6 2026-05-18T05:07:52Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:09:38Z 10268 17998 268    Compiling thiserror v2.0.18 
+2026-05-18T05:10:39Z 10329 18107 269 [M6 2026-05-18T05:09:56Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:11:40Z 10390 18107 269 [M6 2026-05-18T05:09:56Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:12:41Z 10451 18241 271 [M6 2026-05-18T05:12:07Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:13:41Z 10511 18268 272    Compiling uguid v2.2.1 
+2026-05-18T05:14:42Z 10572 18403 274    Compiling ucs2 v0.3.3 
+2026-05-18T05:15:43Z 10633 18440 275    Compiling thiserror-impl v2.0.18 
+2026-05-18T05:16:44Z 10694 18549 276 [M6 2026-05-18T05:16:11Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:17:44Z 10754 18549 276 [M6 2026-05-18T05:16:11Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:18:46Z 10815 18752 278 [M6 2026-05-18T05:18:14Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:19:46Z 10876 18824 279    Compiling ax-lazyinit v0.4.7 (/opt/tgoskits/components/ax-lazyinit) 
+2026-05-18T05:20:48Z 10937 18970 281 [M6 2026-05-18T05:20:17Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:21:48Z 10998 18970 281 [M6 2026-05-18T05:20:17Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:22:49Z 11059 19079 282 [M6 2026-05-18T05:22:21Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:23:50Z 11120 19110 283    Compiling safe-mmio v0.3.0 
+2026-05-18T05:24:51Z 11181 19258 285 [M6 2026-05-18T05:24:23Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:25:52Z 11242 19258 285 [M6 2026-05-18T05:24:23Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:26:53Z 11303 19395 287 [M6 2026-05-18T05:26:24Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:27:54Z 11364 19431 288    Compiling linux-raw-sys v0.12.1 
+2026-05-18T05:28:55Z 11425 19540 289 [M6 2026-05-18T05:28:29Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:29:55Z 11485 19540 289 [M6 2026-05-18T05:28:29Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:30:56Z 11546 19724 292 [M6 2026-05-18T05:30:31Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:31:57Z 11607 19724 292 [M6 2026-05-18T05:30:31Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:32:58Z 11668 19833 293 [M6 2026-05-18T05:32:33Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:33:59Z 11729 19833 293 [M6 2026-05-18T05:32:33Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:35:00Z 11790 19942 294 [M6 2026-05-18T05:34:36Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:36:01Z 11851 19942 294 [M6 2026-05-18T05:34:36Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:37:02Z 11912 20085 296    Compiling extern-trait v0.4.3 
+2026-05-18T05:38:03Z 11973 20119 297    Compiling gpt_disk_io v0.16.2 
+2026-05-18T05:39:03Z 12033 20263 299    Compiling futures-core v0.3.32 
+2026-05-18T05:40:03Z 12093 20359 300    Compiling ax-driver-block v0.3.13 (/opt/tgoskits/components/axdriver_crates/axdriver_block) 
+2026-05-18T05:41:04Z 12154 20468 301 [M6 2026-05-18T05:40:44Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:42:05Z 12215 20468 301 [M6 2026-05-18T05:40:44Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:43:06Z 12276 20639 303    Compiling axpoll v0.3.9 (/opt/tgoskits/components/axpoll) 
+2026-05-18T05:44:07Z 12336 20639 303    Compiling axpoll v0.3.9 (/opt/tgoskits/components/axpoll) 
+2026-05-18T05:45:07Z 12397 20840 305 [M6 2026-05-18T05:44:53Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:46:08Z 12458 20840 305 [M6 2026-05-18T05:44:53Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:47:08Z 12518 20985 307 [M6 2026-05-18T05:46:58Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:48:10Z 12580 20985 307 [M6 2026-05-18T05:46:58Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:49:11Z 12641 21129 309    Compiling futures-task v0.3.32 
+2026-05-18T05:50:11Z 12701 21129 309    Compiling futures-task v0.3.32 
+2026-05-18T05:51:11Z 12761 21265 311 [M6 2026-05-18T05:51:04Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:52:11Z 12821 21348 312    Compiling ax-linked-list-r4l v0.5.5 (/opt/tgoskits/components/linked_list_r4l) 
+2026-05-18T05:53:13Z 12882 21457 313 [M6 2026-05-18T05:53:10Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:54:12Z 12942 21457 313 [M6 2026-05-18T05:53:10Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:55:14Z 13004 21488 314    Compiling smallvec v1.15.1 
+2026-05-18T05:56:16Z 13066 21632 316    Compiling darling_core v0.13.4 
+2026-05-18T05:57:17Z 13127 21632 316    Compiling darling_core v0.13.4 
+2026-05-18T05:58:17Z 13187 21741 317 [M6 2026-05-18T05:57:24Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T05:59:19Z 13249 21741 317 [M6 2026-05-18T05:57:24Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:00:21Z 13311 21850 318 [M6 2026-05-18T05:59:30Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:01:22Z 13371 21850 318 [M6 2026-05-18T05:59:30Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:02:21Z 13431 21959 319 [M6 2026-05-18T06:01:37Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:03:23Z 13492 21959 319 [M6 2026-05-18T06:01:37Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:04:22Z 13552 22133 321    Compiling ax-sched v0.5.6 (/opt/tgoskits/components/axsched) 
+2026-05-18T06:05:24Z 13614 22168 322    Compiling futures-util v0.3.32 
+2026-05-18T06:06:24Z 13674 22277 323 [M6 2026-05-18T06:05:45Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:07:25Z 13734 22277 323 [M6 2026-05-18T06:05:45Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:08:26Z 13795 22484 325    Compiling ax-driver-virtio v0.3.12 (/opt/tgoskits/components/axdriver_crates/axdriver_virtio) 
+2026-05-18T06:09:27Z 13856 22576 326    Compiling ax-driver-pci v0.3.12 (/opt/tgoskits/components/axdriver_crates/axdriver_pci) 
+2026-05-18T06:10:27Z 13916 22785 328 [M6 2026-05-18T06:09:51Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:11:27Z 13976 22785 328 [M6 2026-05-18T06:09:51Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:12:27Z 14036 22894 329 [M6 2026-05-18T06:11:58Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:13:27Z 14096 22894 329 [M6 2026-05-18T06:11:58Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:14:27Z 14156 23070 331 [M6 2026-05-18T06:14:15Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:15:26Z 14216 23070 331 [M6 2026-05-18T06:14:15Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:16:27Z 14276 23070 331 [M6 2026-05-18T06:14:15Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:17:28Z 14337 23179 332 [M6 2026-05-18T06:16:31Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:18:28Z 14398 23252 333    Compiling ax-timer-list v0.3.5 (/opt/tgoskits/components/timer_list) 
+2026-05-18T06:19:28Z 14458 23361 334 [M6 2026-05-18T06:18:43Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:20:31Z 14520 23432 335    Compiling ax-task v0.5.14 (/opt/tgoskits/os/arceos/modules/axtask) 
+2026-05-18T06:21:31Z 14581 23541 336 [M6 2026-05-18T06:20:55Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:22:31Z 14641 23541 336 [M6 2026-05-18T06:20:55Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:23:33Z 14702 23650 337 [M6 2026-05-18T06:23:15Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:24:33Z 14763 23650 337 [M6 2026-05-18T06:23:15Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:25:33Z 14823 24284 352 [M6 2026-05-18T06:25:25Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:26:34Z 14884 24284 352 [M6 2026-05-18T06:25:25Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:27:36Z 14946 24393 353 [M6 2026-05-18T06:27:31Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:28:36Z 15006 24514 355    Compiling ax-driver v0.5.14 (/opt/tgoskits/os/arceos/modules/axdriver) 
+2026-05-18T06:29:36Z 15066 24514 355    Compiling ax-driver v0.5.14 (/opt/tgoskits/os/arceos/modules/axdriver) 
+2026-05-18T06:30:36Z 15126 24623 356 [M6 2026-05-18T06:29:36Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:31:36Z 15186 24659 357    Compiling darling_macro v0.13.4 
+2026-05-18T06:32:36Z 15246 24768 358 [M6 2026-05-18T06:31:39Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:33:37Z 15306 24768 358 [M6 2026-05-18T06:31:39Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:34:37Z 15367 24915 360 [M6 2026-05-18T06:33:45Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:35:37Z 15427 24943 361    Compiling memchr v2.8.0 
+2026-05-18T06:36:37Z 15487 25052 362 [M6 2026-05-18T06:35:49Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:37:39Z 15549 25052 362 [M6 2026-05-18T06:35:49Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:38:41Z 15611 25161 363 [M6 2026-05-18T06:37:58Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:39:43Z 15672 25161 363 [M6 2026-05-18T06:37:58Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:40:44Z 15732 25270 364 [M6 2026-05-18T06:40:19Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:41:44Z 15793 25270 364 [M6 2026-05-18T06:40:19Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:42:44Z 15853 25270 364 [M6 2026-05-18T06:40:19Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:43:44Z 15914 25379 365 [M6 2026-05-18T06:43:03Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:44:44Z 15974 25379 365 [M6 2026-05-18T06:43:03Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:45:45Z 16035 25520 367    Compiling equivalent v1.0.2 
+2026-05-18T06:46:45Z 16095 25520 367    Compiling equivalent v1.0.2 
+2026-05-18T06:47:45Z 16155 25520 367    Compiling equivalent v1.0.2 
+2026-05-18T06:48:46Z 16215 25629 368 [M6 2026-05-18T06:47:43Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:49:46Z 16276 25659 369    Compiling foldhash v0.2.0 
+2026-05-18T06:50:46Z 16336 25768 370 [M6 2026-05-18T06:49:58Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:51:47Z 16397 25768 370 [M6 2026-05-18T06:49:58Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:52:48Z 16458 25914 372    Compiling allocator-api2 v0.2.21 
+2026-05-18T06:53:48Z 16518 25914 372    Compiling allocator-api2 v0.2.21 
+2026-05-18T06:54:49Z 16579 26023 373 [M6 2026-05-18T06:54:08Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:55:50Z 16639 26055 374    Compiling hashbrown v0.16.1 
+2026-05-18T06:56:51Z 16701 26164 375 [M6 2026-05-18T06:56:13Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:57:51Z 16761 26164 375 [M6 2026-05-18T06:56:13Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:58:52Z 16822 26273 376 [M6 2026-05-18T06:58:17Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-18T06:59:57Z 16887 26273 376 [M6 2026-05-18T06:58:17Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 

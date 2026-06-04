@@ -1,0 +1,5 @@
+PR #200
+title: fix(starry): per-thread `skip_next_signal_check`
+mergedAt: 2026-04-15T13:53:01Z
+url: https://github.com/rcore-os/tgoskits/pull/200
+archivedAt: 2026-05-18T12:59:25Z

@@ -1,0 +1,84 @@
+
+       d8888                            .d88888b.   .d8888b.
+      d88888                           d88P" "Y88b d88P  Y88b
+     d88P888                           888     888 Y88b.
+    d88P 888 888d888  .d8888b  .d88b.  888     888  "Y888b.
+   d88P  888 888P"   d88P"    d8P  Y8b 888     888     "Y88b.
+  d88P   888 888     888      88888888 888     888       "888
+ d8888888888 888     Y88b.    Y8b.     Y88b. .d88P Y88b  d88P
+d88P     888 888      "Y8888P  "Y8888   "Y88888P"   "Y8888P"
+
+arch = aarch64
+platform = aarch64-qemu-virt
+target = aarch64-unknown-none-softfloat
+build_mode = 
+log_level = warn
+backtrace = false
+smp = 8
+
+Boot at 2026-05-30 08:39:53.002390042 UTC
+
+[37m[  0.076975 ax_net_ng:172] [33m  No vsock device found![m
+[m[37m[  0.077234 ax_display:26] [33m  No display device found![m
+[mInitialized 2 tracepoints
+Welcome to [96m[1mStarry OS[0m!
+USER=root
+HOSTNAME=starry
+SHLVL=1
+HOME=/root
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PWD=/
+
+Use [1m[3mapk[0m to install packages.
+
+===LIVE-GUEST-REBUILD-BEGIN===
+kernel_source=guest-built StarryOS kernel
+cpu_count=8
+Linux starry 10.0.0 10.0.0 aarch64 Linux
+===LIVE-GUEST-REBUILD-COPY-SOURCE-BEGIN===
+===LIVE-GUEST-FAST-ALLOC-SLAB-ONLY===
+===LIVE-GUEST-FAST-NO-DYNAMIC-DEBUG===
+===LIVE-GUEST-REBUILD-COPY-SOURCE-END===
+===LIVE-GUEST-REBUILD-ENV-BEGIN===
+target_dir=/tmp/live-rebuild-target
+persist_target_dir=/opt/tgoskits/target-live-demo
+work_dir=/tmp/live-rebuild-src
+jobs=8
+rustflags=-Z threads=2 -Clink-arg=-Tlinker.x -Clink-arg=-no-pie -Clink-arg=-znostart-stop-gc
+rustc 1.97.0-nightly (ca9a134e0 2026-04-26)
+cargo 1.91.1 (ea2d97820 2025-10-10) (Alpine Linux Rust 1.91.1-r1)
+===LIVE-GUEST-REBUILD-ENV-END===
+===LIVE-GUEST-REBUILD-CARGO-BEGIN start=1780130451===
+[37m[690.521614 0:3397 starry_kernel::mm::aspace:448] [33mFailed to populate pages for VA:0x19ddeff8 (READ | WRITE | USER): Out of memory[m
+[m[37m[690.523389 5:3153 starry_kernel::mm::aspace:448] [33mFailed to populate pages for VA:0x21514000 (READ | WRITE | USER): Out of memory[m
+[m[37m[690.522003 2:2625 starry_kernel::mm::aspace:448] [33mFailed to populate pages for VA:0x2b23f250 (READ | WRITE | USER): Out of memory[m
+[m[37m[690.523859 0:3397 starry_kernel::mm::aspace:448] [33mFailed to populate pages for VA:0xe2cac80 (READ | WRITE | USER): Out of memory[m
+[m[37m[690.524757 5:3153 starry_kernel::mm::aspace:448] [33mFailed to populate pages for VA:0xe2c3c80 (READ | WRITE | USER): Out of memory[m
+[m[37m[690.526940 0:3397 starry_kernel::task::signal:36] [33muser register dump:
+  pc(elr)=0x00000000077857fc spsr=0x0000000020000340
+  x0=0x0000000000000000 x1=0x0000000019ddf050 x2=0x0000000000000003 x3=0x000000000da8c8a8
+  x29(fp)=0x000000000da29530 x30(lr)=0x0000000007785764[m
+[m[37m[690.529662 5:3153 starry_kernel::task::signal:36] [33muser register dump:
+  pc(elr)=0x0000000060129fa8 spsr=0x0000000060000340
+  x0=0x0000000000001013 x1=0x00000000400c5360 x2=0x00000000601c07c0 x3=0x00000000601c07c0
+  x29(fp)=0x000000000da235f0 x30(lr)=0x0000000060129f94[m
+[m[37m[690.536144 0:3328 starry_kernel::mm::aspace:448] [33mFailed to populate pages for VA:0x2ea1eff0 (READ | WRITE | USER): Out of memory[m
+[m[37m[690.526157 2:2625 starry_kernel::mm::aspace:448] [33mFailed to populate pages for VA:0xe2b7c80 (READ | WRITE | USER): Out of memory[m
+[m[37m[690.538779 0:3328 starry_kernel::mm::aspace:448] [33mFailed to populate pages for VA:0x2ea1eff0 (READ | WRITE | USER): Out of memory[m
+[m[37m[690.539832 2:2625 starry_kernel::task::signal:36] [33muser register dump:
+  pc(elr)=0x000000006012a1c4 spsr=0x0000000020000340
+  x0=0x000000002b23ed00 x1=0x000000002b23f32c x2=0x00000000ffffff24 x3=0x00000000000000dc
+  x29(fp)=0x000000000e221670 x30(lr)=0x000000006012a0a8[m
+[m[37m[690.540879 0:3328 starry_kernel::task::signal:36] [33muser register dump:
+  pc(elr)=0x0000000001f277a0 spsr=0x0000000020000340
+  x0=0x0000000001f481c0 x1=0x0000000000000020 x2=0x0000000000000000 x3=0x0000000000000010
+  x29(fp)=0x000000002ea1f130 x30(lr)=0x0000000001f1f604[m
+[merror: could not compile `zerocopy` (lib)
+
+Caused by:
+  process didn't exit successfully: `/opt/rustc-nightly-sysroot --crate-name zerocopy --edition=2021 /tmp/live-rebuild-src/vendor/zerocopy-0.8.48/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --diagnostic-width=110 --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C codegen-units=256 -C debug-assertions=off --cfg 'feature="alloc"' --cfg 'feature="derive"' --cfg 'feature="zerocopy-derive"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values("__internal_use_only_features_that_work_on_stable", "alloc", "derive", "float-nightly", "simd", "simd-nightly", "std", "zerocopy-derive"))' -C metadata=e83612427592f086 -C extra-filename=-7e8d2ae59c4bd7ba --out-dir /tmp/live-rebuild-target/aarch64-unknown-none-softfloat/release/deps --target aarch64-unknown-none-softfloat -C strip=debuginfo -L dependency=/tmp/live-rebuild-target/aarch64-unknown-none-softfloat/release/deps -L dependency=/tmp/live-rebuild-target/release/deps --extern 'noprelude:alloc=/tmp/live-rebuild-target/aarch64-unknown-none-softfloat/release/deps/liballoc-b5f63d6c29703631.rmeta' --extern 'noprelude:compiler_builtins=/tmp/live-rebuild-target/aarch64-unknown-none-softfloat/release/deps/libcompiler_builtins-8dcbcd9ef048dc3e.rmeta' --extern 'noprelude:core=/tmp/live-rebuild-target/aarch64-unknown-none-softfloat/release/deps/libcore-aa7fa233a6a30260.rmeta' --extern zerocopy_derive=/tmp/live-rebuild-target/release/deps/libzerocopy_derive-af8118c83b2d7f34.so -Z unstable-options --cap-lints allow -Z threads=2 -Clink-arg=-Tlinker.x -Clink-arg=-no-pie -Clink-arg=-znostart-stop-gc --check-cfg 'cfg(no_zerocopy_simd_x86_avx12_1_89_0)' --check-cfg 'cfg(rust, values("1.89.0"))' --check-cfg 'cfg(no_zerocopy_core_error_1_81_0)' --check-cfg 'cfg(rust, values("1.81.0"))' --check-cfg 'cfg(no_zerocopy_diagnostic_on_unimplemented_1_78_0)' --check-cfg 'cfg(rust, values("1.78.0"))' --check-cfg 'cfg(no_zerocopy_generic_bounds_in_const_fn_1_61_0)' --check-cfg 'cfg(rust, values("1.61.0"))' --check-cfg 'cfg(no_zerocopy_target_has_atomics_1_60_0)' --check-cfg 'cfg(rust, values("1.60.0"))' --check-cfg 'cfg(no_zerocopy_aarch64_simd_1_59_0)' --check-cfg 'cfg(rust, values("1.59.0"))' --check-cfg 'cfg(no_zerocopy_aarch64_simd_be_1_87_0)' --check-cfg 'cfg(rust, values("1.87.0"))' --check-cfg 'cfg(no_zerocopy_panic_in_const_and_vec_try_reserve_1_57_0)' --check-cfg 'cfg(rust, values("1.57.0"))' --check-cfg 'cfg(doc_cfg)' --check-cfg 'cfg(kani)' --check-cfg 'cfg(__ZEROCOPY_INTERNAL_USE_ONLY_NIGHTLY_FEATURES_IN_TESTS)' --check-cfg 'cfg(__ZEROCOPY_INTERNAL_USE_ONLY_DEV_MODE)' --check-cfg 'cfg(coverage_nightly)' --check-cfg 'cfg(zerocopy_inline_always)'` (signal: 11, SIGSEGV: invalid memory reference)
+Segmentation fault (core dumped)
+===LIVE-GUEST-REBUILD-CARGO-END rc=139 final_rc=139 elapsed=632===
+===LIVE-GUEST-REBUILD-FAIL rc=139 elapsed=632===
+===LIVE-GUEST-REBUILD-DONE rc=139===
+qemu-system-aarch64: terminating on signal 15 from pid 83255 (<unknown process>)

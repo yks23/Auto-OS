@@ -1,0 +1,246 @@
+===HOST-ALIGNED-STARRYOS-BEGIN stamp=20260529T175620-aligned-j8 src=/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8 target=/private/tmp/host-starryos-aligned-j8-target-20260529T175620-aligned-j8===
+settings: host=Darwin arm64 jobs=8 smp=8
+settings: command=cargo build -p starryos --bin starryos --target aarch64-unknown-none-softfloat -Z build-std=core,alloc,compiler_builtins --features qemu,gic-v3,cntv-timer,smp --release
+settings: AX_CONFIG_PATH=/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/StarryOS/.axconfig.host-aligned-aarch64.toml
+settings: CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_OPT_LEVEL=0 CARGO_PROFILE_RELEASE_CODEGEN_UNITS=256
+settings: FAST_ALLOC_SLAB_ONLY=1 FAST_SELFBUILD_NO_DYNAMIC_DEBUG=1
+settings: note=aligned-to-guest-profile; no StarryOS guest, no QEMU/HVF, no guest FS/syscall/scheduler
+rustc 1.97.0-nightly (ca9a134e0 2026-04-26)
+cargo 1.97.0-nightly (eb9b60f1f 2026-04-24)
+   Compiling compiler_builtins v0.1.160 (/Users/txc/.rustup/toolchains/nightly-2026-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/compiler-builtins/compiler-builtins)
+   Compiling core v0.0.0 (/Users/txc/.rustup/toolchains/nightly-2026-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core)
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling unicode-ident v1.0.24
+   Compiling heck v0.5.0
+   Compiling ax-errno v0.6.0 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axerrno)
+   Compiling utf8parse v0.2.2
+   Compiling autocfg v1.5.0
+   Compiling anstyle-parse v1.0.0
+   Compiling anstyle v1.0.14
+   Compiling anstyle-query v1.1.5
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling colorchoice v1.0.5
+   Compiling equivalent v1.0.2
+   Compiling anstream v1.0.0
+   Compiling strsim v0.11.1
+   Compiling hashbrown v0.17.1
+   Compiling clap_lex v1.1.0
+   Compiling winnow v0.7.15
+   Compiling toml_datetime v0.6.11
+   Compiling clap_builder v4.6.0
+   Compiling toml_write v0.1.2
+   Compiling indexmap v2.14.0
+   Compiling serde_core v1.0.228
+   Compiling num-traits v0.2.19
+   Compiling ax-config v0.5.10 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axconfig)
+   Compiling ax-percpu v0.4.11 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/percpu/percpu)
+   Compiling paste v1.0.15
+   Compiling toml_edit v0.22.27
+   Compiling syn v2.0.117
+   Compiling cfg-if v1.0.4
+   Compiling once_cell v1.21.4
+   Compiling heapless v0.9.3
+   Compiling winnow v1.0.3
+   Compiling toml_writer v1.1.1+spec-1.1.0
+   Compiling ax-plat-aarch64-qemu-virt v0.5.10 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axplat_crates/platforms/axplat-aarch64-qemu-virt)
+   Compiling toml_parser v1.1.2+spec-1.1.0
+   Compiling zerocopy v0.8.48
+   Compiling thiserror v2.0.18
+   Compiling serde_spanned v1.1.1
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling typeid v1.0.3
+   Compiling syn v1.0.109
+   Compiling toml v1.1.2+spec-1.1.0
+   Compiling crossbeam-utils v0.8.21
+   Compiling ax-driver v0.5.16 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axdriver)
+   Compiling strsim v0.10.0
+   Compiling unicode-segmentation v1.13.2
+   Compiling ident_case v1.0.1
+   Compiling fnv v1.0.7
+   Compiling ax-io v0.5.7 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axio)
+   Compiling memoffset v0.9.1
+   Compiling semver v1.0.28
+   Compiling lenient_semver_version_builder v0.4.2
+   Compiling scope-local v0.3.7 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/scope-local)
+   Compiling smoltcp v0.13.1
+   Compiling lenient_semver_parser v0.4.2
+   Compiling strum_macros v0.27.2
+   Compiling ax-crate-interface v0.5.7 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/crate_interface)
+   Compiling clap_derive v4.6.1
+   Compiling ax-percpu-macros v0.4.10 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/percpu/percpu_macros)
+   Compiling enum_dispatch v0.3.13
+   Compiling ax-plat-macros v0.3.6 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axplat_crates/axplat-macros)
+   Compiling bytemuck_derive v1.10.2
+   Compiling zerocopy-derive v0.8.48
+   Compiling thiserror-impl v2.0.18
+   Compiling extern-trait-impl v0.4.3
+   Compiling enumn v0.1.14
+   Compiling clap v4.6.1
+   Compiling futures-macro v0.3.32
+   Compiling darling_core v0.13.4
+   Compiling version_check v0.9.5
+   Compiling lenient_semver v0.4.2
+   Compiling convert_case v0.8.0
+   Compiling proc-macro2-diagnostics v0.10.1
+   Compiling async-trait v0.1.89
+   Compiling ax-config-gen v0.4.9 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axconfig-gen/axconfig-gen)
+   Compiling trait-ffi v0.2.11
+   Compiling ax-ctor-bare-macros v0.4.8 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/ctor_bare/ctor_bare_macros)
+   Compiling convert_case v0.10.0
+   Compiling rustversion v1.0.22
+   Compiling yansi v1.0.1
+   Compiling unicode-xid v0.2.6
+   Compiling derive_more-impl v2.1.1
+   Compiling ax-config-macros v0.4.9 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axconfig-gen/axconfig-macros)
+   Compiling starry-signal v0.7.0 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/starry-signal)
+   Compiling function_name-proc-macro v0.3.0
+   Compiling syscalls v0.8.1
+   Compiling indoc v2.0.7
+   Compiling heck v0.4.1
+   Compiling ouroboros_macro v0.18.5
+   Compiling darling_macro v0.13.4
+   Compiling ax-hal v0.5.15 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axhal)
+   Compiling darling v0.13.4
+   Compiling num_enum_derive v0.7.6
+   Compiling strum_macros v0.28.0
+   Compiling starryos v0.5.12 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/StarryOS/starryos)
+   Compiling inherit-methods-macro v0.1.0
+   Compiling alloc v0.0.0 (/Users/txc/.rustup/toolchains/nightly-2026-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/alloc)
+   Compiling log v0.4.29
+   Compiling bitflags v2.11.1
+   Compiling scopeguard v1.2.0
+   Compiling strum v0.27.2
+   Compiling ax-memory-addr v0.6.8 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axmm_crates/memory_addr)
+   Compiling tock-registers v0.10.1
+   Compiling ax-kernel-guard v0.3.10 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/kernel_guard)
+   Compiling lock_api v0.4.14
+   Compiling bit_field v0.10.3
+   Compiling aarch64-cpu v11.2.0
+   Compiling axpanic v0.1.0 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axpanic)
+   Compiling byteorder v1.5.0
+   Compiling const-str v1.1.0
+   Compiling spin v0.10.0
+   Compiling hash32 v0.3.1
+   Compiling axbacktrace v0.4.0 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axbacktrace)
+   Compiling ax-handler-table v0.3.7 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/handler_table)
+   Compiling buddy_system_allocator v0.12.0
+   Compiling ax-lazyinit v0.4.7 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/ax-lazyinit)
+   Compiling stable_deref_trait v1.2.1
+   Compiling tock-registers v0.8.1
+   Compiling ax_slab_allocator v0.4.0
+   Compiling ax-arm-pl011 v0.3.8 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/drivers/serial/arm_pl011)
+   Compiling chrono v0.4.44
+   Compiling bitmap-allocator v0.4.5 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/bitmap-allocator)
+   Compiling ax-int-ratio v0.3.7 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/int_ratio)
+   Compiling bytemuck v1.25.0
+   Compiling arrayvec v0.7.6
+   Compiling ax-allocator v0.5.2 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axallocator)
+   Compiling spin v0.9.8
+   Compiling ax-driver-base v0.3.12 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axdriver_crates/axdriver_base)
+   Compiling fdt-parser v0.4.19
+   Compiling crc-catalog v2.5.0
+   Compiling pin-project-lite v0.2.17
+   Compiling crc v3.4.0
+   Compiling ucs2 v0.3.3
+   Compiling ax-kspin v0.3.8 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/kspin)
+   Compiling ax-alloc v0.7.2 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axalloc)
+   Compiling ax-arm-pl031 v0.4.7 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/drivers/rtc/arm_pl031)
+   Compiling linux-raw-sys v0.12.1
+   Compiling extern-trait v0.4.3
+   Compiling futures-core v0.3.32
+   Compiling bitmaps v3.2.1
+   Compiling uguid v2.2.1
+   Compiling gpt_disk_types v0.16.1
+   Compiling ax-driver-net v0.3.13 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axdriver_crates/axdriver_net)
+   Compiling gpt_disk_io v0.16.2
+   Compiling ax-driver-display v0.3.12 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axdriver_crates/axdriver_display)
+   Compiling axpoll v0.3.9 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axpoll)
+   Compiling ax-driver-block v0.3.14 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axdriver_crates/axdriver_block)
+   Compiling ax-driver-input v0.3.13 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axdriver_crates/axdriver_input)
+   Compiling foldhash v0.2.0
+   Compiling allocator-api2 v0.2.21
+   Compiling smallvec v1.15.1
+   Compiling ax-page-table-entry v0.8.9 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/page_table_multiarch/page_table_entry)
+   Compiling arm-gic-driver v0.17.1 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/drivers/intc/arm-gic-driver)
+   Compiling ax-plat v0.5.8 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axplat_crates/axplat)
+   Compiling ax-cpu v0.6.4 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axcpu)
+   Compiling ax-page-table-multiarch v0.8.10 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/page_table_multiarch/page_table_multiarch)
+   Compiling futures-task v0.3.32
+   Compiling ax-linked-list-r4l v0.5.5 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/linked_list_r4l)
+   Compiling slab v0.4.12
+   Compiling ax-cpumask v0.3.5 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/cpumask)
+   Compiling ax-sched v0.5.6 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axsched)
+   Compiling futures-util v0.3.32
+   Compiling ax-driver-vsock v0.3.12 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axdriver_crates/axdriver_vsock)
+   Compiling ax-timer-list v0.3.5 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/timer_list)
+   Compiling memchr v2.8.0
+   Compiling hashbrown v0.16.1
+   Compiling concurrent-queue v2.5.0
+   Compiling event-listener v5.4.1
+   Compiling lazy_static v1.5.0
+   Compiling rsext4 v0.4.1 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/rsext4)
+   Compiling ax-fs-vfs v0.3.11 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axfs_crates/axfs_vfs)
+   Compiling bitflags v1.3.2
+   Compiling managed v0.8.0
+   Compiling intrusive-collections v0.9.7
+   Compiling axfs-ng-vfs v0.4.2 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axfs-ng-vfs)
+   Compiling lru v0.16.4
+   Compiling event-listener-strategy v0.5.4
+   Compiling safe-mmio v0.3.0
+   Compiling async-channel v2.5.0
+   Compiling virtio-drivers v0.13.0
+   Compiling ax-fs-devfs v0.3.11 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axfs_crates/axfs_devfs)
+   Compiling ax-fs-ramfs v0.3.12 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axfs_crates/axfs_ramfs)
+   Compiling ringbuf v0.4.8
+   Compiling ax-plat-aarch64-peripherals v0.5.10 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axplat_crates/platforms/axplat-aarch64-peripherals)
+   Compiling ax-memory-set v0.6.9 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axmm_crates/memory_set)
+   Compiling axfatfs v0.1.0-pre.0
+   Compiling ax-cap-access v0.3.5 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/cap_access)
+   Compiling ax-mm v0.5.15 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axmm)
+   Compiling ax-log v0.5.12 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axlog)
+   Compiling axklib v0.5.9 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axklib)
+   Compiling zero v0.1.3
+   Compiling ax-ctor-bare v0.4.8 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/ctor_bare/ctor_bare)
+   Compiling static-keys v0.8.2
+   Compiling lru v0.18.0
+   Compiling ax-task v0.5.16 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axtask)
+   Compiling xmas-elf v0.9.1
+   Compiling starry-vm v0.5.9 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/starry-vm)
+   Compiling derive_more v2.1.1
+   Compiling function_name v0.3.0
+   Compiling ax-sync v0.5.15 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axsync)
+   Compiling aliasable v0.1.3
+   Compiling weak-map v0.1.2
+   Compiling static_assertions v1.1.0
+   Compiling rand_core v0.10.1
+   Compiling tp-lexer v0.5.5
+   Compiling rand v0.10.1
+   Compiling ktracepoint v0.6.0
+   Compiling starry-process v0.4.7 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/starry-process)
+   Compiling ouroboros v0.18.5
+   Compiling kernel-elf-parser v0.3.4
+   Compiling ax-ipi v0.5.14 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axipi)
+   Compiling flatten_objects v0.2.4
+   Compiling uluru v3.1.0
+   Compiling strum v0.28.0
+   Compiling num_enum v0.7.6
+   Compiling downcast-rs v2.0.2
+   Compiling ax-driver-pci v0.3.12 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axdriver_crates/axdriver_pci)
+   Compiling ax-driver-virtio v0.4.1 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/components/axdriver_crates/axdriver_virtio)
+   Compiling ax-fs-ng v0.5.15 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axfs-ng)
+   Compiling ax-net v0.5.14 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axnet)
+   Compiling ax-fs v0.5.14 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axfs)
+   Compiling ax-display v0.5.14 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axdisplay)
+   Compiling ax-input v0.5.14 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axinput)
+   Compiling ax-net-ng v0.6.1 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axnet-ng)
+   Compiling ddebug v0.5.5
+   Compiling ax-runtime v0.5.16 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/modules/axruntime)
+   Compiling ax-feat v0.5.16 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/arceos/api/axfeat)
+   Compiling starry-kernel v0.5.12 (/private/tmp/host-starryos-aligned-j8-src-20260529T175620-aligned-j8/os/StarryOS/kernel)
+    Finished `release` profile [unoptimized] target(s) in 28.20s
+warning: the following packages contain code that will be rejected by a future version of Rust: core v0.0.0 (/Users/txc/.rustup/toolchains/nightly-2026-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core), memchr v2.8.0
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+===HOST-ALIGNED-STARRYOS-END jobs=8 rc=0 elapsed=29===
+-rwxr-xr-x@ 1 txc  wheel    22M May 29 17:57 /private/tmp/host-starryos-aligned-j8-target-20260529T175620-aligned-j8/aarch64-unknown-none-softfloat/release/starryos
+===HOST-ALIGNED-STARRYOS-PASS jobs=8 elapsed=29===

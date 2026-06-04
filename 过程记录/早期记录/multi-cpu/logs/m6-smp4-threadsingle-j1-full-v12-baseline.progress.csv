@@ -1,0 +1,5 @@
+# utc_iso elapsed_s log_bytes log_lines last_signal
+2026-05-17T22:01:45Z 61 3190 79 [M6 2026-05-17T22:00:51Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-17T22:02:47Z 122 3190 79 [M6 2026-05-17T22:00:51Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-17T22:03:46Z 182 3190 79 [M6 2026-05-17T22:00:51Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-17T22:04:46Z 242 4474 98 [M6 2026-05-17T22:04:01Z] restore cargo target checkpoint from /opt/tgoskits/.m6-checkpoints/target.tar 

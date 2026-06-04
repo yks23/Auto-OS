@@ -1,0 +1,13 @@
+# utc_iso elapsed_s log_bytes log_lines last_signal
+2026-05-17T20:15:07Z 61 3190 79 [M6 2026-05-17T20:14:14Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-17T20:16:07Z 121 3190 79 [M6 2026-05-17T20:14:14Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-17T20:17:07Z 181 4474 98 [M6 2026-05-17T20:16:58Z] restore cargo target checkpoint from /opt/tgoskits/.m6-checkpoints/target.tar 
+2026-05-17T20:18:07Z 241 5172 107 [M6 2026-05-17T20:17:48Z] [2] start cargo build -p starry-kernel (lib)  
+2026-05-17T20:19:07Z 301 5383 111    Compiling ax-errno v0.4.8 (/opt/tgoskits/components/axerrno) 
+2026-05-17T20:20:07Z 361 5522 113 [M6 2026-05-17T20:19:51Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-17T20:21:07Z 421 5555 114    Compiling toml_edit v0.22.27 
+2026-05-17T20:22:08Z 481 5664 115 [M6 2026-05-17T20:21:54Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-17T20:23:08Z 542 5664 115 [M6 2026-05-17T20:21:54Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-17T20:24:08Z 602 5807 117 [M6 2026-05-17T20:23:59Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-17T20:25:08Z 662 5807 117 [M6 2026-05-17T20:23:59Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 
+2026-05-17T20:26:08Z 722 5916 118 [M6 2026-05-17T20:26:03Z] heartbeat phase=starry-kernel-lib (rustc/cargo may print nothing for a long time) 

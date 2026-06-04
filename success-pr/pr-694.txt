@@ -1,0 +1,5 @@
+PR #694
+title: fix(starry): support v4-mapped IPv6 sockets
+mergedAt: 2026-05-18T16:05:51Z
+url: https://github.com/rcore-os/tgoskits/pull/694
+archivedAt: 2026-05-19T09:02:06Z

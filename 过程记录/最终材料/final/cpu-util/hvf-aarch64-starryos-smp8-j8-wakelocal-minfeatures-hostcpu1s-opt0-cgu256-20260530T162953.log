@@ -1,0 +1,36 @@
+
+       d8888                            .d88888b.   .d8888b.
+      d88888                           d88P" "Y88b d88P  Y88b
+     d88P888                           888     888 Y88b.
+    d88P 888 888d888  .d8888b  .d88b.  888     888  "Y888b.
+   d88P  888 888P"   d88P"    d8P  Y8b 888     888     "Y88b.
+  d88P   888 888     888      88888888 888     888       "888
+ d8888888888 888     Y88b.    Y8b.     Y88b. .d88P Y88b  d88P
+d88P     888 888      "Y8888P  "Y8888   "Y88888P"   "Y8888P"
+
+arch = aarch64
+platform = aarch64-qemu-virt
+target = aarch64-unknown-none-softfloat
+build_mode = 
+log_level = warn
+backtrace = false
+smp = 8
+
+Boot at 2026-05-30 08:30:02.002370791 UTC
+
+[37m[  0.092339 ax_net_ng:172] [33m  No vsock device found![m
+[m[37m[  0.092806 ax_display:26] [33m  No display device found![m
+[mInitialized 2 tracepoints
+Welcome to [96m[1mStarry OS[0m!
+USER=root
+HOSTNAME=starry
+SHLVL=1
+HOME=/root
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PWD=/
+
+Use [1m[3mapk[0m to install packages.
+
+===HVF-smp8-j8-wakelocal-minfeatures-hostcpu1s-opt0-cgu256-RUN-BEGIN===
+===HVF-SOURCE-TMPFS-COPY-BEGIN work_dir=/tmp/src-hvf-smp8-j8-wakelocal-minfeatures-hostcpu1s-opt0-cgu256-20260530T162953===
+qemu-system-aarch64: terminating on signal 15 from pid 57481 (<unknown process>)

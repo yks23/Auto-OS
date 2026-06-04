@@ -1,0 +1,26 @@
+
+       d8888                            .d88888b.   .d8888b.
+      d88888                           d88P" "Y88b d88P  Y88b
+     d88P888                           888     888 Y88b.
+    d88P 888 888d888  .d8888b  .d88b.  888     888  "Y888b.
+   d88P  888 888P"   d88P"    d8P  Y8b 888     888     "Y88b.
+  d88P   888 888     888      88888888 888     888       "888
+ d8888888888 888     Y88b.    Y8b.     Y88b. .d88P Y88b  d88P
+d88P     888 888      "Y8888P  "Y8888   "Y88888P"   "Y8888P"
+
+arch = aarch64
+platform = aarch64-qemu-virt
+target = 
+build_mode = release
+log_level = error
+backtrace = false
+smp = 8
+
+Boot at 2026-05-30 08:04:25.002065666 UTC
+
+panicked at os/arceos/modules/axtask/src/task.rs:678:25:
+current task is uninitialized
+BACKTRACE_BEGIN kind=panic arch=aarch64 alloc=false dwarf=false
+BT_ERROR requires_alloc
+BACKTRACE_END
+

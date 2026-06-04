@@ -1,0 +1,296 @@
+
+OpenSBI v1.7
+   ____                    _____ ____ _____
+  / __ \                  / ____|  _ \_   _|
+ | |  | |_ __   ___ _ __ | (___ | |_) || |
+ | |  | | '_ \ / _ \ '_ \ \___ \|  _ < | |
+ | |__| | |_) |  __/ | | |____) | |_) || |_
+  \____/| .__/ \___|_| |_|_____/|____/_____|
+        | |
+        |_|
+
+Platform Name               : riscv-virtio,qemu
+Platform Features           : medeleg
+Platform HART Count         : 1
+Platform IPI Device         : aclint-mswi
+Platform Timer Device       : aclint-mtimer @ 10000000Hz
+Platform Console Device     : uart8250
+Platform HSM Device         : ---
+Platform PMU Device         : ---
+Platform Reboot Device      : syscon-reboot
+Platform Shutdown Device    : syscon-poweroff
+Platform Suspend Device     : ---
+Platform CPPC Device        : ---
+Firmware Base               : 0x80000000
+Firmware Size               : 317 KB
+Firmware RW Offset          : 0x40000
+Firmware RW Size            : 61 KB
+Firmware Heap Offset        : 0x46000
+Firmware Heap Size          : 37 KB (total), 2 KB (reserved), 11 KB (used), 23 KB (free)
+Firmware Scratch Size       : 4096 B (total), 1400 B (used), 2696 B (free)
+Runtime SBI Version         : 3.0
+Standard SBI Extensions     : time,rfnc,ipi,base,hsm,srst,pmu,dbcn,fwft,legacy,dbtr,sse
+Experimental SBI Extensions : none
+
+Domain0 Name                : root
+Domain0 Boot HART           : 0
+Domain0 HARTs               : 0*
+Domain0 Region00            : 0x0000000000100000-0x0000000000100fff M: (I,R,W) S/U: (R,W)
+Domain0 Region01            : 0x0000000010000000-0x0000000010000fff M: (I,R,W) S/U: (R,W)
+Domain0 Region02            : 0x0000000002000000-0x000000000200ffff M: (I,R,W) S/U: ()
+Domain0 Region03            : 0x0000000080040000-0x000000008004ffff M: (R,W) S/U: ()
+Domain0 Region04            : 0x0000000080000000-0x000000008003ffff M: (R,X) S/U: ()
+Domain0 Region05            : 0x000000000c400000-0x000000000c5fffff M: (I,R,W) S/U: (R,W)
+Domain0 Region06            : 0x000000000c000000-0x000000000c3fffff M: (I,R,W) S/U: (R,W)
+Domain0 Region07            : 0x0000000000000000-0xffffffffffffffff M: () S/U: (R,W,X)
+Domain0 Next Address        : 0x0000000080200000
+Domain0 Next Arg1           : 0x000000023fe00000
+Domain0 Next Mode           : S-mode
+Domain0 SysReset            : yes
+Domain0 SysSuspend          : yes
+
+Boot HART ID                : 0
+Boot HART Domain            : root
+Boot HART Priv Version      : v1.12
+Boot HART Base ISA          : rv64imafdch
+Boot HART ISA Extensions    : sstc,zicntr,zihpm,zicboz,zicbom,sdtrig,svadu
+Boot HART PMP Count         : 16
+Boot HART PMP Granularity   : 2 bits
+Boot HART PMP Address Bits  : 54
+Boot HART MHPM Info         : 16 (0x0007fff8)
+Boot HART Debug Triggers    : 2 triggers
+Boot HART MIDELEG           : 0x0000000000001666
+Boot HART MEDELEG           : 0x0000000000f4b509
+
+       d8888                            .d88888b.   .d8888b.
+      d88888                           d88P" "Y88b d88P  Y88b
+     d88P888                           888     888 Y88b.
+    d88P 888 888d888  .d8888b  .d88b.  888     888  "Y888b.
+   d88P  888 888P"   d88P"    d8P  Y8b 888     888     "Y88b.
+  d88P   888 888     888      88888888 888     888       "888
+ d8888888888 888     Y88b.    Y8b.     Y88b. .d88P Y88b  d88P
+d88P     888 888      "Y8888P  "Y8888   "Y88888P"   "Y8888P"
+
+arch = riscv64
+platform = riscv64-qemu-virt
+target = riscv64gc-unknown-none-elf
+build_mode = release
+log_level = warn
+backtrace = false
+smp = 1
+
+Boot at 2026-05-17 18:29:43.002473 UTC
+
+[37m[  0.181383 ax_net_ng:172] [33m  No vsock device found![m
+[m[37m[  0.181846 ax_display:26] [33m  No display device found![m
+[m[37m[  0.239136 0:7 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  0.244038 0:7 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=7)[m
+[m[37m[  0.245722 0:7 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=7)[m
+[m===GUEST_ONECRATE_INIT_DIRECT===
+[37m[  0.293163 0:7 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  0.298985 0:7 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=7)[m
+[m[37m[  0.303143 0:7 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=7)[m
+[m[37m[  0.314541 0:7 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=7)[m
+[m[37m[  0.354593 0:7 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 2150388778 for fd: 3[m
+[m[37m[  0.383072 0:7 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  0.388415 0:7 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=7)[m
+[m[37m[  0.390284 0:7 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=7)[m
+[m[37m[  0.392071 0:7 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=7)[m
+[m[37m[  0.435791 0:7 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 2150388778 for fd: 3[m
+[m[37m[  0.474569 0:7 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  0.480584 0:7 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=7)[m
+[m[37m[  0.482495 0:7 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=7)[m
+[m[37m[  0.484355 0:7 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=7)[m
+[m[37m[  0.532658 0:7 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 2150388778 for fd: 3[m
+[m[37m[  0.604036 0:8 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  0.608737 0:8 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=8)[m
+[m[37m[  0.610735 0:8 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=8)[m
+[m[37m[  0.611408 0:8 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=8)[m
+[m[37m[  0.669368 0:9 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  0.675604 0:9 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=9)[m
+[m[37m[  0.677576 0:9 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=9)[m
+[m[37m[  0.764707 0:10 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  0.774929 0:10 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=10)[m
+[m[37m[  0.788076 0:10 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=10)[m
+[m[37m[  0.792945 0:10 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=10)[m
+[m[37m[  0.794754 0:10 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=10)[m
+[m[37m[  0.797300 0:10 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=10)[m
+[m[37m[  0.798502 0:10 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=10)[m
+[m[37m[  0.826539 0:10 starry_kernel::syscall::fs::io:71] [33mDummy fd created: fsopen[m
+[m[37m[  0.827698 0:10 starry_kernel::syscall::task::ctl:152] [33msys_prctl: unsupported option 3[m
+[m[37m[  0.830900 0:10 starry_kernel::syscall:714] [33mUnimplemented syscall: fsconfig (tid=10)[m
+[m[37m[  0.835440 0:10 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 2150388778 for fd: 2[m
+[m[37m[  0.870299 0:11 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  0.876013 0:11 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=11)[m
+[m[37m[  0.909709 0:12 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  0.914692 0:12 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=12)[m
+[m[37m[  0.916746 0:12 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=12)[m
+[m[37m[  0.917240 0:12 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=12)[m
+[m[37m[  0.958046 0:13 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  0.962605 0:13 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=13)[m
+[m[37m[  0.963474 0:13 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=13)[m
+[m[37m[  1.000792 0:14 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  1.004976 0:14 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=14)[m
+[m[37m[  1.005721 0:14 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=14)[m
+[m[37m[  1.041693 0:15 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  1.046166 0:15 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=15)[m
+[m[37m[  1.046917 0:15 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=15)[m
+[m[37m[  1.082145 0:16 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  1.087063 0:16 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=16)[m
+[m[37m[  1.088039 0:16 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=16)[m
+[m[37m[  1.127613 0:17 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  1.131843 0:17 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=17)[m
+[m[37m[  1.133191 0:17 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=17)[m
+[m[37m[  1.177265 0:18 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  1.182780 0:18 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=18)[m
+[m[37m[  1.185073 0:18 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=18)[m
+[m[37m[  1.185654 0:18 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=18)[m
+[mM6 work dirs: tmpfs=1 CARGO_HOME=/opt/tgoskits/.m6-work/cargo-home CARGO_TARGET_DIR=/opt/tgoskits/.m6-work/target TMPDIR=/opt/tgoskits/.m6-work/tmp
+[37m[  1.237761 0:19 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  1.242781 0:19 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=19)[m
+[m[37m[  1.244904 0:19 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=19)[m
+[m[M6 2026-05-17T18:29:44Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust
+[37m[  1.298169 0:20 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  1.304088 0:20 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=20)[m
+[m[37m[  1.304920 0:20 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=20)[m
+[m[37m[  1.348937 0:21 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  1.354298 0:21 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=21)[m
+[m[37m[  1.356646 0:21 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=21)[m
+[m[37m[  1.357276 0:21 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=21)[m
+[m[37m[  1.409443 0:22 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  1.414955 0:22 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=22)[m
+[m[37m[  1.417454 0:22 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=22)[m
+[m[37m[  1.418008 0:22 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=22)[m
+[m[37m[  1.442643 0:23 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[  1.449425 0:23 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=23)[m
+[m[37m[  1.451742 0:23 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=23)[m
+[m[37m[  1.452133 0:23 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=23)[m
+[m[37m[  1.483771 0:22 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=22)[m
+[m[37m[  1.489685 0:22 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 2150388778 for fd: 1[m
+[m[37m[  1.514143 0:23 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=23)[m
+[m[37m[  1.517967 0:23 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 2150388778 for fd: 0[m
+[mM6 rust runtime: root=/opt/tgoskits/.m6-work/alpine-rust rustc=/opt/tgoskits/.m6-work/alpine-rust/usr/bin/rustc
+M6 bare-metal linker: /usr/bin/ld.lld
+[37m[ 26.912458 0:26 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 26.919303 0:26 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=26)[m
+[mrustc driver: RUSTC=/opt/ccwrap/rustc CARGO_BUILD_RUSTC=/opt/ccwrap/rustc
+[37m[ 26.977260 0:28 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 26.983586 0:28 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=28)[m
+[m[37m[ 26.985150 0:28 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=28)[m
+[m[37m[ 27.022727 0:28 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 27.027011 0:28 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=28)[m
+[m[37m[ 27.027881 0:28 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=28)[m
+[m[37m[ 27.705518 0:28 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=28)[m
+[m[37m[ 28.734237 0:32 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 28.739528 0:32 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=32)[m
+[m[37m[ 28.740848 0:32 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=32)[m
+[m[37m[ 28.741690 0:32 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=32)[m
+[m[37m[ 28.742531 0:32 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=32)[m
+[m[37m[ 28.761778 0:32 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 1074041865 for fd: 4[m
+[m[37m[ 28.796367 0:33 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 28.802138 0:33 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=33)[m
+[m[37m[ 28.803125 0:33 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=33)[m
+[m[37m[ 28.850705 0:34 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 28.856341 0:34 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=34)[m
+[m[37m[ 28.857797 0:34 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=34)[m
+[m[37m[ 28.858821 0:34 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=34)[m
+[m[37m[ 28.859415 0:34 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=34)[m
+[m[37m[ 28.878452 0:34 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 1074041865 for fd: 4[m
+[m[37m[ 28.908089 0:35 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 28.912142 0:35 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=35)[m
+[m[37m[ 28.912853 0:35 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=35)[m
+[m[37m[ 28.951153 0:36 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 28.955402 0:36 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=36)[m
+[m[37m[ 28.956252 0:36 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=36)[m
+[m================================================================
+  StarryOS Self-Build Demo M6 — guest cargo build starry-kernel
+================================================================
+
+[37m[ 28.998819 0:37 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 29.002957 0:37 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=37)[m
+[m[37m[ 29.003862 0:37 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=37)[m
+[m[M6 2026-05-17T18:30:11Z] full M6 selfbuild: toolchain + cargo phases (heartbeats every 60s during compile)
+[0] toolchain sanity:
+rustc binary: /opt/ccwrap/rustc (skip --version)
+
+[37m[ 29.053368 0:38 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 29.058782 0:38 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=38)[m
+[m[37m[ 29.059550 0:38 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=38)[m
+[m[M6 2026-05-17T18:30:12Z] [1] inspect tgoskits tree
+[1] tgoskits source (HEAD):
+(no .git in image — workspace tarball copy)
+
+[37m[ 29.117171 0:40 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 29.126238 0:40 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=40)[m
+[m[37m[ 29.128091 0:40 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=40)[m
+[m[37m[ 29.152583 0:41 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 29.155600 0:41 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=41)[m
+[m[37m[ 29.156409 0:41 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=41)[m
+[m[37m[ 29.164264 0:40 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 2150388778 for fd: 1[m
+[m[37m[ 29.170289 0:40 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 2150388778 for fd: 3[m
+[mPLAT_CONFIG=/opt/tgoskits/components/axplat_crates/platforms/axplat-riscv64-qemu-virt/axconfig.toml PLAT_NAME=riscv64-qemu-virt (baked .axconfig.toml)
+[37m[ 29.216148 0:43 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 29.221321 0:43 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=43)[m
+[m[37m[ 29.222713 0:43 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=43)[m
+[m[37m[ 29.243923 0:43 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 2150388778 for fd: 3[m
+[m[37m[ 29.274283 0:44 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 29.277988 0:44 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=44)[m
+[m[37m[ 29.278917 0:44 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=44)[m
+[m[M6 2026-05-17T18:30:12Z] AX_* exported AX_TARGET=riscv64gc-unknown-none-elf AX_PLATFORM=riscv64-qemu-virt
+[37m[ 29.324114 0:45 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 29.328000 0:45 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=45)[m
+[m[37m[ 29.328696 0:45 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=45)[m
+[m[M6 2026-05-17T18:30:12Z] parallelism: mode=single-vcpu-single-thread nproc=1 CARGO_BUILD_JOBS=1 RAYON_NUM_THREADS=1 rustc_frontend_threads=serial(-Z threads=0 unless M6_NO_SERIAL_RUSTC=1)
+[37m[ 29.401981 0:47 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 29.411008 0:47 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=47)[m
+[m[37m[ 29.413416 0:47 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=47)[m
+[m[37m[ 29.416145 0:47 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=47)[m
+[m[37m[ 29.439325 0:48 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 29.445471 0:48 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=48)[m
+[m[37m[ 29.446781 0:48 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=48)[m
+[m[37m[ 29.465906 0:47 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 2150388778 for fd: 1[m
+[m[37m[ 29.504216 0:49 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 29.510628 0:49 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=49)[m
+[m[37m[ 29.511422 0:49 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=49)[m
+[m[M6 2026-05-17T18:30:12Z] restore cargo target checkpoint from /opt/tgoskits/.m6-checkpoints/target.tar
+[37m[ 29.557577 0:50 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 29.563005 0:50 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=50)[m
+[m[37m[ 29.565526 0:50 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=50)[m
+[m[37m[ 29.565989 0:50 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=50)[m
+[m[37m[ 29.613667 0:51 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 29.617682 0:51 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=51)[m
+[m[37m[ 29.619835 0:51 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=51)[m
+[m[37m[ 29.620257 0:51 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=51)[m
+[m[37m[ 29.637778 0:51 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=51)[m
+[m[37m[ 47.040758 0:52 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 47.047513 0:52 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=52)[m
+[m[37m[ 47.048331 0:52 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=52)[m
+[m[M6 2026-05-17T18:30:30Z] M6_RESUME=1: scan target/ + .m6-done-* under /opt/tgoskits
+[37m[ 47.103593 0:53 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 47.108892 0:53 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=53)[m
+[m[37m[ 47.110156 0:53 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=53)[m
+[m[37m[ 47.150247 0:54 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 47.154365 0:54 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=54)[m
+[m[37m[ 47.155252 0:54 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=54)[m
+[m[M6 2026-05-17T18:30:30Z] found /opt/tgoskits/.m6-work/target/riscv64gc-unknown-none-elf/release/starryos — build already complete
+[37m[ 47.207380 0:55 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 47.213655 0:55 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=55)[m
+[m[37m[ 47.215959 0:55 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=55)[m
+[m[37m[ 47.217310 0:55 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=55)[m
+[m[37m[ 47.241558 0:56 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 47.247606 0:56 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=56)[m
+[m[37m[ 47.248328 0:56 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=56)[m
+[m[37m[ 47.259827 0:55 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 2150388778 for fd: 1[m
+[m[37m[ 47.263594 0:55 starry_kernel::syscall:714] [33mUnimplemented syscall: llistxattr (tid=55)[m
+[m[37m[ 47.264613 0:55 starry_kernel::syscall:714] [33mUnimplemented syscall: lgetxattr (tid=55)[m
+[m[37m[ 47.264999 0:55 starry_kernel::syscall:714] [33mUnimplemented syscall: lgetxattr (tid=55)[m
+[m[37m[ 47.265265 0:55 starry_kernel::syscall:714] [33mUnimplemented syscall: lgetxattr (tid=55)[m
+[m-rwxr-xr-x 2 root root 4.5M May 17 18:30 /opt/tgoskits/.m6-work/target/riscv64gc-unknown-none-elf/release/starryos
+[37m[ 47.305780 0:57 starry_kernel::syscall::fs::ctl:45] [33mUnsupported ioctl command: 2150388778 for fd: 2[m
+[m[37m[ 47.318536 0:58 starry_kernel::syscall::sync::rseq:47] [33msys_rseq registration is unsupported; returning ENOSYS[m
+[m[37m[ 47.323527 0:58 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=58)[m
+[m[37m[ 47.324267 0:58 starry_kernel::syscall:714] [33mUnimplemented syscall: riscv_hwprobe (tid=58)[m
+[m================================================================
+===M6-SELFBUILD-PASS===
+  (resume: ELF already on virtio disk)
+================================================================

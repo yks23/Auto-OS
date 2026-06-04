@@ -1,0 +1,5 @@
+PR #692
+title: fix(starry): tolerate robust futex cleanup faults
+mergedAt: 2026-05-19T09:15:00Z
+url: https://github.com/rcore-os/tgoskits/pull/692
+archivedAt: 2026-05-29T19:13:07Z

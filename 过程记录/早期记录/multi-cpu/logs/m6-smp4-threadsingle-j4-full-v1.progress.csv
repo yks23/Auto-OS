@@ -1,0 +1,7 @@
+# utc_iso elapsed_s log_bytes log_lines last_signal
+2026-05-17T18:47:08Z 60 12731 164 [m[M6 2026-05-17T18:46:18Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-17T18:48:08Z 120 12731 164 [m[M6 2026-05-17T18:46:18Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-17T18:49:08Z 180 13990 176 [m[M6 2026-05-17T18:46:18Z] copy Alpine Rust runtime to tmpfs: /opt/tgoskits/.m6-work/alpine-rust 
+2026-05-17T18:50:09Z 240 25284 283 [m[M6 2026-05-17T18:50:06Z] [2] start cargo build -p starry-kernel (lib)  
+2026-05-17T18:51:08Z 300 34440 365 [m[M6 2026-05-17T18:50:06Z] [2] start cargo build -p starry-kernel (lib)  
+2026-05-17T18:52:09Z 361 51102 453    Compiling toml_edit v0.22.27 
